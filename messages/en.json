@@ -1,0 +1,38 @@
+{
+  "Home": {
+    "title": "Find your perfect stay",
+    "subtitle": "Discover unique homes and experiences",
+    "searchPlaceholder": "Search by location..."
+  },
+  "Navbar": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "host": "Become a Host",
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Logout"
+  },
+  "Listing": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price per night",
+    "location": "Location",
+    "amenities": "Amenities",
+    "bookNow": "Book Now",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "Booking": {
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "guests": "Guests",
+    "total": "Total",
+    "confirm": "Confirm Booking"
+  },
+  "Dashboard": {
+    "myBookings": "My Bookings",
+    "myListings": "My Listings",
+    "noBookings": "No bookings yet",
+    "noListings": "No listings yet"
+  }
+}

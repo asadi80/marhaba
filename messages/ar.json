@@ -1,0 +1,38 @@
+{
+  "Home": {
+    "title": "ابحث عن مكان إقامتك المثالي",
+    "subtitle": "اكتشف منازل وتجارب فريدة",
+    "searchPlaceholder": "ابحث بالموقع..."
+  },
+  "Navbar": {
+    "home": "الرئيسية",
+    "dashboard": "لوحة التحكم",
+    "host": "كن مضيفاً",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج"
+  },
+  "Listing": {
+    "title": "العنوان",
+    "description": "الوصف",
+    "price": "السعر لليلة",
+    "location": "الموقع",
+    "amenities": "المرافق",
+    "bookNow": "احجز الآن",
+    "edit": "تعديل",
+    "delete": "حذف"
+  },
+  "Booking": {
+    "checkIn": "تاريخ الوصول",
+    "checkOut": "تاريخ المغادرة",
+    "guests": "عدد الضيوف",
+    "total": "المجموع",
+    "confirm": "تأكيد الحجز"
+  },
+  "Dashboard": {
+    "myBookings": "حجوزاتي",
+    "myListings": "قوائمي",
+    "noBookings": "لا توجد حجوزات بعد",
+    "noListings": "لا توجد قوائم بعد"
+  }
+}
