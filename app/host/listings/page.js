@@ -55,28 +55,64 @@ export default function HostListings() {
   const mapRef = useRef(null);
 
   // Init Leaflet client-side only
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const L = require("leaflet");
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-      iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-      shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    });
-    setFixedMarkerIcon(new L.DivIcon({
-      className: "fixed-center-marker",
-      html: `<div style="position:relative;width:30px;height:42px;">
-        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:24px;background:#e8c547;border:2px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
-          <div style="width:7px;height:7px;background:#1a1a2e;border-radius:50%;"></div>
-        </div>
-        <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #e8c547;"></div>
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  const L = require("leaflet");
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+    iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+    shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  });
+  
+  // Uber-style gold pin marker
+  setFixedMarkerIcon(new L.DivIcon({
+    className: "fixed-center-marker",
+    html: `<div style="
+        position: relative;
+        width: 30px;
+        height: 48px;
+        cursor: pointer;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      ">
+        <!-- Pin body -->
+        <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Pin shape with black border -->
+          <path d="M15 0C6.716 0 0 6.716 0 15C0 23.284 6.716 30 15 30C23.284 30 30 23.284 30 15C30 6.716 23.284 0 15 0Z" 
+                fill="#e8c547" 
+                stroke="#1a1a2e" 
+                stroke-width="2"/>
+          <!-- Inner circle -->
+          <circle cx="15" cy="15" r="7" fill="#1a1a2e" stroke="#e8c547" stroke-width="1.5"/>
+          <!-- Pin point -->
+          <path d="M15 30 L10 45 L15 48 L20 45 L15 30Z" 
+                fill="#e8c547" 
+                stroke="#1a1a2e" 
+                stroke-width="2" 
+                stroke-linejoin="round"/>
+          <!-- Highlight/shine effect -->
+          <circle cx="11" cy="11" r="2.5" fill="rgba(255,255,255,0.4)"/>
+        </svg>
+        
+        <!-- Pulsing ring animation -->
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 66px;
+          height: 66px;
+          border-radius: 50%;
+          background-color: rgba(232,197,71,0.3);
+          animation: pulse 1.5s ease-out infinite;
+          pointer-events: none;
+        "></div>
       </div>`,
-      iconSize:   [30, 42],
-      iconAnchor: [15, 42],
-    }));
-  }, []);
-
+    iconSize: [30, 48],
+    iconAnchor: [15, 48],
+    popupAnchor: [0, -30],
+  }));
+}, []);
   // Detect browser
   useEffect(() => {
     const ua = navigator.userAgent;
