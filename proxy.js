@@ -19,6 +19,7 @@ export function proxy(request) {
       pathname.startsWith('/api/auth/forgot-password') ||
       pathname.startsWith('/api/auth/reset-password') ||
       pathname === '/api/listings/nearby' ||
+      pathname === '/api/admin/seed' ||
       pathname.startsWith('/api/listings/nearby?')) {
     return NextResponse.next();
   }
