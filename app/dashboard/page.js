@@ -6,52 +6,11 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useLanguage } from '@/hooks/useLanguage';
 import 'leaflet/dist/leaflet.css';
-// import L from 'leaflet';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
 const TileLayer    = dynamic(() => import('react-leaflet').then(m => m.TileLayer),    { ssr: false });
 const Marker       = dynamic(() => import('react-leaflet').then(m => m.Marker),       { ssr: false });
 const Popup        = dynamic(() => import('react-leaflet').then(m => m.Popup),        { ssr: false });
-
-// Create custom icons
-// Blue location marker for user
-// export const userLocationIcon = L.divIcon({
-//   className: "emoji-pin",
-//   html: `
-//     <div style="
-//       font-size: 24px;
-//       line-height: 24px;
-//       transform: translateY(-8px);
-//     ">📍</div>
-//   `,
-//   iconSize: [24, 24],
-//   iconAnchor: [12, 24],
-// });
-
-// Gold house marker for listings
-// const houseIcon = new L.Icon({
-//   iconUrl: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-//     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-//       <path 
-//         d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z"
-//         fill="#e8c547"
-//         stroke="black"
-//         stroke-width="1.5"
-//         stroke-linejoin="round"
-//       />
-//     </svg>
-//   `)}`,
-//   iconSize: [32, 32],
-//   iconAnchor: [16, 32],
-//   popupAnchor: [0, -28],
-// });
-// Delete default icons
-// delete L.Icon.Default.prototype._getIconUrl;
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-//   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-// });
 
 /* helpers */
 const fmt = (d) => new Date(d).toLocaleDateString('en-US', { 
@@ -85,9 +44,10 @@ export default function UserDashboard() {
   const [mapCenter, setMapCenter] = useState({ lat: 51.505, lng: -0.09 });
   const [activeTab, setActiveTab] = useState('nearby');
   const [menuOpen, setMenuOpen] = useState(false);
-    const [icons, setIcons] = useState({ user: null, house: null });
-     // Initialize Leaflet icons client-side only
+  const [icons, setIcons] = useState({ user: null, house: null });
+
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const L = require('leaflet');
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -95,10 +55,9 @@ export default function UserDashboard() {
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
     });
-
     setIcons({
       user: L.divIcon({
-        className: "emoji-pin",
+        className: 'emoji-pin',
         html: `<div style="font-size:24px;line-height:24px;transform:translateY(-8px);">📍</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 24],
@@ -236,7 +195,6 @@ export default function UserDashboard() {
         .leaflet-popup-content-wrapper{border-radius:10px!important;font-family:${bodyFont}!important;font-size:12px!important;}
         .leaflet-popup-tip{display:none!important;}
         
-        /* Single column layout for listings */
         .listings-single-column {
           display: flex;
           flex-direction: column;
@@ -315,21 +273,20 @@ export default function UserDashboard() {
         <nav style={{ background: '#1a1a2e', borderBottom: '1px solid rgba(232,197,71,.15)', position: 'sticky', top: 0, zIndex: 40 }}>
           <div style={{ padding: '0 1rem', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                  <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#ffffff",
-                letterSpacing: "1px",
-              }}
-            >
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
-            </Link>
+              <Link
+                href="/"
+                style={{
+                  textDecoration: "none",
+                  fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                  fontWeight: 500,
+                  fontSize: "26px",
+                  color: "#ffffff",
+                  letterSpacing: "1px",
+                }}
+              >
+                mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+              </Link>
               
-              {/* Language Toggle Button */}
               <button
                 onClick={toggleLanguage}
                 style={{
@@ -346,10 +303,9 @@ export default function UserDashboard() {
                 {isAr ? '🇬🇧 English' : '🇸🇦 عربي'}
               </button>
               
-              {/* Scrollable tabs */}
               <div className="tabs" style={{ display: 'flex', gap: 2, overflowX: 'auto', flex: 1 }}>
-                {TABS.map(t => (
-                  <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ background: activeTab === t.id ? 'rgba(232,197,71,.1)' : 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 6, fontSize: 11, whiteSpace: 'nowrap', color: activeTab === t.id ? '#e8c547' : 'rgba(255,255,255,.45)', fontFamily: 'inherit', flexShrink: 0, transition: 'all .15s' }}>{t.l}</button>
+                {TABS.map(tab => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: activeTab === tab.id ? 'rgba(232,197,71,.1)' : 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 6, fontSize: 11, whiteSpace: 'nowrap', color: activeTab === tab.id ? '#e8c547' : 'rgba(255,255,255,.45)', fontFamily: 'inherit', flexShrink: 0, transition: 'all .15s' }}>{tab.l}</button>
                 ))}
               </div>
             </div>
@@ -369,7 +325,7 @@ export default function UserDashboard() {
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: aviBg, color: aviColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 500 }}>{ini}</div>
               <div>
                 <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#111118', lineHeight: 1.1 }}>{user.name}</div>
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{isAr ? 'عضو منذ' : 'member since'} {fmt(user.createdAt, lang)}</div>
+                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{isAr ? 'عضو منذ' : 'member since'} {fmt(user.createdAt)}</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
@@ -401,34 +357,26 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              {/* Map with custom markers */}
+              {/* Map */}
               {userLocation && (
                 <div style={{ borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(0,0,0,.08)', marginBottom: '1.25rem', height: 'clamp(280px,45vw,440px)' }}>
                   <MapContainer center={[mapCenter.lat, mapCenter.lng]} zoom={12} style={{ height: '100%', width: '100%' }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
                     
-                    {/* User Location Marker - Blue */}
+                    {/* User Location Marker */}
                     {icons.user && (
-                    <Marker 
-                      position={[userLocation.lat, userLocation.lng]} 
-                      icon={userLocation}
-                    >
-                      <Popup>
-                        <strong style={{ fontFamily: bodyFont, fontSize: 12 }}>
-                          {isAr ? '📍 موقعك الحالي' : '📍 Your current location'}
-                        </strong>
-                      </Popup>
-                    </Marker>
+                      <Marker position={[userLocation.lat, userLocation.lng]} icon={icons.user}>
+                        <Popup>
+                          <strong style={{ fontFamily: bodyFont, fontSize: 12 }}>
+                            {isAr ? '📍 موقعك الحالي' : '📍 Your current location'}
+                          </strong>
+                        </Popup>
+                      </Marker>
                     )}
                     
-                    {/* Listing Markers - Gold House */}
-                    {filtered.map(l => l.coordinates && (
-                      {icons.house && filtered.map(l => l.coordinates && (
-                      <Marker 
-                        key={l._id} 
-                        position={[l.coordinates.lat, l.coordinates.lng]}
-                        icon={houseIcon}
-                      >
+                    {/* Listing Markers */}
+                    {icons.house && filtered.map(l => l.coordinates && (
+                      <Marker key={l._id} position={[l.coordinates.lat, l.coordinates.lng]} icon={icons.house}>
                         <Popup>
                           <div style={{ fontFamily: bodyFont, fontSize: 12, minWidth: 160 }}>
                             {l.images?.[0] && <img src={l.images[0]} alt={l.title} style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 6, marginBottom: 8 }} />}
@@ -441,13 +389,12 @@ export default function UserDashboard() {
                           </div>
                         </Popup>
                       </Marker>
-                      ))}
                     ))}
                   </MapContainer>
                 </div>
               )}
 
-              {/* Listing cards - SINGLE COLUMN LAYOUT */}
+              {/* Listing cards */}
               {filtered.length > 0 ? (
                 <div className="listings-single-column">
                   {filtered.map(l => {
@@ -468,7 +415,7 @@ export default function UserDashboard() {
                               {l.location}
                             </div>
                             <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 24, color: '#1a1a2e', marginBottom: 12 }}>
-                              {l.price} {isAr ?' دينار' : 'LYD'}<span style={{ fontSize: 16, fontStyle: 'normal', color: '#242323' }}>/ {isAr ? 'ليلة' : 'night'}</span>
+                              {l.price} {isAr ? ' دينار' : 'LYD'}<span style={{ fontSize: 16, fontStyle: 'normal', color: '#242323' }}>/ {isAr ? 'ليلة' : 'night'}</span>
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -510,7 +457,7 @@ export default function UserDashboard() {
             </div>
           )}
 
-          {/* BOOKINGS TAB - Keep same as before */}
+          {/* BOOKINGS TAB */}
           {activeTab === 'bookings' && (
             <div>
               <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#111118', marginBottom: '1rem' }}>{isAr ? 'حجوزاتي' : 'my bookings'}</div>
@@ -539,8 +486,8 @@ export default function UserDashboard() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
                           {[
-                            { l: isAr ? 'تسجيل الوصول' : 'check-in', v: fmt(b.checkIn, lang) },
-                            { l: isAr ? 'تسجيل المغادرة' : 'check-out', v: fmt(b.checkOut, lang) },
+                            { l: isAr ? 'تسجيل الوصول' : 'check-in', v: fmt(b.checkIn) },
+                            { l: isAr ? 'تسجيل المغادرة' : 'check-out', v: fmt(b.checkOut) },
                             { l: isAr ? 'الليالي' : 'nights', v: `${n} ${n === 1 ? (isAr ? 'ليلة' : 'night') : (isAr ? 'ليالي' : 'nights')}` },
                             { l: isAr ? 'الضيوف' : 'guests', v: `${b.guests} ${b.guests === 1 ? (isAr ? 'ضيف' : 'guest') : (isAr ? 'ضيوف' : 'guests')}` }
                           ].map(({ l, v }) => (
@@ -551,7 +498,7 @@ export default function UserDashboard() {
                           ))}
                           <div>
                             <div style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: '#bbb', marginBottom: 2 }}>{isAr ? 'المجموع' : 'total'}</div>
-                            <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#1a1a2e' }}>{b.totalPrice} {isAr ?' دينار' : 'LYD'}</div>
+                            <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#1a1a2e' }}>{b.totalPrice} {isAr ? ' دينار' : 'LYD'}</div>
                           </div>
                         </div>
 
@@ -569,7 +516,7 @@ export default function UserDashboard() {
                             </button>
                           )}
                         </div>
-                        <div style={{ fontSize: 11, color: '#ccc', marginTop: '.75rem' }}>{isAr ? 'تم الحجز' : 'booked'} {fmt(b.createdAt, lang)}</div>
+                        <div style={{ fontSize: 11, color: '#ccc', marginTop: '.75rem' }}>{isAr ? 'تم الحجز' : 'booked'} {fmt(b.createdAt)}</div>
                       </div>
                     );
                   })}
