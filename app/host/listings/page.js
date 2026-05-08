@@ -68,42 +68,25 @@ useEffect(() => {
   setFixedMarkerIcon(new L.DivIcon({
     className: "fixed-center-marker",
     html: `
-      <div style="position: relative; width: 32px; height: 32px;">
-        <div style="
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: #e8c547;
-          border: 2.5px solid #1a1a2e;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        "></div>
-        <div style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 10px;
-          height: 10px;
-          background: #1a1a2e;
-          border-radius: 50%;
-        "></div>
-        <div style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: rgba(232,197,71,0.25);
-          animation: pulse 1.5s ease-out infinite;
-          pointer-events: none;
-        "></div>
-      </div>
+      <div style="
+        font-size: 32px;
+        line-height: 32px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+        animation: bounce 0.4s ease-out;
+      ">📍</div>
+      <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(232,197,71,0.3);
+        animation: pulse 1.5s ease-out infinite;
+        pointer-events: none;
+      "></div>
     `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
