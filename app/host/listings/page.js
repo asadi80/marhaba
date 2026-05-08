@@ -20,8 +20,7 @@ const CATEGORIES = [
   { id: "city",      icon: "🏙️", labelEn: "City",        labelAr: "مدينة",  descriptionEn: "Vibrant city apartments",              descriptionAr: "شقق مدينة نابضة بالحياة" },
   { id: "countryside",icon:"🏡", labelEn: "Countryside",  labelAr: "ريفي",   descriptionEn: "Peaceful countryside homes",           descriptionAr: "منازل ريفية هادئة" },
   { id: "pool",      icon: "🏊", labelEn: "Pool",         labelAr: "مسبح",   descriptionEn: "Properties with pools",                descriptionAr: "عقارات بها مسبح" },
-  { id: "islands",   icon: "🌴", labelEn: "Islands",      labelAr: "جزيرة",  descriptionEn: "Tropical island escapes",              descriptionAr: "ملاذات استوائية في الجزر" },
-  { id: "camping",   icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",          descriptionAr: "تجارب تخييم في الهواء الطلق" },
+ { id: "desert",    icon: "🏜️", labelEn: "Desert",      labelAr: "صحراء",  descriptionEn: "Stunning desert escapes",              descriptionAr: "ملاذات صحراوية خلابة" },  { id: "camping",   icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",          descriptionAr: "تجارب تخييم في الهواء الطلق" },
   { id: "cabins",    icon: "🛖", labelEn: "Cabins",       labelAr: "كوخ",    descriptionEn: "Cozy cabin getaways",                  descriptionAr: "ملاذات كوخ مريحة" },
 ];
 
