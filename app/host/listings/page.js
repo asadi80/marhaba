@@ -65,52 +65,41 @@ useEffect(() => {
     shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   });
   
-  // Uber-style gold pin marker
+  // Simple 📍-style gold pin marker
   setFixedMarkerIcon(new L.DivIcon({
     className: "fixed-center-marker",
     html: `<div style="
         position: relative;
-        width: 30px;
-        height: 48px;
-        cursor: pointer;
+        width: 32px;
+        height: 32px;
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       ">
-        <!-- Pin body -->
-        <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Pin shape with black border -->
-          <path d="M15 0C6.716 0 0 6.716 0 15C0 23.284 6.716 30 15 30C23.284 30 30 23.284 30 15C30 6.716 23.284 0 15 0Z" 
+        <!-- Pin shape like 📍 -->
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" 
                 fill="#e8c547" 
                 stroke="#1a1a2e" 
                 stroke-width="2"/>
-          <!-- Inner circle -->
-          <circle cx="15" cy="15" r="7" fill="#1a1a2e" stroke="#e8c547" stroke-width="1.5"/>
-          <!-- Pin point -->
-          <path d="M15 30 L10 45 L15 48 L20 45 L15 30Z" 
-                fill="#e8c547" 
-                stroke="#1a1a2e" 
-                stroke-width="2" 
-                stroke-linejoin="round"/>
-          <!-- Highlight/shine effect -->
-          <circle cx="11" cy="11" r="2.5" fill="rgba(255,255,255,0.4)"/>
+          <circle cx="12" cy="9" r="3" fill="#1a1a2e"/>
         </svg>
         
-        <!-- Pulsing ring animation -->
+        <!-- Pulsing ring -->
         <div style="
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          width: 66px;
-          height: 66px;
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
           background-color: rgba(232,197,71,0.3);
           animation: pulse 1.5s ease-out infinite;
           pointer-events: none;
         "></div>
       </div>`,
-    iconSize: [30, 48],
-    iconAnchor: [15, 48],
-    popupAnchor: [0, -30],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -10],
   }));
 }, []);
   // Detect browser
