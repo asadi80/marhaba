@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -10,101 +10,27 @@ import { useLanguage } from "@/hooks/useLanguage";
 import "./style.css";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false });
-const useMap = dynamic(() => import("react-leaflet").then((m) => m.useMap), { ssr: false });
+const TileLayer    = dynamic(() => import("react-leaflet").then((m) => m.TileLayer),    { ssr: false });
+const MapController    = dynamic(() => import("./MapComponents").then((m) => m.MapController),    { ssr: false });
+const FixedCenterMarker = dynamic(() => import("./MapComponents").then((m) => m.FixedCenterMarker), { ssr: false });
 
 const CATEGORIES = [
-  { id: "beachfront", icon: "🏖️", labelEn: "Beachfront",  labelAr: "شاطئ",  descriptionEn: "Beautiful beachfront properties",    descriptionAr: "عقارات جميلة على الشاطئ" },
-  { id: "mountain",  icon: "🏔️", labelEn: "Mountain",    labelAr: "جبال",   descriptionEn: "Scenic mountain retreats",             descriptionAr: "منتجعات جبلية خلابة" },
-  { id: "city",      icon: "🏙️", labelEn: "City",        labelAr: "مدينة",  descriptionEn: "Vibrant city apartments",              descriptionAr: "شقق مدينة نابضة بالحياة" },
-  { id: "countryside",icon:"🏡", labelEn: "Countryside",  labelAr: "ريفي",   descriptionEn: "Peaceful countryside homes",           descriptionAr: "منازل ريفية هادئة" },
-  { id: "pool",      icon: "🏊", labelEn: "Pool",         labelAr: "مسبح",   descriptionEn: "Properties with pools",                descriptionAr: "عقارات بها مسبح" },
-  { id: "desert",    icon: "🏜️", labelEn: "Desert",      labelAr: "صحراء",  descriptionEn: "Stunning desert escapes",              descriptionAr: "ملاذات صحراوية خلابة" },
-  { id: "camping",   icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",          descriptionAr: "تجارب تخييم في الهواء الطلق" },
-  { id: "cabins",    icon: "🛖", labelEn: "Cabins",       labelAr: "كوخ",    descriptionEn: "Cozy cabin getaways",                  descriptionAr: "ملاذات كوخ مريحة" },
+  { id: "beachfront",  icon: "🏖️", labelEn: "Beachfront",  labelAr: "شاطئ",  descriptionEn: "Beautiful beachfront properties",   descriptionAr: "عقارات جميلة على الشاطئ" },
+  { id: "mountain",    icon: "🏔️", labelEn: "Mountain",    labelAr: "جبال",   descriptionEn: "Scenic mountain retreats",            descriptionAr: "منتجعات جبلية خلابة" },
+  { id: "city",        icon: "🏙️", labelEn: "City",        labelAr: "مدينة",  descriptionEn: "Vibrant city apartments",             descriptionAr: "شقق مدينة نابضة بالحياة" },
+  { id: "countryside", icon: "🏡", labelEn: "Countryside",  labelAr: "ريفي",   descriptionEn: "Peaceful countryside homes",          descriptionAr: "منازل ريفية هادئة" },
+  { id: "pool",        icon: "🏊", labelEn: "Pool",         labelAr: "مسبح",   descriptionEn: "Properties with pools",               descriptionAr: "عقارات بها مسبح" },
+  { id: "desert",      icon: "🏜️", labelEn: "Desert",      labelAr: "صحراء",  descriptionEn: "Stunning desert escapes",             descriptionAr: "ملاذات صحراوية خلابة" },
+  { id: "camping",     icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",         descriptionAr: "تجارب تخييم في الهواء الطلق" },
+  { id: "cabins",      icon: "🛖",  labelEn: "Cabins",      labelAr: "كوخ",    descriptionEn: "Cozy cabin getaways",                 descriptionAr: "ملاذات كوخ مريحة" },
 ];
 
 const EMPTY_FORM = {
-  title: "",
-  description: "",
-  price: "",
-  location: "",
-  coordinates: null,
-  images: [],
-  amenities: [""],
-  rules: [],
-  category: "city",
+  title: "", description: "", price: "", location: "",
+  coordinates: null, images: [], amenities: [""], rules: [], category: "city",
 };
 
 const DEFAULT_CENTER = { lat: 20, lng: 0 };
-
-// Component to handle map events and fixed marker
-function MapController({ onLocationSelect, initialCenter, markerPosition }) {
-  const map = useMap();
-  const [isMapReady, setIsMapReady] = useState(false);
-
-  useEffect(() => {
-    if (!map) return;
-    setIsMapReady(true);
-    
-    // Set initial view
-    if (initialCenter?.lat && initialCenter?.lng) {
-      map.setView([initialCenter.lat, initialCenter.lng], markerPosition ? 14 : 2);
-    }
-  }, [map, initialCenter, markerPosition]);
-
-  // Handle map move end - get center coordinates
-  useEffect(() => {
-    if (!map || !isMapReady) return;
-
-    const handleMoveEnd = () => {
-      const center = map.getCenter();
-      onLocationSelect(center.lat, center.lng);
-    };
-
-    map.on('moveend', handleMoveEnd);
-    
-    // Initial call to set coordinates
-    setTimeout(() => {
-      const center = map.getCenter();
-      onLocationSelect(center.lat, center.lng);
-    }, 100);
-
-    return () => {
-      map.off('moveend', handleMoveEnd);
-    };
-  }, [map, isMapReady, onLocationSelect]);
-
-  return null;
-}
-
-// Fixed marker component that doesn't move
-function FixedCenterMarker({ icon }) {
-  const map = useMap();
-  const [position, setPosition] = useState([0, 0]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    const updatePosition = () => {
-      const center = map.getCenter();
-      setPosition([center.lat, center.lng]);
-    };
-
-    map.on('move', updatePosition);
-    updatePosition();
-
-    return () => {
-      map.off('move', updatePosition);
-    };
-  }, [map]);
-
-  if (!icon) return null;
-  
-  return <Marker position={position} icon={icon} interactive={false} />;
-}
 
 export default function HostListings() {
   const router = useRouter();
@@ -124,13 +50,11 @@ export default function HostListings() {
   const [browserInfo,       setBrowserInfo]       = useState(null);
   const [menuOpen,          setMenuOpen]          = useState(false);
   const [formData,          setFormData]          = useState(EMPTY_FORM);
-  const [draggableIcon,     setDraggableIcon]     = useState(null);
   const [fixedMarkerIcon,   setFixedMarkerIcon]   = useState(null);
-  const [isMapReady,        setIsMapReady]       = useState(false);
 
   const mapRef = useRef(null);
 
-  // Initialize Leaflet icons client-side only
+  // Init Leaflet client-side only
   useEffect(() => {
     if (typeof window === "undefined") return;
     const L = require("leaflet");
@@ -140,301 +64,155 @@ export default function HostListings() {
       iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
       shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
     });
-    
-    // Draggable marker icon (no longer used for dragging, but kept for compatibility)
-    setDraggableIcon(new L.Icon({
-      iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-      iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-      shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-      iconSize:    [25, 41],
-      iconAnchor:  [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize:  [41, 41],
-    }));
-    
-    // Fixed crosshair/center marker icon
     setFixedMarkerIcon(new L.DivIcon({
       className: "fixed-center-marker",
-      html: `<div style="
-        position: relative;
-        width: 30px;
-        height: 30px;
-      ">
-        <div style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 24px;
-          height: 24px;
-          background: #e8c547;
-          border: 2px solid white;
-          border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <div style="
-            width: 8px;
-            height: 8px;
-            background: #1a1a2e;
-            border-radius: 50%;
-          "></div>
-          <div style="
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-bottom: 12px solid #e8c547;
-          "></div>
+      html: `<div style="position:relative;width:30px;height:42px;">
+        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:24px;background:#e8c547;border:2px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+          <div style="width:7px;height:7px;background:#1a1a2e;border-radius:50%;"></div>
         </div>
+        <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #e8c547;"></div>
       </div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
+      iconSize:   [30, 42],
+      iconAnchor: [15, 42],
     }));
   }, []);
 
   // Detect browser
   useEffect(() => {
-    const userAgent = navigator.userAgent;
-    if (userAgent.indexOf("Chrome") > -1 && userAgent.indexOf("Edg") === -1) {
-      setBrowserInfo("chrome");
-    } else if (userAgent.indexOf("Firefox") > -1) {
-      setBrowserInfo("firefox");
-    } else if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Chrome") === -1) {
-      setBrowserInfo("safari");
-    } else if (userAgent.indexOf("Edg") > -1) {
-      setBrowserInfo("edge");
-    } else {
-      setBrowserInfo("other");
-    }
+    const ua = navigator.userAgent;
+    if      (ua.includes("Chrome") && !ua.includes("Edg")) setBrowserInfo("chrome");
+    else if (ua.includes("Firefox"))                        setBrowserInfo("firefox");
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) setBrowserInfo("safari");
+    else if (ua.includes("Edg"))                            setBrowserInfo("edge");
+    else                                                    setBrowserInfo("other");
   }, []);
 
-  const arabicFont    = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishFont   = "'DM Mono', monospace";
-  const arabicDisplay  = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishDisplay = "'Fraunces', serif";
-  const bodyFont    = isAr ? arabicFont    : englishFont;
-  const displayFont = isAr ? arabicDisplay : englishDisplay;
+  const bodyFont    = isAr ? "'Cairo','Tajawal','Almarai',sans-serif"    : "'DM Mono',monospace";
+  const displayFont = isAr ? "'Cairo','Tajawal','Almarai',sans-serif" : "'Fraunces',serif";
+  const formatCurrency = (n) => isAr ? `${Math.round(n).toLocaleString()} دينار` : `${Math.round(n).toLocaleString()} LYD`;
 
-  const formatCurrency = (amount) =>
-    isAr
-      ? `${Math.round(amount).toLocaleString()} دينار`
-      : `${Math.round(amount).toLocaleString()} LYD`;
+  // ── Data ────────────────────────────────────────────────────────────────────
 
   const fetchListings = async () => {
     try {
       const res  = await fetch("/api/host/listings");
       const data = await res.json();
       setListings(data.listings);
-    } catch (err) {
-      console.error("Error fetching listings:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchListings(); }, []);
 
+  // ── Location ─────────────────────────────────────────────────────────────────
+
   const reverseGeocode = async (lat, lng) => {
     try {
-      const res  = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
-      );
+      const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
       const data = await res.json();
       return data.display_name ?? `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    } catch {
-      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    }
+    } catch { return `${lat.toFixed(6)}, ${lng.toFixed(6)}`; }
   };
 
   const applyCoordinates = async (lat, lng) => {
     const address = await reverseGeocode(lat, lng);
     setSelectedLocation({ lat, lng, address });
-    setFormData((prev) => ({ ...prev, location: address, coordinates: { lat, lng } }));
+    setFormData((p) => ({ ...p, location: address, coordinates: { lat, lng } }));
   };
 
-  // Handle location selection from map center
-  const handleMapLocationSelect = async (lat, lng) => {
+  // Called by MapController on every moveend
+  const handleMapLocationSelect = useCallback(async (lat, lng) => {
     setMarkerPosition({ lat, lng });
-    setMapCenter({ lat, lng });
     await applyCoordinates(lat, lng);
-  };
+  }, []);
 
-  const getIPBasedLocation = async () => {
+  const getIPLocation = async () => {
     try {
-      const response = await fetch("https://ipapi.co/json/");
-      const data = await response.json();
-      if (data.latitude && data.longitude) {
-        return { lat: data.latitude, lng: data.longitude, accuracy: "ip-based", city: data.city, country: data.country_name };
-      }
-      return null;
-    } catch (error) {
-      console.error("IP geolocation failed:", error);
-      return null;
-    }
+      const data = await (await fetch("https://ipapi.co/json/")).json();
+      if (data.latitude && data.longitude)
+        return { lat: data.latitude, lng: data.longitude, city: data.city, country: data.country_name };
+    } catch {}
+    return null;
   };
 
   const useCurrentLocation = async () => {
     if (!("geolocation" in navigator)) {
-      const ipLocation = await getIPBasedLocation();
-      if (ipLocation) {
-        const userConfirm = confirm(
-          isAr
-            ? `متصفحك لا يدعم تحديد الموقع الدقيق. تم العثور على موقع تقريبي (${ipLocation.city}, ${ipLocation.country}). هل تريد استخدام هذا الموقع؟`
-            : `Your browser doesn't support precise location. Found approximate location (${ipLocation.city}, ${ipLocation.country}). Do you want to use this location?`
-        );
-        if (userConfirm) {
-          setMarkerPosition({ lat: ipLocation.lat, lng: ipLocation.lng });
-          setMapCenter({ lat: ipLocation.lat, lng: ipLocation.lng });
-          await applyCoordinates(ipLocation.lat, ipLocation.lng);
-          mapRef.current?.setView([ipLocation.lat, ipLocation.lng], 13);
-          return;
-        }
+      const ip = await getIPLocation();
+      if (ip && confirm(isAr ? `موقع تقريبي (${ip.city}). استخدامه؟` : `Approximate location (${ip.city}). Use it?`)) {
+        setMapCenter({ lat: ip.lat, lng: ip.lng });
+        await applyCoordinates(ip.lat, ip.lng);
+        mapRef.current?.setView([ip.lat, ip.lng], 13);
+      } else {
+        const msg = isAr ? "متصفحك لا يدعم تحديد الموقع" : "Geolocation not supported. Select manually on map.";
+        setLocationError(msg); alert(msg);
       }
-      const errorMsg = isAr
-        ? "متصفحك لا يدعم تحديد الموقع الجغرافي. الرجاء تحديد الموقع يدوياً على الخريطة"
-        : "Your browser does not support geolocation. Please select your location manually on the map";
-      setLocationError(errorMsg);
-      alert(errorMsg);
       return;
     }
 
     setIsGettingLocation(true);
     setLocationError(null);
+    let success = false;
 
-    const isNonChrome = browserInfo !== "chrome";
-
-    if (isNonChrome && browserInfo) {
-      const browserGuidance = {
-        firefox: isAr ? "في فايرفوكس، قد يكون تحديد الموقع أقل دقة. يمكنك أيضاً تحديد الموقع يدوياً على الخريطة." : "On Firefox, location accuracy may be lower. You can also select location manually on map.",
-        safari:  isAr ? "في سفاري، قد تحتاج إلى تمكين خدمات الموقع في تفضيلات النظام." : "On Safari, you may need to enable location services in System Preferences.",
-        edge:    isAr ? "في إيدج، تأكد من السماح بالوصول إلى الموقع في إعدادات المتصفح." : "On Edge, ensure location access is allowed in browser settings.",
-        other:   isAr ? "قد تكون دقة تحديد الموقع محدودة في متصفحك. يمكنك تحديد الموقع يدوياً." : "Location accuracy may be limited in your browser. You can select location manually.",
-      };
-      setLocationError(browserGuidance[browserInfo]);
+    for (const opts of [
+      { enableHighAccuracy: true,  timeout: 10000, maximumAge: 0 },
+      { enableHighAccuracy: false, timeout: 8000,  maximumAge: 30000 },
+    ]) {
+      if (success) break;
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setMapCenter({ lat, lng });
+        await applyCoordinates(lat, lng);
+        mapRef.current?.setView([lat, lng], opts.enableHighAccuracy ? 15 : 13);
+        success = true;
+      } catch {}
     }
 
-    let locationSuccess = false;
-
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-      });
-      const { latitude, longitude } = position.coords;
-      setMarkerPosition({ lat: latitude, lng: longitude });
-      setMapCenter({ lat: latitude, lng: longitude });
-      await applyCoordinates(latitude, longitude);
-      mapRef.current?.setView([latitude, longitude], 15);
-      locationSuccess = true;
-    } catch (error) {
-      console.log("High accuracy failed:", error);
-      if (!locationSuccess) {
-        try {
-          const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
-          });
-          const { latitude, longitude } = position.coords;
-          setMarkerPosition({ lat: latitude, lng: longitude });
-          setMapCenter({ lat: latitude, lng: longitude });
-          await applyCoordinates(latitude, longitude);
-          mapRef.current?.setView([latitude, longitude], 13);
-          locationSuccess = true;
-        } catch (error2) {
-          console.log("Low accuracy also failed:", error2);
-        }
-      }
-    }
-
-    if (!locationSuccess) {
-      const ipLocation = await getIPBasedLocation();
-      if (ipLocation) {
-        const useFallback = confirm(
-          isAr
-            ? `تعذر الحصول على موقعك الدقيق. تم العثور على موقع تقريبي (${ipLocation.city}, ${ipLocation.country}). هل تريد استخدام هذا الموقع؟`
-            : `Could not get your exact location. Found approximate location (${ipLocation.city}, ${ipLocation.country}). Do you want to use this location?`
-        );
-        if (useFallback) {
-          setMarkerPosition({ lat: ipLocation.lat, lng: ipLocation.lng });
-          setMapCenter({ lat: ipLocation.lat, lng: ipLocation.lng });
-          await applyCoordinates(ipLocation.lat, ipLocation.lng);
-          mapRef.current?.setView([ipLocation.lat, ipLocation.lng], 10);
-          locationSuccess = true;
-        }
+    if (!success) {
+      const ip = await getIPLocation();
+      if (ip && confirm(isAr ? `تعذر الموقع الدقيق. موقع تقريبي (${ip.city}). استخدامه؟` : `Exact location failed. Approximate (${ip.city}). Use it?`)) {
+        setMapCenter({ lat: ip.lat, lng: ip.lng });
+        await applyCoordinates(ip.lat, ip.lng);
+        mapRef.current?.setView([ip.lat, ip.lng], 10);
+        success = true;
       }
     }
 
     setIsGettingLocation(false);
-
-    if (!locationSuccess) {
-      let errorMsg = "";
-      if (isNonChrome) {
-        errorMsg = isAr
-          ? `تعذر تحديد موقعك في ${browserInfo === "firefox" ? "فايرفوكس" : browserInfo === "safari" ? "سفاري" : "متصفحك"}. الرجاء النقر على الخريطة لتحديد موقعك يدوياً.`
-          : `Could not determine your location on ${browserInfo === "firefox" ? "Firefox" : browserInfo === "safari" ? "Safari" : "your browser"}. Please click on the map to select your location manually.`;
-      } else {
-        errorMsg = isAr
-          ? "تعذر الحصول على موقعك. الرجاء تحديد الموقع يدوياً على الخريطة"
-          : "Could not get your location. Please select location manually on the map";
-      }
-      setLocationError(errorMsg);
-      alert(errorMsg);
+    if (!success) {
+      const msg = isAr ? "تعذر تحديد موقعك. حرك الخريطة يدوياً." : "Could not get location. Move the map to select manually.";
+      setLocationError(msg); alert(msg);
     }
   };
 
-  const handleInputChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+  // ── Form helpers ─────────────────────────────────────────────────────────────
 
-  const handleArrayChange = (index, field, value) =>
-    setFormData((p) => { const arr = [...p[field]]; arr[index] = value; return { ...p, [field]: arr }; });
-
-  const addArrayField    = (field) => setFormData((p) => ({ ...p, [field]: [...p[field], ""] }));
-
-  const removeArrayField = (field, index) =>
-    setFormData((p) => ({ ...p, [field]: p[field].filter((_, i) => i !== index) }));
-
-  const handleImageUpload = (index, url) =>
-    setFormData((p) => { const imgs = [...p.images]; imgs[index] = url; return { ...p, images: imgs }; });
-
-  const handleImageRemove = (index) =>
-    setFormData((p) => ({ ...p, images: p.images.filter((_, i) => i !== index) }));
-
-  const addImageSlot = () => setFormData((p) => ({ ...p, images: [...p.images, ""] }));
+  const handleInputChange  = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const handleArrayChange  = (i, field, val) => setFormData((p) => { const a = [...p[field]]; a[i] = val; return { ...p, [field]: a }; });
+  const addArrayField      = (field) => setFormData((p) => ({ ...p, [field]: [...p[field], ""] }));
+  const removeArrayField   = (field, i) => setFormData((p) => ({ ...p, [field]: p[field].filter((_, idx) => idx !== i) }));
+  const handleImageUpload  = (i, url) => setFormData((p) => { const imgs = [...p.images]; imgs[i] = url; return { ...p, images: imgs }; });
+  const handleImageRemove  = (i) => setFormData((p) => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }));
+  const addImageSlot       = () => setFormData((p) => ({ ...p, images: [...p.images, ""] }));
 
   const resetForm = () => {
-    setFormData(EMPTY_FORM);
-    setMarkerPosition(null);
-    setMapCenter(null);
-    setSelectedLocation(null);
-    setIsEditing(false);
-    setEditingId(null);
-    setLocationError(null);
+    setFormData(EMPTY_FORM); setMarkerPosition(null); setMapCenter(null);
+    setSelectedLocation(null); setIsEditing(false); setEditingId(null); setLocationError(null);
   };
-
   const cancelEdit = () => { setShowForm(false); resetForm(); };
 
   const handleEdit = (listing) => {
     const coords = listing.coordinates?.lat && listing.coordinates?.lng ? listing.coordinates : null;
-    setIsEditing(true);
-    setEditingId(listing._id);
+    setIsEditing(true); setEditingId(listing._id);
     setFormData({
-      title:       listing.title       ?? "",
-      description: listing.description ?? "",
-      price:       listing.price       ?? "",
-      location:    listing.location    ?? "",
-      coordinates: coords,
-      images:      listing.images      ?? [],
-      amenities:   listing.amenities?.length ? listing.amenities : [""],
-      rules:       listing.rules       ?? [],
-      category:    listing.category    ?? "city",
+      title: listing.title ?? "", description: listing.description ?? "",
+      price: listing.price ?? "", location: listing.location ?? "",
+      coordinates: coords, images: listing.images ?? [],
+      amenities: listing.amenities?.length ? listing.amenities : [""],
+      rules: listing.rules ?? [], category: listing.category ?? "city",
     });
     if (coords) {
-      setMarkerPosition(coords);
-      setMapCenter(coords);
+      setMarkerPosition(coords); setMapCenter(coords);
       setSelectedLocation({ ...coords, address: listing.location ?? "" });
       setTimeout(() => mapRef.current?.setView([coords.lat, coords.lng], 14), 500);
     } else {
@@ -450,25 +228,17 @@ export default function HostListings() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+    e.preventDefault(); if (!validateForm()) return;
     try {
       const res  = await fetch("/api/listings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setShowForm(false);
-      resetForm();
-      fetchListings();
-      alert(t.listingCreatedSuccess);
-    } catch (err) {
-      console.error("Error creating listing:", err);
-      alert(err.message);
-    }
+      setShowForm(false); resetForm(); fetchListings(); alert(t.listingCreatedSuccess);
+    } catch (err) { alert(err.message); }
   };
 
   const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+    e.preventDefault(); if (!validateForm()) return;
     try {
       const res  = await fetch(`/api/listings/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
       const data = await res.json();
@@ -476,20 +246,12 @@ export default function HostListings() {
       await fetchListings();
       if (data.listing?.coordinates) {
         const { coordinates, location } = data.listing;
-        setMarkerPosition(coordinates);
-        setMapCenter(coordinates);
+        setMarkerPosition(coordinates); setMapCenter(coordinates);
         setSelectedLocation({ ...coordinates, address: location });
         mapRef.current?.setView([coordinates.lat, coordinates.lng], 14);
       }
-      setShowForm(false);
-      setIsEditing(false);
-      setEditingId(null);
-      resetForm();
-      alert(t.listingUpdatedSuccess);
-    } catch (err) {
-      console.error("Error updating listing:", err);
-      alert(err.message);
-    }
+      setShowForm(false); setIsEditing(false); setEditingId(null); resetForm(); alert(t.listingUpdatedSuccess);
+    } catch (err) { alert(err.message); }
   };
 
   const handleDelete = async (id) => {
@@ -498,27 +260,21 @@ export default function HostListings() {
       const res  = await fetch(`/api/listings/${id}?deleteListing=true`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      fetchListings();
-      alert(t.listingDeletedSuccess);
-    } catch (err) {
-      console.error("Error deleting listing:", err);
-      alert(err.message);
-    }
+      fetchListings(); alert(t.listingDeletedSuccess);
+    } catch (err) { alert(err.message); }
   };
 
   useEffect(() => {
-    if (showForm && !isEditing && !mapCenter && !isGettingLocation) {
-      setMapCenter(DEFAULT_CENTER);
-    }
+    if (showForm && !isEditing && !mapCenter && !isGettingLocation) setMapCenter(DEFAULT_CENTER);
   }, [showForm, isEditing, mapCenter, isGettingLocation]);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f6f2" }}>
-        <div style={{ width: 40, height: 40, border: "3px solid #e8c547", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      </div>
-    );
-  }
+  // ── Render ───────────────────────────────────────────────────────────────────
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f6f2" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid #e8c547", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+    </div>
+  );
 
   return (
     <>
@@ -558,28 +314,18 @@ export default function HostListings() {
         .hamburger span { display: block; width: 20px; height: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; transition: all .2s; }
         .mobile-menu { display: none; position: fixed; top: 56px; left: 0; right: 0; background: #1a1a2e; border-bottom: 1px solid rgba(232,197,71,0.15); padding: 1rem 1.5rem; z-index: 40; flex-direction: column; gap: 10px; }
         .mobile-menu.open { display: flex; }
+        .fixed-center-marker { pointer-events: none !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 1024px) { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px)  { .listings-grid { grid-template-columns: 1fr; } .images-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px)  { .hamburger { display: flex; } .desktop-nav { display: none !important; } }
-        
-        /* Fixed center marker animation */
-        .fixed-center-marker {
-          animation: bounce 0.5s ease-in-out;
-          cursor: crosshair;
-        }
-        
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
 
         {/* Nav */}
         <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(26,26,46,0.97)", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo', 'Tajawal', sans-serif", fontWeight: 500, fontSize: 26, color: "#f3f3f5", letterSpacing: "1px" }}>
+          <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: 26, color: "#f3f3f5", letterSpacing: "1px" }}>
             mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
           </Link>
           <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -590,9 +336,7 @@ export default function HostListings() {
               {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
             </button>
             <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.12)", margin: "0 6px" }} />
-            <button onClick={() => router.push("/host-dashboard")} className="btn-primary" style={{ padding: "6px 14px" }}>
-              {t.dashboard} →
-            </button>
+            <button onClick={() => router.push("/host-dashboard")} className="btn-primary" style={{ padding: "6px 14px" }}>{t.dashboard} →</button>
           </div>
           <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
             <span style={{ transform: menuOpen ? "rotate(45deg) translateY(7px)"   : "none" }} />
@@ -666,30 +410,27 @@ export default function HostListings() {
                   <select name="category" required value={formData.category} onChange={handleInputChange} className="field-input" style={{ cursor: "pointer" }}>
                     <option value="">{isAr ? "اختر فئة" : "Select a category"}</option>
                     {CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.icon} {isAr ? cat.labelAr : cat.labelEn}
-                      </option>
+                      <option key={cat.id} value={cat.id}>{cat.icon} {isAr ? cat.labelAr : cat.labelEn}</option>
                     ))}
                   </select>
                   {formData.category && (
                     <div style={{ fontSize: 11, color: "#666", marginTop: 5 }}>
-                      {isAr
-                        ? CATEGORIES.find((c) => c.id === formData.category)?.descriptionAr
-                        : CATEGORIES.find((c) => c.id === formData.category)?.descriptionEn}
+                      {isAr ? CATEGORIES.find((c) => c.id === formData.category)?.descriptionAr : CATEGORIES.find((c) => c.id === formData.category)?.descriptionEn}
                     </div>
                   )}
                 </div>
 
                 <hr className="divider" />
 
+                {/* Location */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.location} *</label>
 
-                  {browserInfo !== "chrome" && browserInfo && (
+                  {browserInfo && browserInfo !== "chrome" && (
                     <div style={{ background: "#FFF3E0", border: "1px solid #FFB74D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#E65100" }}>
-                      ℹ️ {browserInfo === "firefox" && (isAr ? "نصيحة لفايرفوكس: قد تكون دقة الموقع أقل من كروم. يمكنك النقر على الخريطة لتحديد الموقع يدوياً." : "Firefox tip: Location accuracy may be lower than Chrome. You can click on the map to select location manually.")}
-                      {browserInfo === "safari" && (isAr ? "نصيحة لسفاري: تأكد من تمكين خدمات الموقع في تفضيلات النظام > الخصوصية والأمان." : "Safari tip: Ensure location services are enabled in System Preferences > Security & Privacy.")}
-                      {browserInfo === "edge" && (isAr ? "نصيحة لإيدج: تحقق من إعدادات الخصوصية للسماح بالوصول إلى الموقع." : "Edge tip: Check privacy settings to allow location access.")}
+                      ℹ️ {browserInfo === "firefox" && (isAr ? "فايرفوكس: دقة الموقع قد تكون أقل." : "Firefox: Location accuracy may be lower.")}
+                      {browserInfo === "safari"  && (isAr ? "سفاري: تأكد من تمكين خدمات الموقع." : "Safari: Ensure location services are enabled.")}
+                      {browserInfo === "edge"    && (isAr ? "إيدج: تحقق من إعدادات الخصوصية." : "Edge: Check privacy settings.")}
                     </div>
                   )}
 
@@ -703,10 +444,7 @@ export default function HostListings() {
                   <div className="map-wrapper">
                     <div className="map-header">
                       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                        💡 {isAr ? "حرك الخريطة لتحديد الموقع" : "Move the map to select location"}
-                      </span>
-                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
-                        {isAr ? "العلامة ثابتة في المنتصف" : "Marker is fixed in the center"}
+                        💡 {isAr ? "حرك الخريطة لتحديد الموقع — العلامة ثابتة في المنتصف" : "Move the map to select location — marker stays fixed in center"}
                       </span>
                     </div>
 
@@ -716,18 +454,11 @@ export default function HostListings() {
                           <>
                             <div style={{ width: 40, height: 40, border: "3px solid #e8c547", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                             <p style={{ fontSize: 12, color: "#999" }}>{t.gettingLocation}</p>
-                            {browserInfo !== "chrome" && (
-                              <p style={{ fontSize: 11, color: "#e8c547", textAlign: "center", maxWidth: 280 }}>
-                                {isAr ? "قد يستغرق هذا وقتاً أطول في متصفحك. يمكنك أيضاً تحريك الخريطة لتحديد الموقع يدوياً." : "This may take longer on your browser. You can also move the map to select location manually."}
-                              </p>
-                            )}
                           </>
                         ) : (
-                          <div style={{ textAlign: "center" }}>
-                            <p style={{ fontSize: 12, color: "#999", marginBottom: 12 }}>
-                              {locationError || (isAr ? "انقر على 'موقعي' أو حرك الخريطة لتحديد موقع العقار" : "Click 'My Location' or move the map to set property location")}
-                            </p>
-                          </div>
+                          <p style={{ fontSize: 12, color: "#999" }}>
+                            {locationError || (isAr ? "انقر على 'موقعي' أو انتظر تحميل الخريطة" : "Click 'My Location' or wait for map to load")}
+                          </p>
                         )}
                       </div>
                     )}
@@ -739,51 +470,16 @@ export default function HostListings() {
                           center={[mapCenter.lat, mapCenter.lng]}
                           zoom={markerPosition ? 14 : 2}
                           style={{ height: "100%", width: "100%" }}
-                          whenCreated={(map) => { mapRef.current = map; setIsMapReady(true); }}
-                          dragging={true}
-                          scrollWheelZoom={true}
-                          doubleClickZoom={true}
+                          whenCreated={(map) => { mapRef.current = map; }}
+                          dragging scrollWheelZoom doubleClickZoom
                         >
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                          
-                          {/* Fixed center marker - stays in middle while map moves */}
                           {fixedMarkerIcon && <FixedCenterMarker icon={fixedMarkerIcon} />}
-                          
-                          {/* Map controller to get coordinates when map moves */}
-                          <MapController 
-                            onLocationSelect={handleMapLocationSelect}
-                            initialCenter={mapCenter}
-                            markerPosition={markerPosition}
-                          />
+                          <MapController onLocationSelect={handleMapLocationSelect} initialCenter={mapCenter} markerPosition={markerPosition} />
                         </MapContainer>
-                        
-                        {/* Crosshair overlay effect */}
-                        <div style={{
-                          position: "absolute",
-                          top: "50%",
-                          left: "50%",
-                          transform: "translate(-50%, -50%)",
-                          width: "40px",
-                          height: "40px",
-                          borderRadius: "50%",
-                          border: "2px solid rgba(232,197,71,0.5)",
-                          backgroundColor: "rgba(232,197,71,0.1)",
-                          pointerEvents: "none",
-                          zIndex: 1000,
-                          boxShadow: "0 0 0 9999px rgba(0,0,0,0.3)",
-                          transition: "all 0.2s ease"
-                        }}>
-                          <div style={{
-                            position: "absolute",
-                            top: "50%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            width: "4px",
-                            height: "4px",
-                            backgroundColor: "#e8c547",
-                            borderRadius: "50%"
-                          }} />
-                        </div>
+
+                        {/* Pulse ring behind the marker */}
+                        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(232,197,71,0.4)", background: "rgba(232,197,71,0.08)", pointerEvents: "none", zIndex: 1000 }} />
                       </div>
                     )}
                   </div>
@@ -793,15 +489,14 @@ export default function HostListings() {
                       📍 {selectedLocation?.address || (isAr ? "حرك الخريطة لاختيار الموقع" : "Move the map to select location")}
                     </p>
                     {selectedLocation && (
-                      <p style={{ fontSize: 11, color: "#a08020" }}>
-                        {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-                      </p>
+                      <p style={{ fontSize: 11, color: "#a08020" }}>{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
                     )}
                   </div>
                 </div>
 
                 <hr className="divider" />
 
+                {/* Images */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.imagesRequired}</label>
                   <div className="images-grid">
@@ -821,15 +516,14 @@ export default function HostListings() {
 
                 <hr className="divider" />
 
+                {/* Amenities */}
                 <div style={{ marginBottom: "1.5rem" }}>
                   <label className="field-label">{t.amenities}</label>
                   {formData.amenities.map((amenity, index) => (
                     <div key={index} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
                       <input type="text" value={amenity} onChange={(e) => handleArrayChange(index, "amenities", e.target.value)} placeholder={t.amenityPlaceholder} className="field-input" style={{ flex: 1 }} />
                       {index > 0 && (
-                        <button type="button" onClick={() => removeArrayField("amenities", index)} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>
-                          {t.remove}
-                        </button>
+                        <button type="button" onClick={() => removeArrayField("amenities", index)} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>{t.remove}</button>
                       )}
                     </div>
                   ))}
@@ -838,42 +532,35 @@ export default function HostListings() {
                   </button>
                 </div>
 
+                {/* Rules */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.houseRules}</label>
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#999", marginBottom: 8 }}>{t.quickAdd}</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {[t.ruleNoSmoking, t.ruleNoParties, t.ruleNoPets, t.ruleQuietHours, t.ruleSelfCheckIn, t.ruleNoShoes].map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
+                        <button key={suggestion} type="button"
                           onClick={() => { if (!formData.rules.includes(suggestion)) setFormData((p) => ({ ...p, rules: [...p.rules, suggestion] })); }}
-                          style={{ background: formData.rules.includes(suggestion) ? "#e8c547" : "#fafaf8", color: formData.rules.includes(suggestion) ? "#1a1a2e" : "#888", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}
-                        >
+                          style={{ background: formData.rules.includes(suggestion) ? "#e8c547" : "#fafaf8", color: formData.rules.includes(suggestion) ? "#1a1a2e" : "#888", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
                           + {suggestion}
                         </button>
                       ))}
                     </div>
                   </div>
-
                   {formData.rules.map((rule, index) => (
                     <div key={index} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
                       <div style={{ width: 20, height: 20, borderRadius: 4, background: "#e8c547", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-6" stroke="#1a1a2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <input
-                        type="text"
-                        value={rule}
+                      <input type="text" value={rule}
                         onChange={(e) => { const rules = [...formData.rules]; rules[index] = e.target.value; setFormData((p) => ({ ...p, rules })); }}
-                        placeholder={t.rulePlaceholder}
-                        className="field-input"
-                        style={{ flex: 1 }}
-                      />
-                      <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: p.rules.filter((_, i) => i !== index) }))} style={{ background: "none", border: "none", color: "#e05a5a", fontSize: 18, cursor: "pointer", padding: "0 8px" }}>✕</button>
+                        placeholder={t.rulePlaceholder} className="field-input" style={{ flex: 1 }} />
+                      <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: p.rules.filter((_, i) => i !== index) }))}
+                        style={{ background: "none", border: "none", color: "#e05a5a", fontSize: 18, cursor: "pointer", padding: "0 8px" }}>✕</button>
                     </div>
                   ))}
-
-                  <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: [...p.rules, ""] }))} style={{ fontSize: 12, color: "#e8c547", background: "none", border: "1px dashed rgba(232,197,71,0.5)", borderRadius: 8, cursor: "pointer", padding: "8px 12px", marginTop: 8, width: "100%" }}>
+                  <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: [...p.rules, ""] }))}
+                    style={{ fontSize: 12, color: "#e8c547", background: "none", border: "1px dashed rgba(232,197,71,0.5)", borderRadius: 8, cursor: "pointer", padding: "8px 12px", marginTop: 8, width: "100%" }}>
                     + {t.addCustomRule}
                   </button>
                 </div>
@@ -909,9 +596,7 @@ export default function HostListings() {
                           {formatCurrency(listing.price)}<span style={{ fontSize: 10, color: "rgba(232,197,71,0.6)" }}>/{t.night}</span>
                         </div>
                         {category && (
-                          <div className="category-badge">
-                            {category.icon} {isAr ? category.labelAr : category.labelEn}
-                          </div>
+                          <div className="category-badge">{category.icon} {isAr ? category.labelAr : category.labelEn}</div>
                         )}
                       </div>
                       <div style={{ padding: "1.25rem" }}>
