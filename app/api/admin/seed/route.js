@@ -1,4 +1,4 @@
-// app/api/seed/admin/route.js
+// app/api/admin/seed/route.js
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
@@ -6,31 +6,38 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
-    // Optional: Add secret key for security
+    // Get secret key from request body
     const { secretKey } = await request.json();
-    const expectedSecret = process.env.ADMIN_SEED_SECRET || "your-secret-key-change-this";
+    
+    // Check if secret key matches
+    const expectedSecret = process.env.ADMIN_SEED_SECRET;
+    
+    if (!expectedSecret) {
+      console.error("ADMIN_SEED_SECRET not set in environment variables");
+      return NextResponse.json(
+        { message: "Server configuration error" },
+        { status: 500 }
+      );
+    }
     
     if (secretKey !== expectedSecret) {
       return NextResponse.json(
-        { message: "Unauthorized. Invalid secret key." },
+        { message: "Invalid secret key" },
         { status: 401 }
       );
     }
 
     await connectToDatabase();
 
-    // Check if admin already exists
+    // Check if super admin already exists
     const existingAdmin = await User.findOne({ 
-      $or: [
-        { email: "admin@marhaba.com" },
-        { role: "super_admin" }
-      ]
+      role: "super_admin" 
     });
 
     if (existingAdmin) {
       return NextResponse.json(
         { 
-          message: "Admin already exists", 
+          message: "Super admin already exists",
           admin: {
             name: existingAdmin.name,
             email: existingAdmin.email,
@@ -41,10 +48,9 @@ export async function POST(request) {
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash("Admin@!@#$%^", 10);
-
     // Create super admin
+    const hashedPassword = await bcrypt.hash("Admin@123456", 10);
+    
     const admin = await User.create({
       name: "Super Admin",
       email: "admin@marhaba.com",
@@ -62,22 +68,17 @@ export async function POST(request) {
       },
     });
 
-    // Remove password from response
-    const adminResponse = {
-      id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      phoneNumber: admin.phoneNumber,
-      status: admin.status,
-      emailVerified: admin.emailVerified,
-      createdAt: admin.createdAt,
-    };
-
+    // Return success response
     return NextResponse.json({
       success: true,
       message: "Super admin created successfully",
-      admin: adminResponse,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        status: admin.status,
+      },
       credentials: {
         email: "admin@marhaba.com",
         password: "Admin@123456"
@@ -96,10 +97,21 @@ export async function POST(request) {
 // Optional: GET method to check if admin exists
 export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const secretKey = searchParams.get("secretKey");
+    const expectedSecret = process.env.ADMIN_SEED_SECRET;
+    
+    if (secretKey !== expectedSecret) {
+      return NextResponse.json(
+        { message: "Invalid secret key" },
+        { status: 401 }
+      );
+    }
+    
     await connectToDatabase();
     
     const admin = await User.findOne({ 
-      role: { $in: ["admin", "super_admin"] }
+      role: "super_admin" 
     }).select("-password");
     
     if (admin) {
@@ -115,11 +127,10 @@ export async function GET(request) {
     } else {
       return NextResponse.json({
         exists: false,
-        message: "No admin found. Run POST request to create one."
+        message: "No super admin found. Run POST request to create one."
       });
     }
   } catch (error) {
-    console.error("Check admin error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
