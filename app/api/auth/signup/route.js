@@ -91,7 +91,7 @@ export async function POST(request) {
     const user = await User.create(userData);
 
     // Create verification URL
-    const verificationUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/verify-email?token=${emailVerificationToken}`;
+    const verificationUrl = `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/api/auth/verify-email?token=${emailVerificationToken}`;
 
     // Send verification email
     const emailHtml = `
