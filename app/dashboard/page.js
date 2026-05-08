@@ -6,63 +6,52 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useLanguage } from '@/hooks/useLanguage';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+// import L from 'leaflet';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
 const TileLayer    = dynamic(() => import('react-leaflet').then(m => m.TileLayer),    { ssr: false });
 const Marker       = dynamic(() => import('react-leaflet').then(m => m.Marker),       { ssr: false });
 const Popup        = dynamic(() => import('react-leaflet').then(m => m.Popup),        { ssr: false });
 
-// Disable static generation for this page
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
+// Create custom icons
+// Blue location marker for user
+// export const userLocationIcon = L.divIcon({
+//   className: "emoji-pin",
+//   html: `
+//     <div style="
+//       font-size: 24px;
+//       line-height: 24px;
+//       transform: translateY(-8px);
+//     ">📍</div>
+//   `,
+//   iconSize: [24, 24],
+//   iconAnchor: [12, 24],
+// });
 
-// Create custom icons (only on client side)
-let userLocationIcon = null;
-let houseIcon = null;
-
-// Delete default icons (only on client side)
-if (typeof window !== 'undefined') {
-  // Create custom icons
-  userLocationIcon = L.divIcon({
-    className: "emoji-pin",
-    html: `
-      <div style="
-        font-size: 24px;
-        line-height: 24px;
-        transform: translateY(-8px);
-      ">📍</div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-  });
-
-  // Gold house marker for listings
-  houseIcon = new L.Icon({
-    iconUrl: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path 
-          d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z"
-          fill="#e8c547"
-          stroke="black"
-          stroke-width="1.5"
-          stroke-linejoin="round"
-        />
-      </svg>
-    `)}`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -28],
-  });
-
-  // Delete default icons
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  });
-}
+// Gold house marker for listings
+// const houseIcon = new L.Icon({
+//   iconUrl: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+//     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+//       <path 
+//         d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z"
+//         fill="#e8c547"
+//         stroke="black"
+//         stroke-width="1.5"
+//         stroke-linejoin="round"
+//       />
+//     </svg>
+//   `)}`,
+//   iconSize: [32, 32],
+//   iconAnchor: [16, 32],
+//   popupAnchor: [0, -28],
+// });
+// Delete default icons
+// delete L.Icon.Default.prototype._getIconUrl;
+// L.Icon.Default.mergeOptions({
+//   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+//   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+// });
 
 /* helpers */
 const fmt = (d) => new Date(d).toLocaleDateString('en-US', { 
@@ -96,10 +85,36 @@ export default function UserDashboard() {
   const [mapCenter, setMapCenter] = useState({ lat: 51.505, lng: -0.09 });
   const [activeTab, setActiveTab] = useState('nearby');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
+    const [icons, setIcons] = useState({ user: null, house: null });
+     // Initialize Leaflet icons client-side only
   useEffect(() => {
-    setIsClient(true);
+    const L = require('leaflet');
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+
+    setIcons({
+      user: L.divIcon({
+        className: "emoji-pin",
+        html: `<div style="font-size:24px;line-height:24px;transform:translateY(-8px);">📍</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+      }),
+      house: new L.Icon({
+        iconUrl: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z"
+              fill="#e8c547" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        `)}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -28],
+      }),
+    });
   }, []);
 
   useEffect(() => {
@@ -155,21 +170,11 @@ export default function UserDashboard() {
     setSearchRadius(radius);
   };
   
-  // Wrap window.open in a client-side check
-  const openMaps = (l) => {
-    if (typeof window !== 'undefined') {
-      window.open(`https://www.google.com/maps/search/?api=1&query=${l.coordinates.lat},${l.coordinates.lng}`, '_blank');
-    }
-  };
+  const openMaps = l => window.open(`https://www.google.com/maps/search/?api=1&query=${l.coordinates.lat},${l.coordinates.lng}`, '_blank');
   
-  const getDirections = (l) => {
-    if (!userLocation) { 
-      alert(isAr ? 'قم بتفعيل خدمات الموقع أولاً' : 'Enable location services first'); 
-      return; 
-    }
-    if (typeof window !== 'undefined') {
-      window.open(`https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${l.coordinates.lat},${l.coordinates.lng}`, '_blank');
-    }
+  const getDirections = l => {
+    if (!userLocation) { alert(isAr ? 'قم بتفعيل خدمات الموقع أولاً' : 'Enable location services first'); return; }
+    window.open(`https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${l.coordinates.lat},${l.coordinates.lng}`, '_blank');
   };
   
   const cancelBooking = async id => {
@@ -184,14 +189,12 @@ export default function UserDashboard() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      if (typeof window !== 'undefined') {
-        ['MarhabaToken', 'userType', 'userData'].forEach(k => localStorage.removeItem(k));
-      }
+      ['MarhabaToken', 'userType', 'userData'].forEach(k => localStorage.removeItem(k));
       router.push('/login');
     } catch { }
   };
 
-  if (loading || !isClient) return (
+  if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f6f2' }}>
       <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #1a1a2e', borderTopColor: 'transparent', animation: 'spin .7s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -312,19 +315,19 @@ export default function UserDashboard() {
         <nav style={{ background: '#1a1a2e', borderBottom: '1px solid rgba(232,197,71,.15)', position: 'sticky', top: 0, zIndex: 40 }}>
           <div style={{ padding: '0 1rem', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-              <Link
-                href="/"
-                style={{
-                  textDecoration: "none",
-                  fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                  fontWeight: 500,
-                  fontSize: "26px",
-                  color: "#ffffff",
-                  letterSpacing: "1px",
-                }}
-              >
-                mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
-              </Link>
+                  <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+            </Link>
               
               {/* Language Toggle Button */}
               <button
@@ -366,7 +369,7 @@ export default function UserDashboard() {
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: aviBg, color: aviColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 500 }}>{ini}</div>
               <div>
                 <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#111118', lineHeight: 1.1 }}>{user.name}</div>
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{isAr ? 'عضو منذ' : 'member since'} {fmt(user.createdAt)}</div>
+                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{isAr ? 'عضو منذ' : 'member since'} {fmt(user.createdAt, lang)}</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
@@ -398,28 +401,29 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              {/* Map with custom markers - Only render on client */}
-              {userLocation && isClient && (
+              {/* Map with custom markers */}
+              {userLocation && (
                 <div style={{ borderRadius: 12, overflow: 'hidden', border: '0.5px solid rgba(0,0,0,.08)', marginBottom: '1.25rem', height: 'clamp(280px,45vw,440px)' }}>
                   <MapContainer center={[mapCenter.lat, mapCenter.lng]} zoom={12} style={{ height: '100%', width: '100%' }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
                     
                     {/* User Location Marker - Blue */}
-                    {userLocationIcon && (
-                      <Marker 
-                        position={[userLocation.lat, userLocation.lng]} 
-                        icon={userLocationIcon}
-                      >
-                        <Popup>
-                          <strong style={{ fontFamily: bodyFont, fontSize: 12 }}>
-                            {isAr ? '📍 موقعك الحالي' : '📍 Your current location'}
-                          </strong>
-                        </Popup>
-                      </Marker>
+                    {icons.user && (
+                    <Marker 
+                      position={[userLocation.lat, userLocation.lng]} 
+                      icon={userLocation}
+                    >
+                      <Popup>
+                        <strong style={{ fontFamily: bodyFont, fontSize: 12 }}>
+                          {isAr ? '📍 موقعك الحالي' : '📍 Your current location'}
+                        </strong>
+                      </Popup>
+                    </Marker>
                     )}
                     
                     {/* Listing Markers - Gold House */}
-                    {houseIcon && filtered.map(l => l.coordinates && (
+                    {filtered.map(l => l.coordinates && (
+                      {icons.house && filtered.map(l => l.coordinates && (
                       <Marker 
                         key={l._id} 
                         position={[l.coordinates.lat, l.coordinates.lng]}
@@ -437,6 +441,7 @@ export default function UserDashboard() {
                           </div>
                         </Popup>
                       </Marker>
+                      ))}
                     ))}
                   </MapContainer>
                 </div>
@@ -505,7 +510,7 @@ export default function UserDashboard() {
             </div>
           )}
 
-          {/* BOOKINGS TAB */}
+          {/* BOOKINGS TAB - Keep same as before */}
           {activeTab === 'bookings' && (
             <div>
               <div className="fd" style={{ fontStyle: isAr ? 'normal' : 'italic', fontWeight: 300, fontSize: 20, color: '#111118', marginBottom: '1rem' }}>{isAr ? 'حجوزاتي' : 'my bookings'}</div>
@@ -534,8 +539,8 @@ export default function UserDashboard() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
                           {[
-                            { l: isAr ? 'تسجيل الوصول' : 'check-in', v: fmt(b.checkIn) },
-                            { l: isAr ? 'تسجيل المغادرة' : 'check-out', v: fmt(b.checkOut) },
+                            { l: isAr ? 'تسجيل الوصول' : 'check-in', v: fmt(b.checkIn, lang) },
+                            { l: isAr ? 'تسجيل المغادرة' : 'check-out', v: fmt(b.checkOut, lang) },
                             { l: isAr ? 'الليالي' : 'nights', v: `${n} ${n === 1 ? (isAr ? 'ليلة' : 'night') : (isAr ? 'ليالي' : 'nights')}` },
                             { l: isAr ? 'الضيوف' : 'guests', v: `${b.guests} ${b.guests === 1 ? (isAr ? 'ضيف' : 'guest') : (isAr ? 'ضيوف' : 'guests')}` }
                           ].map(({ l, v }) => (
@@ -564,7 +569,7 @@ export default function UserDashboard() {
                             </button>
                           )}
                         </div>
-                        <div style={{ fontSize: 11, color: '#ccc', marginTop: '.75rem' }}>{isAr ? 'تم الحجز' : 'booked'} {fmt(b.createdAt)}</div>
+                        <div style={{ fontSize: 11, color: '#ccc', marginTop: '.75rem' }}>{isAr ? 'تم الحجز' : 'booked'} {fmt(b.createdAt, lang)}</div>
                       </div>
                     );
                   })}
