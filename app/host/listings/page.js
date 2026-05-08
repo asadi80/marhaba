@@ -65,38 +65,46 @@ useEffect(() => {
     shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   });
   
-  // Simple 📍-style gold pin marker
   setFixedMarkerIcon(new L.DivIcon({
     className: "fixed-center-marker",
-    html: `<div style="
-        position: relative;
-        width: 32px;
-        height: 32px;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-      ">
-        <!-- Pin shape like 📍 -->
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" 
-                fill="#e8c547" 
-                stroke="#1a1a2e" 
-                stroke-width="2"/>
-          <circle cx="12" cy="9" r="3" fill="#1a1a2e"/>
-        </svg>
-        
-        <!-- Pulsing ring -->
+    html: `
+      <div style="position: relative; width: 32px; height: 32px;">
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: #e8c547;
+          border: 2.5px solid #1a1a2e;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        "></div>
         <div style="
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          width: 44px;
-          height: 44px;
+          width: 10px;
+          height: 10px;
+          background: #1a1a2e;
           border-radius: 50%;
-          background-color: rgba(232,197,71,0.3);
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(232,197,71,0.25);
           animation: pulse 1.5s ease-out infinite;
           pointer-events: none;
         "></div>
-      </div>`,
+      </div>
+    `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -10],
