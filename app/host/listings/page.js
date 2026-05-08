@@ -8,9 +8,7 @@ import "leaflet/dist/leaflet.css";
 import ImageUpload from "@/components/ImageUpload";
 import { useLanguage } from "@/hooks/useLanguage";
 import "./style.css";
-import L from "leaflet";
 
-// Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
@@ -27,23 +25,6 @@ const CATEGORIES = [
   { id: "cabins",    icon: "🛖", labelEn: "Cabins",       labelAr: "كوخ",    descriptionEn: "Cozy cabin getaways",                  descriptionAr: "ملاذات كوخ مريحة" },
 ];
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-});
-
-const draggableIcon = new L.Icon({
-  iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize:    [25, 41],
-  iconAnchor:  [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize:  [41, 41],
-});
-
 const EMPTY_FORM = {
   title: "",
   description: "",
@@ -56,7 +37,6 @@ const EMPTY_FORM = {
   category: "city",
 };
 
-// Neutral default view - centered on world map
 const DEFAULT_CENTER = { lat: 20, lng: 0 };
 
 export default function HostListings() {
@@ -64,24 +44,46 @@ export default function HostListings() {
   const { lang, t, toggleLanguage } = useLanguage();
   const isAr = lang === "ar";
 
-  const [listings,        setListings]        = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [showForm,        setShowForm]        = useState(false);
-  const [isEditing,       setIsEditing]       = useState(false);
-  const [editingId,       setEditingId]       = useState(null);
-  const [markerPosition,  setMarkerPosition]  = useState(null);
-  const [mapCenter,       setMapCenter]       = useState(null);
-  const [selectedLocation,setSelectedLocation]= useState(null);
-  const [isMapMoving,     setIsMapMoving]     = useState(false);
-  const [isGettingLocation,setIsGettingLocation]=useState(false);
-  const [locationError,   setLocationError]   = useState(null);
-  const [browserInfo,     setBrowserInfo]     = useState(null);
-  const [menuOpen,        setMenuOpen]        = useState(false);
-  const [formData,        setFormData]        = useState(EMPTY_FORM);
+  const [listings,          setListings]          = useState([]);
+  const [loading,           setLoading]           = useState(true);
+  const [showForm,          setShowForm]          = useState(false);
+  const [isEditing,         setIsEditing]         = useState(false);
+  const [editingId,         setEditingId]         = useState(null);
+  const [markerPosition,    setMarkerPosition]    = useState(null);
+  const [mapCenter,         setMapCenter]         = useState(null);
+  const [selectedLocation,  setSelectedLocation]  = useState(null);
+  const [isMapMoving,       setIsMapMoving]       = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError,     setLocationError]     = useState(null);
+  const [browserInfo,       setBrowserInfo]       = useState(null);
+  const [menuOpen,          setMenuOpen]          = useState(false);
+  const [formData,          setFormData]          = useState(EMPTY_FORM);
+  const [draggableIcon,     setDraggableIcon]     = useState(null);
 
-  const mapRef    = useRef(null);
+  const mapRef = useRef(null);
 
-  // Detect browser for better error messages
+  // Initialize Leaflet icons client-side only
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const L = require("leaflet");
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+      iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+      shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    });
+    setDraggableIcon(new L.Icon({
+      iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+      shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+      iconSize:    [25, 41],
+      iconAnchor:  [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize:  [41, 41],
+    }));
+  }, []);
+
+  // Detect browser
   useEffect(() => {
     const userAgent = navigator.userAgent;
     if (userAgent.indexOf("Chrome") > -1 && userAgent.indexOf("Edg") === -1) {
@@ -97,8 +99,8 @@ export default function HostListings() {
     }
   }, []);
 
-  const arabicFont   = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishFont  = "'DM Mono', monospace";
+  const arabicFont    = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
+  const englishFont   = "'DM Mono', monospace";
   const arabicDisplay  = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
   const englishDisplay = "'Fraunces', serif";
   const bodyFont    = isAr ? arabicFont    : englishFont;
@@ -108,8 +110,6 @@ export default function HostListings() {
     isAr
       ? `${Math.round(amount).toLocaleString()} دينار`
       : `${Math.round(amount).toLocaleString()} LYD`;
-
-  // ── Data fetching ────────────────────────────────────────────────────────────
 
   const fetchListings = async () => {
     try {
@@ -125,15 +125,12 @@ export default function HostListings() {
 
   useEffect(() => { fetchListings(); }, []);
 
-  // Sync map when editing a listing that has saved coordinates
   useEffect(() => {
     if (isEditing && mapRef.current && formData.coordinates?.lat && formData.coordinates?.lng) {
       mapRef.current.setView([formData.coordinates.lat, formData.coordinates.lng], 14);
       setMarkerPosition(formData.coordinates);
     }
   }, [formData.coordinates, isEditing]);
-
-  // ── Location helpers with cross-browser support ─────────────────────────────
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -153,38 +150,29 @@ export default function HostListings() {
     setFormData((prev) => ({ ...prev, location: address, coordinates: { lat, lng } }));
   };
 
-  // Alternative geolocation method using IP-based fallback for browsers with poor GPS
   const getIPBasedLocation = async () => {
     try {
-      const response = await fetch('https://ipapi.co/json/');
+      const response = await fetch("https://ipapi.co/json/");
       const data = await response.json();
       if (data.latitude && data.longitude) {
-        return {
-          lat: data.latitude,
-          lng: data.longitude,
-          accuracy: 'ip-based',
-          city: data.city,
-          country: data.country_name
-        };
+        return { lat: data.latitude, lng: data.longitude, accuracy: "ip-based", city: data.city, country: data.country_name };
       }
       return null;
     } catch (error) {
-      console.error('IP geolocation failed:', error);
+      console.error("IP geolocation failed:", error);
       return null;
     }
   };
 
   const useCurrentLocation = async () => {
     if (!("geolocation" in navigator)) {
-      // Fallback to IP-based location for browsers without GPS
       const ipLocation = await getIPBasedLocation();
       if (ipLocation) {
         const userConfirm = confirm(
-          isAr 
+          isAr
             ? `متصفحك لا يدعم تحديد الموقع الدقيق. تم العثور على موقع تقريبي (${ipLocation.city}, ${ipLocation.country}). هل تريد استخدام هذا الموقع؟`
             : `Your browser doesn't support precise location. Found approximate location (${ipLocation.city}, ${ipLocation.country}). Do you want to use this location?`
         );
-        
         if (userConfirm) {
           setMarkerPosition({ lat: ipLocation.lat, lng: ipLocation.lng });
           setMapCenter({ lat: ipLocation.lat, lng: ipLocation.lng });
@@ -193,8 +181,7 @@ export default function HostListings() {
           return;
         }
       }
-      
-      const errorMsg = isAr 
+      const errorMsg = isAr
         ? "متصفحك لا يدعم تحديد الموقع الجغرافي. الرجاء تحديد الموقع يدوياً على الخريطة"
         : "Your browser does not support geolocation. Please select your location manually on the map";
       setLocationError(errorMsg);
@@ -205,33 +192,24 @@ export default function HostListings() {
     setIsGettingLocation(true);
     setLocationError(null);
 
-    // Check if using non-Chrome browser that might have poor GPS support
     const isNonChrome = browserInfo !== "chrome";
-    
-    // Show browser-specific guidance
+
     if (isNonChrome && browserInfo) {
       const browserGuidance = {
         firefox: isAr ? "في فايرفوكس، قد يكون تحديد الموقع أقل دقة. يمكنك أيضاً تحديد الموقع يدوياً على الخريطة." : "On Firefox, location accuracy may be lower. You can also select location manually on map.",
-        safari: isAr ? "في سفاري، قد تحتاج إلى تمكين خدمات الموقع في تفضيلات النظام." : "On Safari, you may need to enable location services in System Preferences.",
-        edge: isAr ? "في إيدج، تأكد من السماح بالوصول إلى الموقع في إعدادات المتصفح." : "On Edge, ensure location access is allowed in browser settings.",
-        other: isAr ? "قد تكون دقة تحديد الموقع محدودة في متصفحك. يمكنك تحديد الموقع يدوياً." : "Location accuracy may be limited in your browser. You can select location manually."
+        safari:  isAr ? "في سفاري، قد تحتاج إلى تمكين خدمات الموقع في تفضيلات النظام." : "On Safari, you may need to enable location services in System Preferences.",
+        edge:    isAr ? "في إيدج، تأكد من السماح بالوصول إلى الموقع في إعدادات المتصفح." : "On Edge, ensure location access is allowed in browser settings.",
+        other:   isAr ? "قد تكون دقة تحديد الموقع محدودة في متصفحك. يمكنك تحديد الموقع يدوياً." : "Location accuracy may be limited in your browser. You can select location manually.",
       };
       setLocationError(browserGuidance[browserInfo]);
     }
 
-    // Try GPS with multiple attempts and different options
     let locationSuccess = false;
-    
-    // Attempt 1: High accuracy
+
     try {
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
       });
-      
       const { latitude, longitude } = position.coords;
       setMarkerPosition({ lat: latitude, lng: longitude });
       setMapCenter({ lat: latitude, lng: longitude });
@@ -240,18 +218,11 @@ export default function HostListings() {
       locationSuccess = true;
     } catch (error) {
       console.log("High accuracy failed:", error);
-      
-      // Attempt 2: Lower accuracy but faster
       if (!locationSuccess) {
         try {
           const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: false,
-              timeout: 8000,
-              maximumAge: 30000
-            });
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 });
           });
-          
           const { latitude, longitude } = position.coords;
           setMarkerPosition({ lat: latitude, lng: longitude });
           setMapCenter({ lat: latitude, lng: longitude });
@@ -263,8 +234,7 @@ export default function HostListings() {
         }
       }
     }
-    
-    // If GPS fails, try IP-based location as fallback
+
     if (!locationSuccess) {
       const ipLocation = await getIPBasedLocation();
       if (ipLocation) {
@@ -273,7 +243,6 @@ export default function HostListings() {
             ? `تعذر الحصول على موقعك الدقيق. تم العثور على موقع تقريبي (${ipLocation.city}, ${ipLocation.country}). هل تريد استخدام هذا الموقع؟`
             : `Could not get your exact location. Found approximate location (${ipLocation.city}, ${ipLocation.country}). Do you want to use this location?`
         );
-        
         if (useFallback) {
           setMarkerPosition({ lat: ipLocation.lat, lng: ipLocation.lng });
           setMapCenter({ lat: ipLocation.lat, lng: ipLocation.lng });
@@ -283,15 +252,15 @@ export default function HostListings() {
         }
       }
     }
-    
+
     setIsGettingLocation(false);
-    
+
     if (!locationSuccess) {
       let errorMsg = "";
       if (isNonChrome) {
         errorMsg = isAr
-          ? `تعذر تحديد موقعك في ${browserInfo === 'firefox' ? 'فايرفوكس' : browserInfo === 'safari' ? 'سفاري' : 'متصفحك'}. الرجاء النقر على الخريطة لتحديد موقعك يدوياً.`
-          : `Could not determine your location on ${browserInfo === 'firefox' ? 'Firefox' : browserInfo === 'safari' ? 'Safari' : 'your browser'}. Please click on the map to select your location manually.`;
+          ? `تعذر تحديد موقعك في ${browserInfo === "firefox" ? "فايرفوكس" : browserInfo === "safari" ? "سفاري" : "متصفحك"}. الرجاء النقر على الخريطة لتحديد موقعك يدوياً.`
+          : `Could not determine your location on ${browserInfo === "firefox" ? "Firefox" : browserInfo === "safari" ? "Safari" : "your browser"}. Please click on the map to select your location manually.`;
       } else {
         errorMsg = isAr
           ? "تعذر الحصول على موقعك. الرجاء تحديد الموقع يدوياً على الخريطة"
@@ -301,8 +270,6 @@ export default function HostListings() {
       alert(errorMsg);
     }
   };
-
-  // ── Map event handlers ───────────────────────────────────────────────────────
 
   const handleMarkerDragEnd = async (e) => {
     const { lat, lng } = e.target.getLatLng();
@@ -330,25 +297,23 @@ export default function HostListings() {
     await applyCoordinates(lat, lng);
   };
 
-  // ── Form helpers ─────────────────────────────────────────────────────────────
+  const handleInputChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  const handleInputChange  = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-
-  const handleArrayChange  = (index, field, value) =>
+  const handleArrayChange = (index, field, value) =>
     setFormData((p) => { const arr = [...p[field]]; arr[index] = value; return { ...p, [field]: arr }; });
 
-  const addArrayField      = (field) => setFormData((p) => ({ ...p, [field]: [...p[field], ""] }));
+  const addArrayField    = (field) => setFormData((p) => ({ ...p, [field]: [...p[field], ""] }));
 
-  const removeArrayField   = (field, index) =>
+  const removeArrayField = (field, index) =>
     setFormData((p) => ({ ...p, [field]: p[field].filter((_, i) => i !== index) }));
 
-  const handleImageUpload  = (index, url) =>
+  const handleImageUpload = (index, url) =>
     setFormData((p) => { const imgs = [...p.images]; imgs[index] = url; return { ...p, images: imgs }; });
 
-  const handleImageRemove  = (index) =>
+  const handleImageRemove = (index) =>
     setFormData((p) => ({ ...p, images: p.images.filter((_, i) => i !== index) }));
 
-  const addImageSlot       = () => setFormData((p) => ({ ...p, images: [...p.images, ""] }));
+  const addImageSlot = () => setFormData((p) => ({ ...p, images: [...p.images, ""] }));
 
   const resetForm = () => {
     setFormData(EMPTY_FORM);
@@ -362,11 +327,8 @@ export default function HostListings() {
 
   const cancelEdit = () => { setShowForm(false); resetForm(); };
 
-  // ── CRUD operations ──────────────────────────────────────────────────────────
-
   const handleEdit = (listing) => {
     const coords = listing.coordinates?.lat && listing.coordinates?.lng ? listing.coordinates : null;
-
     setIsEditing(true);
     setEditingId(listing._id);
     setFormData({
@@ -380,7 +342,6 @@ export default function HostListings() {
       rules:       listing.rules       ?? [],
       category:    listing.category    ?? "city",
     });
-
     if (coords) {
       setMarkerPosition(coords);
       setMapCenter(coords);
@@ -389,19 +350,12 @@ export default function HostListings() {
     } else {
       setMapCenter(DEFAULT_CENTER);
     }
-
     setShowForm(true);
   };
 
   const validateForm = () => {
-    if (!formData.location || !formData.coordinates) { 
-      alert(t.pleaseSelectLocation); 
-      return false; 
-    }
-    if (!formData.images.length || !formData.images[0]) { 
-      alert(t.pleaseUploadImage);   
-      return false; 
-    }
+    if (!formData.location || !formData.coordinates) { alert(t.pleaseSelectLocation); return false; }
+    if (!formData.images.length || !formData.images[0]) { alert(t.pleaseUploadImage); return false; }
     return true;
   };
 
@@ -409,11 +363,7 @@ export default function HostListings() {
     e.preventDefault();
     if (!validateForm()) return;
     try {
-      const res  = await fetch("/api/listings", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(formData),
-      });
+      const res  = await fetch("/api/listings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       setShowForm(false);
@@ -430,16 +380,10 @@ export default function HostListings() {
     e.preventDefault();
     if (!validateForm()) return;
     try {
-      const res  = await fetch(`/api/listings/${editingId}`, {
-        method:  "PUT",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(formData),
-      });
+      const res  = await fetch(`/api/listings/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-
       await fetchListings();
-
       if (data.listing?.coordinates) {
         const { coordinates, location } = data.listing;
         setMarkerPosition(coordinates);
@@ -447,7 +391,6 @@ export default function HostListings() {
         setSelectedLocation({ ...coordinates, address: location });
         mapRef.current?.setView([coordinates.lat, coordinates.lng], 14);
       }
-
       setShowForm(false);
       setIsEditing(false);
       setEditingId(null);
@@ -473,14 +416,11 @@ export default function HostListings() {
     }
   };
 
-  // Initialize map with default view when showing form without coordinates
   useEffect(() => {
     if (showForm && !isEditing && !mapCenter && !isGettingLocation) {
       setMapCenter(DEFAULT_CENTER);
     }
   }, [showForm, isEditing, mapCenter, isGettingLocation]);
-
-  // ── Loading state ────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -490,67 +430,45 @@ export default function HostListings() {
     );
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-
   return (
     <>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
         body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
         .font-display { font-family: ${displayFont} !important; }
-
         .nav-link { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: color .15s, background .15s; }
         .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .nav-link.active { color: #e8c547; }
-
         .btn-primary { background: #e8c547; color: #1a1a2e; padding: 9px 20px; border-radius: 8px; font-size: 12px; font-family: inherit; font-weight: 500; border: none; cursor: pointer; transition: opacity .15s, transform .15s; }
         .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
         .btn-dark { background: #1a1a2e; color: #e8c547; padding: 9px 20px; border-radius: 8px; font-size: 12px; font-family: inherit; font-weight: 500; border: none; cursor: pointer; transition: opacity .15s, transform .15s; }
         .btn-dark:hover { opacity: .88; transform: translateY(-1px); }
-
         .btn-ghost-sm { background: transparent; color: #555; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-family: inherit; border: 1px solid rgba(0,0,0,0.12); cursor: pointer; transition: border-color .15s, color .15s; }
         .btn-ghost-sm:hover { border-color: rgba(0,0,0,0.3); color: #111118; }
-
         .form-panel { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.07); padding: 2rem; margin-bottom: 2rem; }
-
         .field-label { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
-
         .field-input { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-family: inherit; color: #111118; background: #fafaf8; outline: none; transition: border-color .15s, box-shadow .15s; }
         .field-input:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
-
         .field-textarea { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-family: inherit; color: #111118; background: #fafaf8; outline: none; resize: vertical; transition: border-color .15s, box-shadow .15s; }
         .field-textarea:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
-
         .map-wrapper { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }
         .map-header { background: #1a1a2e; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-
         .location-pill { background: #fdf8e7; border: 1px solid rgba(232,197,71,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 10px; }
-
         .images-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .add-img-btn { border: 2px dashed rgba(0,0,0,0.12); border-radius: 12px; padding: 1.5rem; background: none; cursor: pointer; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color .15s; font-family: inherit; font-size: 12px; color: #999; }
         .add-img-btn:hover { border-color: #e8c547; color: #e8c547; }
-
         .divider { border: none; border-top: 1px solid rgba(0,0,0,0.07); margin: 1.5rem 0; }
-
         .listings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         .listing-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.07); overflow: hidden; transition: transform .22s, box-shadow .22s; }
         .listing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.08); }
-
         .category-badge { position: absolute; bottom: 12px; left: 12px; background: rgba(26,26,46,0.9); color: #e8c547; border-radius: 20px; padding: 4px 10px; font-size: 11px; display: flex; align-items: center; gap: 4px; }
-
         .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
         .hamburger span { display: block; width: 20px; height: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; transition: all .2s; }
-
         .mobile-menu { display: none; position: fixed; top: 56px; left: 0; right: 0; background: #1a1a2e; border-bottom: 1px solid rgba(232,197,71,0.15); padding: 1rem 1.5rem; z-index: 40; flex-direction: column; gap: 10px; }
         .mobile-menu.open { display: flex; }
-
         @keyframes spin { to { transform: rotate(360deg); } }
-
         @media (max-width: 1024px) { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px)  { .listings-grid { grid-template-columns: 1fr; } .images-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px)  { .hamburger { display: flex; } .desktop-nav { display: none !important; } }
@@ -558,12 +476,11 @@ export default function HostListings() {
 
       <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
 
-        {/* ── Nav ── */}
+        {/* Nav */}
         <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(26,26,46,0.97)", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo', 'Tajawal', sans-serif", fontWeight: 500, fontSize: 26, color: "#f3f3f5", letterSpacing: "1px" }}>
             mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
           </Link>
-
           <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <Link href="/host-dashboard" className="nav-link">{t.overview}</Link>
             <Link href="/host/listings"  className="nav-link active">{t.myListings}</Link>
@@ -576,9 +493,8 @@ export default function HostListings() {
               {t.dashboard} →
             </button>
           </div>
-
           <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
-            <span style={{ transform: menuOpen ? "rotate(45deg) translateY(7px)"  : "none" }} />
+            <span style={{ transform: menuOpen ? "rotate(45deg) translateY(7px)"   : "none" }} />
             <span style={{ opacity:   menuOpen ? 0 : 1 }} />
             <span style={{ transform: menuOpen ? "rotate(-45deg) translateY(-7px)" : "none" }} />
           </button>
@@ -593,7 +509,7 @@ export default function HostListings() {
           <Link href="/host/bookings"  style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textDecoration: "none", padding: "8px 0" }}>{t.bookings}</Link>
         </div>
 
-        {/* ── Page header ── */}
+        {/* Page header */}
         <div style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.12)", padding: "2.5rem 1.5rem 2rem" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem" }}>
             <div>
@@ -613,10 +529,9 @@ export default function HostListings() {
           </div>
         </div>
 
-        {/* ── Main ── */}
+        {/* Main */}
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}>
 
-          {/* Create / Edit form */}
           {showForm && (
             <div className="form-panel">
               <div style={{ marginBottom: "1.75rem" }}>
@@ -630,25 +545,21 @@ export default function HostListings() {
 
               <form onSubmit={isEditing ? handleUpdate : handleSubmit}>
 
-                {/* Title */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.title} *</label>
                   <input type="text" name="title" required value={formData.title} onChange={handleInputChange} className="field-input" placeholder={t.titlePlaceholder} />
                 </div>
 
-                {/* Description */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.description} *</label>
                   <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className="field-textarea" placeholder={t.descriptionPlaceholder} />
                 </div>
 
-                {/* Price */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.pricePerNight} / {isAr ? "دينار" : "LYD"} *</label>
                   <input type="number" name="price" required min="0" step="0.01" value={formData.price} onChange={handleInputChange} className="field-input" placeholder="99" />
                 </div>
 
-                {/* Category */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{isAr ? "الفئة" : "Category"} *</label>
                   <select name="category" required value={formData.category} onChange={handleInputChange} className="field-input" style={{ cursor: "pointer" }}>
@@ -670,26 +581,17 @@ export default function HostListings() {
 
                 <hr className="divider" />
 
-                {/* Location */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.location} *</label>
-                  
+
                   {browserInfo !== "chrome" && browserInfo && (
-                    <div style={{ 
-                      background: "#FFF3E0", 
-                      border: "1px solid #FFB74D", 
-                      borderRadius: 8, 
-                      padding: "8px 12px", 
-                      marginBottom: 12,
-                      fontSize: 12,
-                      color: "#E65100"
-                    }}>
+                    <div style={{ background: "#FFF3E0", border: "1px solid #FFB74D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#E65100" }}>
                       ℹ️ {browserInfo === "firefox" && (isAr ? "نصيحة لفايرفوكس: قد تكون دقة الموقع أقل من كروم. يمكنك النقر على الخريطة لتحديد الموقع يدوياً." : "Firefox tip: Location accuracy may be lower than Chrome. You can click on the map to select location manually.")}
                       {browserInfo === "safari" && (isAr ? "نصيحة لسفاري: تأكد من تمكين خدمات الموقع في تفضيلات النظام > الخصوصية والأمان." : "Safari tip: Ensure location services are enabled in System Preferences > Security & Privacy.")}
                       {browserInfo === "edge" && (isAr ? "نصيحة لإيدج: تحقق من إعدادات الخصوصية للسماح بالوصول إلى الموقع." : "Edge tip: Check privacy settings to allow location access.")}
                     </div>
                   )}
-                  
+
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                     <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className="field-input" placeholder={t.addressWillAppear} readOnly style={{ flex: 1, minWidth: 180 }} />
                     <button type="button" onClick={useCurrentLocation} disabled={isGettingLocation} className="btn-primary" style={{ background: isGettingLocation ? "#ccc" : "#1D9E75", whiteSpace: "nowrap" }}>
@@ -755,7 +657,7 @@ export default function HostListings() {
                           onclick={handleMapClick}
                         >
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                          {markerPosition && (
+                          {markerPosition && draggableIcon && (
                             <Marker
                               position={[markerPosition.lat, markerPosition.lng]}
                               draggable
@@ -780,7 +682,6 @@ export default function HostListings() {
 
                 <hr className="divider" />
 
-                {/* Images */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.imagesRequired}</label>
                   <div className="images-grid">
@@ -800,7 +701,6 @@ export default function HostListings() {
 
                 <hr className="divider" />
 
-                {/* Amenities */}
                 <div style={{ marginBottom: "1.5rem" }}>
                   <label className="field-label">{t.amenities}</label>
                   {formData.amenities.map((amenity, index) => (
@@ -818,7 +718,6 @@ export default function HostListings() {
                   </button>
                 </div>
 
-                {/* House rules */}
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label className="field-label">{t.houseRules}</label>
                   <div style={{ marginBottom: 12 }}>
@@ -869,7 +768,6 @@ export default function HostListings() {
             </div>
           )}
 
-          {/* Listings grid */}
           {!showForm && (
             listings.length === 0 ? (
               <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "5rem", textAlign: "center" }}>
@@ -915,7 +813,6 @@ export default function HostListings() {
           )}
         </main>
 
-        {/* ── Footer ── */}
         <footer style={{ background: "#111118", borderTop: "1px solid rgba(232,197,71,0.08)", padding: "2rem 1.5rem", marginTop: "3rem" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 18, color: "#fff" }}>
