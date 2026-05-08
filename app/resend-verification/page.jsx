@@ -1,14 +1,17 @@
-// app/resend-verification/page.jsx (Both languages always visible)
+// app/resend-verification/page.jsx (updated)
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export default function ResendVerificationPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,13 +29,15 @@ export default function ResendVerificationPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("✓ Verification email sent! / ✓ تم إرسال بريد التحقق!");
+        setMessage(isAr 
+          ? "✓ تم إرسال بريد التحقق! يرجى التحقق من صندوق الوارد الخاص بك." 
+          : "✓ Verification email sent! Please check your inbox.");
         setEmail("");
       } else {
-        setError(data.message || "Failed to send verification email / فشل إرسال بريد التحقق");
+        setError(data.message || (isAr ? "فشل إرسال بريد التحقق" : "Failed to send verification email"));
       }
     } catch (error) {
-      setError("An error occurred / حدث خطأ");
+      setError(isAr ? "حدث خطأ. يرجى المحاولة مرة أخرى." : "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +100,7 @@ export default function ResendVerificationPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="example@example.com"
+                placeholder="you@example.com / example@example.com"
               />
             </div>
 
@@ -104,13 +109,15 @@ export default function ResendVerificationPage() {
               disabled={loading}
               className="w-full bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-amber-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Sending... / جاري الإرسال..." : "Resend Verification Email / إعادة إرسال بريد التحقق"}
+              {loading 
+                ? (isAr ? "جاري الإرسال..." : "Sending...") 
+                : (isAr ? "إعادة إرسال بريد التحقق" : "Resend Verification Email")}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <Link href="/login" className="text-sm text-amber-600 hover:text-amber-700">
-              Back to Login / العودة إلى تسجيل الدخول
+              {isAr ? "العودة إلى تسجيل الدخول" : "Back to Login"}
             </Link>
           </div>
         </div>

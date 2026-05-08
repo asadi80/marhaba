@@ -9,9 +9,8 @@ export async function GET(request) {
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.json(
-        { message: "Verification token is required" },
-        { status: 400 }
+      return NextResponse.redirect(
+        `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/verification-result?error=invalid-token`
       );
     }
 
@@ -24,9 +23,8 @@ export async function GET(request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { message: "Invalid or expired verification token. Please request a new verification email." },
-        { status: 400 }
+      return NextResponse.redirect(
+        `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/verification-result?error=invalid-expired`
       );
     }
 
@@ -40,21 +38,17 @@ export async function GET(request) {
       user.status = "confirmed";
     }
     // For hosts, keep as pending until admin approval
-    // Admin will manually change status to "confirmed" after review
     
     await user.save();
 
-    return NextResponse.json({
-      success: true,
-      message: user.role === "host" 
-        ? "Email verified successfully! Your host account is now pending admin approval. You will receive an email once approved."
-        : "Email verified successfully! You can now log in to your account.",
-    });
+    // Redirect to login page with success message
+    const redirectUrl = `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/verification-result?verified=true&role=${user.role}`;
+    return NextResponse.redirect(redirectUrl);
+    
   } catch (error) {
     console.error("Email verification error:", error);
-    return NextResponse.json(
-      { message: "Internal server error" },
-      { status: 500 }
+    return NextResponse.redirect(
+      `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/verification-result?error=server-error`
     );
   }
 }
