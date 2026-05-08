@@ -13,6 +13,7 @@ const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapCont
 const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false });
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
 const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false });
+const useMap = dynamic(() => import("react-leaflet").then((m) => m.useMap), { ssr: false });
 
 const CATEGORIES = [
   { id: "beachfront", icon: "🏖️", labelEn: "Beachfront",  labelAr: "شاطئ",  descriptionEn: "Beautiful beachfront properties",    descriptionAr: "عقارات جميلة على الشاطئ" },
@@ -20,7 +21,8 @@ const CATEGORIES = [
   { id: "city",      icon: "🏙️", labelEn: "City",        labelAr: "مدينة",  descriptionEn: "Vibrant city apartments",              descriptionAr: "شقق مدينة نابضة بالحياة" },
   { id: "countryside",icon:"🏡", labelEn: "Countryside",  labelAr: "ريفي",   descriptionEn: "Peaceful countryside homes",           descriptionAr: "منازل ريفية هادئة" },
   { id: "pool",      icon: "🏊", labelEn: "Pool",         labelAr: "مسبح",   descriptionEn: "Properties with pools",                descriptionAr: "عقارات بها مسبح" },
- { id: "desert",    icon: "🏜️", labelEn: "Desert",      labelAr: "صحراء",  descriptionEn: "Stunning desert escapes",              descriptionAr: "ملاذات صحراوية خلابة" },  { id: "camping",   icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",          descriptionAr: "تجارب تخييم في الهواء الطلق" },
+  { id: "desert",    icon: "🏜️", labelEn: "Desert",      labelAr: "صحراء",  descriptionEn: "Stunning desert escapes",              descriptionAr: "ملاذات صحراوية خلابة" },
+  { id: "camping",   icon: "🏕️", labelEn: "Camping",     labelAr: "تخييم",  descriptionEn: "Outdoor camping experiences",          descriptionAr: "تجارب تخييم في الهواء الطلق" },
   { id: "cabins",    icon: "🛖", labelEn: "Cabins",       labelAr: "كوخ",    descriptionEn: "Cozy cabin getaways",                  descriptionAr: "ملاذات كوخ مريحة" },
 ];
 
@@ -38,6 +40,72 @@ const EMPTY_FORM = {
 
 const DEFAULT_CENTER = { lat: 20, lng: 0 };
 
+// Component to handle map events and fixed marker
+function MapController({ onLocationSelect, initialCenter, markerPosition }) {
+  const map = useMap();
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  useEffect(() => {
+    if (!map) return;
+    setIsMapReady(true);
+    
+    // Set initial view
+    if (initialCenter?.lat && initialCenter?.lng) {
+      map.setView([initialCenter.lat, initialCenter.lng], markerPosition ? 14 : 2);
+    }
+  }, [map, initialCenter, markerPosition]);
+
+  // Handle map move end - get center coordinates
+  useEffect(() => {
+    if (!map || !isMapReady) return;
+
+    const handleMoveEnd = () => {
+      const center = map.getCenter();
+      onLocationSelect(center.lat, center.lng);
+    };
+
+    map.on('moveend', handleMoveEnd);
+    
+    // Initial call to set coordinates
+    setTimeout(() => {
+      const center = map.getCenter();
+      onLocationSelect(center.lat, center.lng);
+    }, 100);
+
+    return () => {
+      map.off('moveend', handleMoveEnd);
+    };
+  }, [map, isMapReady, onLocationSelect]);
+
+  return null;
+}
+
+// Fixed marker component that doesn't move
+function FixedCenterMarker({ icon }) {
+  const map = useMap();
+  const [position, setPosition] = useState([0, 0]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const updatePosition = () => {
+      const center = map.getCenter();
+      setPosition([center.lat, center.lng]);
+    };
+
+    map.on('move', updatePosition);
+    updatePosition();
+
+    return () => {
+      map.off('move', updatePosition);
+    };
+  }, [map]);
+
+  if (!icon) return null;
+  
+  return <Marker position={position} icon={icon} interactive={false} />;
+}
+
 export default function HostListings() {
   const router = useRouter();
   const { lang, t, toggleLanguage } = useLanguage();
@@ -51,13 +119,14 @@ export default function HostListings() {
   const [markerPosition,    setMarkerPosition]    = useState(null);
   const [mapCenter,         setMapCenter]         = useState(null);
   const [selectedLocation,  setSelectedLocation]  = useState(null);
-  const [isMapMoving,       setIsMapMoving]       = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError,     setLocationError]     = useState(null);
   const [browserInfo,       setBrowserInfo]       = useState(null);
   const [menuOpen,          setMenuOpen]          = useState(false);
   const [formData,          setFormData]          = useState(EMPTY_FORM);
   const [draggableIcon,     setDraggableIcon]     = useState(null);
+  const [fixedMarkerIcon,   setFixedMarkerIcon]   = useState(null);
+  const [isMapReady,        setIsMapReady]       = useState(false);
 
   const mapRef = useRef(null);
 
@@ -71,6 +140,8 @@ export default function HostListings() {
       iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
       shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
     });
+    
+    // Draggable marker icon (no longer used for dragging, but kept for compatibility)
     setDraggableIcon(new L.Icon({
       iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
       iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -79,6 +150,52 @@ export default function HostListings() {
       iconAnchor:  [12, 41],
       popupAnchor: [1, -34],
       shadowSize:  [41, 41],
+    }));
+    
+    // Fixed crosshair/center marker icon
+    setFixedMarkerIcon(new L.DivIcon({
+      className: "fixed-center-marker",
+      html: `<div style="
+        position: relative;
+        width: 30px;
+        height: 30px;
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 24px;
+          height: 24px;
+          background: #e8c547;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="
+            width: 8px;
+            height: 8px;
+            background: #1a1a2e;
+            border-radius: 50%;
+          "></div>
+          <div style="
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid #e8c547;
+          "></div>
+        </div>
+      </div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
     }));
   }, []);
 
@@ -124,13 +241,6 @@ export default function HostListings() {
 
   useEffect(() => { fetchListings(); }, []);
 
-  useEffect(() => {
-    if (isEditing && mapRef.current && formData.coordinates?.lat && formData.coordinates?.lng) {
-      mapRef.current.setView([formData.coordinates.lat, formData.coordinates.lng], 14);
-      setMarkerPosition(formData.coordinates);
-    }
-  }, [formData.coordinates, isEditing]);
-
   const reverseGeocode = async (lat, lng) => {
     try {
       const res  = await fetch(
@@ -147,6 +257,13 @@ export default function HostListings() {
     const address = await reverseGeocode(lat, lng);
     setSelectedLocation({ lat, lng, address });
     setFormData((prev) => ({ ...prev, location: address, coordinates: { lat, lng } }));
+  };
+
+  // Handle location selection from map center
+  const handleMapLocationSelect = async (lat, lng) => {
+    setMarkerPosition({ lat, lng });
+    setMapCenter({ lat, lng });
+    await applyCoordinates(lat, lng);
   };
 
   const getIPBasedLocation = async () => {
@@ -268,32 +385,6 @@ export default function HostListings() {
       setLocationError(errorMsg);
       alert(errorMsg);
     }
-  };
-
-  const handleMarkerDragEnd = async (e) => {
-    const { lat, lng } = e.target.getLatLng();
-    setMarkerPosition({ lat, lng });
-    setMapCenter({ lat, lng });
-    await applyCoordinates(lat, lng);
-  };
-
-  const handleMapMoveStart = () => setIsMapMoving(true);
-
-  const handleMapMoveEnd = async () => {
-    if (mapRef.current && !isMapMoving) {
-      const { lat, lng } = mapRef.current.getCenter();
-      setMarkerPosition({ lat, lng });
-      setMapCenter({ lat, lng });
-      await applyCoordinates(lat, lng);
-    }
-    setIsMapMoving(false);
-  };
-
-  const handleMapClick = async (e) => {
-    const { lat, lng } = e.latlng;
-    setMarkerPosition({ lat, lng });
-    setMapCenter({ lat, lng });
-    await applyCoordinates(lat, lng);
   };
 
   const handleInputChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -452,7 +543,7 @@ export default function HostListings() {
         .field-input:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
         .field-textarea { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-family: inherit; color: #111118; background: #fafaf8; outline: none; resize: vertical; transition: border-color .15s, box-shadow .15s; }
         .field-textarea:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
-        .map-wrapper { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }
+        .map-wrapper { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; position: relative; }
         .map-header { background: #1a1a2e; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         .location-pill { background: #fdf8e7; border: 1px solid rgba(232,197,71,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 10px; }
         .images-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -471,6 +562,17 @@ export default function HostListings() {
         @media (max-width: 1024px) { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px)  { .listings-grid { grid-template-columns: 1fr; } .images-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px)  { .hamburger { display: flex; } .desktop-nav { display: none !important; } }
+        
+        /* Fixed center marker animation */
+        .fixed-center-marker {
+          animation: bounce 0.5s ease-in-out;
+          cursor: crosshair;
+        }
+        
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
@@ -600,9 +702,11 @@ export default function HostListings() {
 
                   <div className="map-wrapper">
                     <div className="map-header">
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>💡 {t.dragMarkerHint}</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                        💡 {isAr ? "حرك الخريطة لتحديد الموقع" : "Move the map to select location"}
+                      </span>
                       <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
-                        {isAr ? "انقر على الخريطة لتحديد الموقع" : "Click map to select location"}
+                        {isAr ? "العلامة ثابتة في المنتصف" : "Marker is fixed in the center"}
                       </span>
                     </div>
 
@@ -614,69 +718,86 @@ export default function HostListings() {
                             <p style={{ fontSize: 12, color: "#999" }}>{t.gettingLocation}</p>
                             {browserInfo !== "chrome" && (
                               <p style={{ fontSize: 11, color: "#e8c547", textAlign: "center", maxWidth: 280 }}>
-                                {isAr ? "قد يستغرق هذا وقتاً أطول في متصفحك. يمكنك أيضاً النقر على الخريطة لتحديد الموقع يدوياً." : "This may take longer on your browser. You can also click on the map to select location manually."}
+                                {isAr ? "قد يستغرق هذا وقتاً أطول في متصفحك. يمكنك أيضاً تحريك الخريطة لتحديد الموقع يدوياً." : "This may take longer on your browser. You can also move the map to select location manually."}
                               </p>
                             )}
                           </>
                         ) : (
                           <div style={{ textAlign: "center" }}>
                             <p style={{ fontSize: 12, color: "#999", marginBottom: 12 }}>
-                              {locationError || (isAr ? "انقر على 'موقعي' أو انقر على الخريطة لتحديد موقع العقار" : "Click 'My Location' or click on the map to set property location")}
+                              {locationError || (isAr ? "انقر على 'موقعي' أو حرك الخريطة لتحديد موقع العقار" : "Click 'My Location' or move the map to set property location")}
                             </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (mapRef.current) {
-                                  const center = mapRef.current.getCenter();
-                                  handleMapClick({ latlng: center });
-                                }
-                              }}
-                              style={{ fontSize: 11, color: "#e8c547", background: "none", border: "1px solid #e8c547", borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}
-                            >
-                              {isAr ? "استخدام موقع الخريطة الحالي" : "Use current map location"}
-                            </button>
                           </div>
                         )}
                       </div>
                     )}
 
                     {mapCenter && !isGettingLocation && (
-                      <div style={{ height: 400, width: "100%" }}>
+                      <div style={{ height: 400, width: "100%", position: "relative" }}>
                         <MapContainer
                           key={`${mapCenter.lat}-${mapCenter.lng}`}
                           center={[mapCenter.lat, mapCenter.lng]}
                           zoom={markerPosition ? 14 : 2}
                           style={{ height: "100%", width: "100%" }}
-                          whenCreated={(map) => { mapRef.current = map; }}
-                          dragging
-                          scrollWheelZoom
-                          doubleClickZoom
-                          onDragStart={handleMapMoveStart}
-                          onDragEnd={handleMapMoveEnd}
-                          onclick={handleMapClick}
+                          whenCreated={(map) => { mapRef.current = map; setIsMapReady(true); }}
+                          dragging={true}
+                          scrollWheelZoom={true}
+                          doubleClickZoom={true}
                         >
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                          {markerPosition && draggableIcon && (
-                            <Marker
-                              position={[markerPosition.lat, markerPosition.lng]}
-                              draggable
-                              eventHandlers={{ dragend: handleMarkerDragEnd }}
-                              icon={draggableIcon}
-                            >
-                              <Popup>{t.propertyLocation}<br />{t.dragToAdjust}</Popup>
-                            </Marker>
-                          )}
+                          
+                          {/* Fixed center marker - stays in middle while map moves */}
+                          {fixedMarkerIcon && <FixedCenterMarker icon={fixedMarkerIcon} />}
+                          
+                          {/* Map controller to get coordinates when map moves */}
+                          <MapController 
+                            onLocationSelect={handleMapLocationSelect}
+                            initialCenter={mapCenter}
+                            markerPosition={markerPosition}
+                          />
                         </MapContainer>
+                        
+                        {/* Crosshair overlay effect */}
+                        <div style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%)",
+                          width: "40px",
+                          height: "40px",
+                          borderRadius: "50%",
+                          border: "2px solid rgba(232,197,71,0.5)",
+                          backgroundColor: "rgba(232,197,71,0.1)",
+                          pointerEvents: "none",
+                          zIndex: 1000,
+                          boxShadow: "0 0 0 9999px rgba(0,0,0,0.3)",
+                          transition: "all 0.2s ease"
+                        }}>
+                          <div style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: "50%",
+                            transform: "translate(-50%, -50%)",
+                            width: "4px",
+                            height: "4px",
+                            backgroundColor: "#e8c547",
+                            borderRadius: "50%"
+                          }} />
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {selectedLocation?.address && (
-                    <div className="location-pill">
-                      <p style={{ fontSize: 12, color: "#7a6012", fontWeight: 500 }}>📍 {selectedLocation.address}</p>
-                      <p style={{ fontSize: 11, color: "#a08020" }}>{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
-                    </div>
-                  )}
+                  <div className="location-pill">
+                    <p style={{ fontSize: 12, color: "#7a6012", fontWeight: 500 }}>
+                      📍 {selectedLocation?.address || (isAr ? "حرك الخريطة لاختيار الموقع" : "Move the map to select location")}
+                    </p>
+                    {selectedLocation && (
+                      <p style={{ fontSize: 11, color: "#a08020" }}>
+                        {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <hr className="divider" />
