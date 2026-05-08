@@ -1,351 +1,454 @@
-'use client';
+// components/HostCalendar.js
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState } from "react";
 
 export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooking }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedListing, setSelectedListing] = useState('all');
-  const [listings, setListings] = useState([]);
-  const [calendarDays, setCalendarDays] = useState([]);
-  const [selectedBooking, setSelectedBooking] = useState(null);
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selected, setSelected] = useState(null);
 
-  useEffect(() => {
-    fetchListings();
-  }, []);
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
 
-  useEffect(() => {
-    generateCalendar();
-  }, [currentDate, bookings, selectedListing]);
+  // Color palette for different users
+  const userColors = [
+    { bg: "#EAF3DE", color: "#27500A", border: "#27500A" },
+    { bg: "#FCEBEB", color: "#791F1F", border: "#791F1F" },
+    { bg: "#EEEDFE", color: "#3C3489", border: "#3C3489" },
+    { bg: "#E6F1FB", color: "#0C447C", border: "#0C447C" },
+    { bg: "#FAEEDA", color: "#633806", border: "#633806" },
+    { bg: "#FEE2E2", color: "#991B1B", border: "#991B1B" },
+    { bg: "#DCFCE7", color: "#166534", border: "#166534" },
+    { bg: "#FEF9C3", color: "#713F12", border: "#713F12" },
+  ];
 
-  const fetchListings = async () => {
-    try {
-      const response = await fetch('/api/host/listings');
-      const data = await response.json();
-      setListings(data.listings);
-    } catch (error) {
-      console.error('Error fetching listings:', error);
-    }
+  const getUserColor = (userId) => {
+    const index = userId?.charCodeAt(0) % userColors.length || 0;
+    return userColors[index];
   };
 
-  const generateCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    
-    const startDate = new Date(firstDayOfMonth);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-    
-    const endDate = new Date(lastDayOfMonth);
-    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
-    
-    const days = [];
-    const currentDay = new Date(startDate);
-    
-    while (currentDay <= endDate) {
-      const dayBookings = getBookingsForDate(currentDay);
-      days.push({
-        date: new Date(currentDay),
-        isCurrentMonth: currentDay.getMonth() === month,
-        bookings: dayBookings,
-        hasBookings: dayBookings.length > 0,
-      });
-      currentDay.setDate(currentDay.getDate() + 1);
-    }
-    
-    setCalendarDays(days);
-  };
-
-  const getBookingsForDate = (date) => {
-    const dateStr = date.toDateString();
-    
-    return bookings.filter(booking => {
-      if (selectedListing !== 'all' && booking.listing?._id !== selectedListing) {
-        return false;
-      }
-      
-      const checkIn = new Date(booking.checkIn);
-      const checkOut = new Date(booking.checkOut);
-      const currentDate = new Date(date);
-      
-      return currentDate >= checkIn && currentDate < checkOut;
+  const getBookingsForDay = (day) => {
+    const date = new Date(Date.UTC(currentYear, currentMonth, day));
+    return bookings.filter((b) => {
+      const checkIn = new Date(b.checkIn);
+      const checkOut = new Date(b.checkOut);
+      const checkInUTC = new Date(
+        Date.UTC(
+          checkIn.getUTCFullYear(),
+          checkIn.getUTCMonth(),
+          checkIn.getUTCDate(),
+        ),
+      );
+      const checkOutUTC = new Date(
+        Date.UTC(
+          checkOut.getUTCFullYear(),
+          checkOut.getUTCMonth(),
+          checkOut.getUTCDate(),
+        ),
+      );
+      return date >= checkInUTC && date < checkOutUTC;
     });
   };
 
-  const getBookingStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-500';
-      case 'pending':
-        return 'bg-yellow-500';
-      case 'cancelled':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
+  const statusColor = (s) => {
+    return s === "confirmed"
+      ? "#1D9E75"
+      : s === "pending"
+        ? "#e8c547"
+        : "#e05a5a";
   };
 
-  const getBookingStatusTextColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'text-green-700 bg-green-50';
-      case 'pending':
-        return 'text-yellow-700 bg-yellow-50';
-      case 'cancelled':
-        return 'text-red-700 bg-red-50';
-      default:
-        return 'text-gray-700 bg-gray-50';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const changeMonth = (increment) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + increment);
-    setCurrentDate(newDate);
-  };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
-
-  const handleBookingClick = (booking) => {
-    setSelectedBooking(booking);
-  };
-
-  const closeModal = () => {
-    setSelectedBooking(null);
-  };
-
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
     <div>
-      {/* Calendar Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-        <div className="flex items-center space-x-4">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => changeMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-md transition"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => changeMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-md transition"
-            >
-              →
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Today
-            </button>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-700">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </h3>
-        </div>
-        
-        {/* Listing Filter */}
-        <div className="flex items-center space-x-2">
-          <label className="text-sm text-gray-600">Filter by listing:</label>
-          <select
-            value={selectedListing}
-            onChange={(e) => setSelectedListing(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Listings</option>
-            {listings.map((listing) => (
-              <option key={listing._id} value={listing._id}>
-                {listing.title}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Month Nav */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <button
+          onClick={() => {
+            if (currentMonth === 0) {
+              setCurrentMonth(11);
+              setCurrentYear((y) => y - 1);
+            } else setCurrentMonth((m) => m - 1);
+          }}
+          style={{
+            background: "none",
+            border: "1px solid rgba(0,0,0,0.1)",
+            borderRadius: 8,
+            padding: "6px 14px",
+            fontSize: 13,
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          ←
+        </button>
+        <span
+          className="font-display"
+          style={{
+            fontStyle: "italic",
+            fontWeight: 300,
+            fontSize: 22,
+            color: "#111118",
+          }}
+        >
+          {monthNames[currentMonth]}{" "}
+          <span style={{ fontWeight: 500 }}>{currentYear}</span>
+        </span>
+        <button
+          onClick={() => {
+            if (currentMonth === 11) {
+              setCurrentMonth(0);
+              setCurrentYear((y) => y + 1);
+            } else setCurrentMonth((m) => m + 1);
+          }}
+          style={{
+            background: "none",
+            border: "1px solid rgba(0,0,0,0.1)",
+            borderRadius: 8,
+            padding: "6px 14px",
+            fontSize: 13,
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          →
+        </button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-green-500 rounded"></div>
-          <span className="text-sm text-gray-600">Confirmed</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-          <span className="text-sm text-gray-600">Pending</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span className="text-sm text-gray-600">Cancelled</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-gray-200 rounded border border-gray-300"></div>
-          <span className="text-sm text-gray-600">No Bookings</span>
-        </div>
-      </div>
-
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2 mb-2">
-        {weekDays.map((day) => (
-          <div key={day} className="text-center font-semibold text-gray-600 py-2">
-            {day}
-          </div>
-        ))}
-      </div>
-      
-      <div className="grid grid-cols-7 gap-2">
-        {calendarDays.map((day, index) => (
+      {/* Day labels */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 4,
+          marginBottom: 4,
+        }}
+      >
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div
-            key={index}
-            className={`min-h-[120px] border rounded-lg p-2 transition ${
-              day.isCurrentMonth
-                ? 'bg-white border-gray-200'
-                : 'bg-gray-50 border-gray-100 text-gray-400'
-            } ${day.hasBookings ? 'hover:shadow-md' : ''}`}
+            key={d}
+            style={{
+              textAlign: "center",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#999",
+              padding: "4px 0",
+            }}
           >
-            <div className={`text-sm font-medium mb-2 ${
-              day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-            }`}>
-              {day.date.getDate()}
-            </div>
-            <div className="space-y-1">
-              {day.bookings.slice(0, 3).map((booking, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleBookingClick(booking)}
-                  className={`w-full text-left text-xs p-1 rounded ${getBookingStatusColor(booking.status)} text-white hover:opacity-80 transition`}
-                >
-                  <div className="truncate">
-                    {booking.listing?.title || 'Booking'}
-                  </div>
-                  <div className="text-[10px] opacity-90">
-                    {booking.user?.name?.split(' ')[0]}
-                  </div>
-                </button>
-              ))}
-              {day.bookings.length > 3 && (
-                <div className="text-xs text-gray-500 text-center mt-1">
-                  +{day.bookings.length - 3} more
-                </div>
-              )}
-            </div>
+            {d}
           </div>
         ))}
       </div>
 
-      {/* Booking Details Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeModal}>
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Booking Details</h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600"
+      {/* Grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 4,
+        }}
+      >
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e${i}`} />;
+          const dayBookings = getBookingsForDay(day);
+          const isToday =
+            day === today.getDate() &&
+            currentMonth === today.getMonth() &&
+            currentYear === today.getFullYear();
+
+          // Get the first booking's user name (or show multiple if needed)
+          const firstBooking = dayBookings[0];
+          const hasMultipleBookings = dayBookings.length > 1;
+
+          return (
+            <div
+              key={day}
+              onClick={() => setSelected(selected === day ? null : day)}
+              style={{
+                minHeight: 64,
+                borderRadius: 10,
+                border: `1px solid ${selected === day ? "#e8c547" : "rgba(0,0,0,0.07)"}`,
+                background: isToday
+                  ? "#1a1a2e"
+                  : selected === day
+                    ? "#fdf8e7"
+                    : "#fff",
+                padding: "6px 8px",
+                cursor: dayBookings.length ? "pointer" : "default",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+                boxShadow:
+                  selected === day ? "0 0 0 2px rgba(232,197,71,0.3)" : "none",
+                position: "relative",
+              }}
+            >
+              {/* Day number with user name */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: isToday ? 600 : 400,
+                    color: isToday ? "#e8c547" : "#111118",
+                  }}
                 >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getBookingStatusTextColor(selectedBooking.status)}`}>
-                    {selectedBooking.status.toUpperCase()}
-                  </span>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">Property</p>
-                  <p className="font-medium text-gray-900">{selectedBooking.listing?.title}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">Location</p>
-                  <p className="text-gray-700">{selectedBooking.listing?.location}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">Guest</p>
-                  <p className="text-gray-700">{selectedBooking.user?.name}</p>
-                  <p className="text-sm text-gray-500">{selectedBooking.user?.email}</p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Check-in</p>
-                    <p className="font-medium text-gray-900">{formatDate(selectedBooking.checkIn)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Check-out</p>
-                    <p className="font-medium text-gray-900">{formatDate(selectedBooking.checkOut)}</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Guests</p>
-                    <p className="text-gray-700">{selectedBooking.guests}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Total Price</p>
-                    <p className="text-lg font-bold text-indigo-600">${selectedBooking.totalPrice}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">Booked on</p>
-                  <p className="text-gray-600">{formatDate(selectedBooking.createdAt)}</p>
-                </div>
-                
-                <div className="flex space-x-3 pt-4">
-                  {selectedBooking.status === 'pending' && (
-                    <button
-                      onClick={() => {
-                        onConfirmBooking(selectedBooking._id);
-                        closeModal();
-                      }}
-                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                    >
-                      Confirm Booking
-                    </button>
-                  )}
-                  {selectedBooking.status !== 'cancelled' && (
-                    <button
-                      onClick={() => {
-                        onCancelBooking(selectedBooking._id);
-                        closeModal();
-                      }}
-                      className="flex-1 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-                    >
-                      Cancel Booking
-                    </button>
-                  )}
-                  <Link
-                    href={`/listings/${selectedBooking.listing?._id}`}
-                    className="flex-1 bg-gray-600 text-white text-center px-4 py-2 rounded-md hover:bg-gray-700"
+                  {day}
+                </span>
+
+                {/* Display user name(s) on the calendar cell */}
+                {dayBookings.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 400,
+                      color:
+                        dayBookings[0]?.status === "confirmed"
+                          ? "#1D9E75"
+                          : dayBookings[0]?.status === "pending"
+                            ? "#e8c547"
+                            : "#e05a5a",
+                      background: "rgba(0,0,0,0.05)",
+                      padding: "1px 4px",
+                      borderRadius: 4,
+                      maxWidth: "calc(100% - 20px)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={dayBookings
+                      .map((b) => `${b.user?.name} (${b.status})`)
+                      .join(", ")}
                   >
-                    View Listing
-                  </Link>
-                </div>
+                    {hasMultipleBookings
+                      ? `${firstBooking?.user?.name || "Guest"} +${dayBookings.length - 1}`
+                      : firstBooking?.user?.name || "Guest"}
+                  </span>
+                )}
+              </div>
+
+              {/* Status indicator bars */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  marginTop: 4,
+                }}
+              >
+                {dayBookings.slice(0, 2).map((b) => (
+                  <div
+                    key={b._id}
+                    style={{
+                      height: 3,
+                      borderRadius: 2,
+                      background:
+                        b.status === "confirmed"
+                          ? "#1D9E75"
+                          : b.status === "pending"
+                            ? "#e8c547"
+                            : "#e05a5a",
+                      opacity: 0.85,
+                    }}
+                    title={`${b.user?.name} - ${b.status}`}
+                  />
+                ))}
+                {dayBookings.length > 2 && (
+                  <div style={{ fontSize: 9, color: "#999" }}>
+                    +{dayBookings.length - 2}
+                  </div>
+                )}
               </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* Selected day details - with colored user names */}
+      {selected && getBookingsForDay(selected).length > 0 && (
+        <div
+          style={{
+            marginTop: "1.5rem",
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.07)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ background: "#1a1a2e", padding: "0.75rem 1rem" }}>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+              {monthNames[currentMonth]} {selected} —{" "}
+              {getBookingsForDay(selected).length} booking(s)
+            </span>
           </div>
+          {getBookingsForDay(selected).map((b) => {
+            const userColor = getUserColor(b.user?._id);
+            return (
+              <div
+                key={b._id}
+                style={{
+                  padding: "1rem",
+                  borderBottom: "1px solid rgba(0,0,0,0.06)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 500,
+                      fontSize: 13,
+                      color: "#111118",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {b.listing?.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#777" }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        background: userColor.bg,
+                        color: userColor.color,
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        fontWeight: 500,
+                        marginRight: 6,
+                      }}
+                    >
+                      {b.user?.name || "Guest"}
+                    </span>
+                    · {b.user?.email} · {b.user?.phoneNumber} · {b.guests} guest
+                    {b.guests !== 1 ? "s" : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 10px",
+                      borderRadius: 20,
+                      background:
+                        b.status === "confirmed"
+                          ? "#DCFCE7"
+                          : b.status === "pending"
+                            ? "#FEF9C3"
+                            : "#FEE2E2",
+                      color:
+                        b.status === "confirmed"
+                          ? "#166534"
+                          : b.status === "pending"
+                            ? "#713f12"
+                            : "#991b1b",
+                    }}
+                  >
+                    {b.status}
+                  </span>
+                  {b.status === "pending" && (
+                    <button
+                      onClick={() => onConfirmBooking(b._id)}
+                      style={{
+                        background: "#1D9E75",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      confirm
+                    </button>
+                  )}
+                  {b.status !== "cancelled" && (
+                    <button
+                      onClick={() => onCancelBooking(b._id)}
+                      style={{
+                        background: "#fee2e2",
+                        color: "#991b1b",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Legend */}
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          marginTop: "1.5rem",
+          flexWrap: "wrap",
+        }}
+      >
+        {[
+          ["confirmed", "#1D9E75"],
+          ["pending", "#e8c547"],
+          ["cancelled", "#e05a5a"],
+        ].map(([s, c]) => (
+          <div
+            key={s}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: "#777",
+            }}
+          >
+            <div
+              style={{ width: 12, height: 4, borderRadius: 2, background: c }}
+            />
+            {s}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

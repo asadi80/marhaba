@@ -1,6 +1,19 @@
-import { Geist, Geist_Mono } from "next/font/google";
-import { LanguageProvider } from '@/context/LanguageContext';
+import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
+
 import "./globals.css";
+
+const cairo = Cairo({
+  subsets: ['arabic'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-cairo',
+});
+
+const tajawal = Tajawal({
+  subsets: ['arabic'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-tajawal',
+});
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +24,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
 
 export const metadata = {
   title: "Marhaba",
@@ -24,9 +38,10 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-       <LanguageProvider>
+    
+      
          {children}
-       </LanguageProvider>
+      
        </body>
     </html>
   );

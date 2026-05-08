@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-  const response = NextResponse.json({ message: 'Logged out successfully' });
+  const response = NextResponse.json({ success: true });
   
-  // Clear cookies
-   localStorage.removeItem('marhabaToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('tokenExpiry');
+  response.cookies.set('token', '', {
+    httpOnly: true,
+    path: '/',
+    maxAge: 0,
+  });
   
   return response;
 }

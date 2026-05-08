@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import "./style.css"
+import { useLanguage } from "@/hooks/useLanguage";
+import "./style.css";
 
 export default function HostDashboard() {
- 
   const router = useRouter();
+  const { lang, t, toggleLanguage } = useLanguage();
+  const isAr = lang === 'ar';
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     totalListings: 0,
@@ -19,42 +21,86 @@ export default function HostDashboard() {
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Font definitions
+  const arabicFont = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
+  const englishFont = "'DM Mono', monospace";
+  const arabicDisplay = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
+  const englishDisplay = "'Fraunces', serif";
+  const bodyFont = isAr ? arabicFont : englishFont;
+  const displayFont = isAr ? arabicDisplay : englishDisplay;
+
   useEffect(() => {
     (async () => {
       try {
         const [userRes, listingsRes, bookingsRes] = await Promise.all([
-          fetch("/api/auth/me"),
-          fetch("/api/host/listings"),
-          fetch("/api/bookings"),
+          fetch("/api/auth/me", {
+            credentials: "include"
+          }),
+          fetch("/api/host/listings", {
+            credentials: "include"
+          }),
+          fetch("/api/bookings", {
+            credentials: "include"
+          }),
         ]);
+        
         const userData = await userRes.json();
         const listingsData = await listingsRes.json();
         const bookingsData = await bookingsRes.json();
-        setUser(userData.user);
-        const confirmed = bookingsData.bookings.filter(
-          (b) => b.status === "confirmed",
-        );
+
+        if (!userRes.ok) {
+          console.error("Authentication failed");
+          router.push("/login");
+          return;
+        }
+
+        const user = userData?.user || null;
+        console.log(user);
+        
+        const listings = Array.isArray(listingsData?.listings)
+          ? listingsData.listings
+          : [];
+
+        const bookings = Array.isArray(bookingsData?.bookings)
+          ? bookingsData.bookings
+          : [];
+
+        setUser(user);
+
+        if (user?.role !== "host") {
+          router.push("/dashboard");
+          return;
+        }
+
+        const confirmed = bookings.filter((b) => b.status === "confirmed");
+
         setStats({
-          totalListings: listingsData.listings.length,
-          totalBookings: bookingsData.bookings.length,
+          totalListings: listings.length,
+          totalBookings: bookings.length,
           confirmedBookings: confirmed.length,
-          totalEarnings: confirmed.reduce((s, b) => s + b.totalPrice, 0),
-          rating: userData.user.hostDetails?.rating || 0,
+          totalEarnings: confirmed.reduce((s, b) => s + (b.totalPrice || 0), 0),
+          rating: user?.hostDetails?.rating || 0,
         });
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching host data:", e);
+        router.push("/login");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    ["marhabaToken", "userType", "userData"].forEach((k) =>
-      localStorage.removeItem(k),
-    );
-    router.push("/login");
+    try {
+      await fetch("/api/auth/logout", { 
+        method: "POST",
+        credentials: "include"
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      router.push("/login");
+    }
   };
 
   const AVATAR_PAL = [
@@ -67,7 +113,6 @@ export default function HostDashboard() {
   ];
   const avi = (name) =>
     AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
- 
 
   if (loading)
     return (
@@ -93,7 +138,6 @@ export default function HostDashboard() {
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
-  console.log(user);
 
   if (user?.role === "host" && user?.status === "pending") {
     const isExpired = user?.statusReason === "expired";
@@ -112,13 +156,11 @@ export default function HostDashboard() {
         }}
       >
         <h2 style={{ marginBottom: 10 }}>
-          {isExpired ? "Subscription Expired" : "Account Pending Approval"}
+          {isExpired ? t.subscriptionExpired : t.accountPendingApproval}
         </h2>
 
         <p style={{ color: "#777", maxWidth: 400 }}>
-          {isExpired
-            ? "Your 6-month hosting period has ended. Please renew your subscription to continue managing listings."
-            : "Your host account is under review. You cannot add or manage listings yet."}
+          {isExpired ? t.expiredMessage : t.pendingMessage}
         </p>
       </div>
     );
@@ -135,50 +177,58 @@ export default function HostDashboard() {
   const avgPerBooking = stats.totalEarnings / (stats.confirmedBookings || 1);
   const pendingCount = stats.totalBookings - stats.confirmedBookings;
 
+  // Format currency based on language
+  const formatCurrency = (amount) => {
+    if (isAr) {
+      return `${Math.round(amount).toLocaleString()} دينار`;
+    }
+    return `${Math.round(amount).toLocaleString()} LYD`;
+  };
+
   const NAV_LINKS = [
-    { href: "/host-dashboard", label: "overview" },
-    { href: "/host/listings", label: "my listings" },
-    { href: "/host/bookings", label: "bookings" },
+    { href: "/host-dashboard", label: t.overview },
+    { href: "/host/listings", label: t.myListings },
+    { href: "/host/bookings", label: t.bookings },
   ];
 
   const STAT_CARDS = [
-    { label: "active listings", value: stats.totalListings, accent: "#378ADD" },
+    { label: t.activeListings, value: stats.totalListings, accent: "#378ADD" },
     {
-      label: "total bookings",
+      label: t.totalBookings,
       value: stats.totalBookings,
-      sub: `${stats.confirmedBookings} confirmed`,
+      sub: `${stats.confirmedBookings} ${t.confirmed}`,
       accent: "#7F77DD",
     },
     {
-      label: "total earnings",
-      value: `$${stats.totalEarnings.toLocaleString()}`,
-      sub: "confirmed only",
+      label: t.totalEarnings,
+      value: formatCurrency(stats.totalEarnings),
+      sub: t.confirmedOnly,
       accent: "#1D9E75",
     },
-    { label: "host rating", value: stats.rating.toFixed(1), accent: "#e8c547" },
+    { label: t.hostRating, value: stats.rating.toFixed(1), accent: "#e8c547" },
   ];
 
   const SUMMARY_CARDS = [
     {
-      label: "confirmed",
+      label: t.confirmed,
       value: stats.confirmedBookings,
-      sub: "ready for guests",
+      sub: t.readyForGuests,
       sBg: "#EAF3DE",
       sColor: "#27500A",
       bColor: "#1D9E75",
     },
     {
-      label: "pending",
+      label: t.pending,
       value: pendingCount,
-      sub: "awaiting action",
+      sub: t.awaitingAction,
       sBg: "#FAEEDA",
       sColor: "#633806",
       bColor: "#BA7517",
     },
     {
-      label: "avg/booking",
-      value: `$${Math.round(avgPerBooking)}`,
-      sub: "from confirmed",
+      label: t.avgPerBooking,
+      value: formatCurrency(avgPerBooking),
+      sub: t.fromConfirmed,
       sBg: "#E6F1FB",
       sColor: "#0C447C",
       bColor: "#378ADD",
@@ -188,23 +238,174 @@ export default function HostDashboard() {
   const ACTION_CARDS = [
     {
       href: "/host/listings",
-      label: "manage listings",
-      desc: "Create, edit, and manage your properties",
+      label: t.manageListings,
+      desc: t.manageListingsDesc,
       accent: "#7F77DD",
     },
     {
       href: "/host/bookings",
-      label: "view bookings",
-      desc: "See all upcoming and past bookings",
+      label: t.viewBookings,
+      desc: t.viewBookingsDesc,
       accent: "#1D9E75",
     },
   ];
 
   return (
     <>
-    
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
+        
+        *, *::before, *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        
+        body {
+          font-family: ${bodyFont} !important;
+          background: #f7f6f2;
+          color: #222;
+          -webkit-font-smoothing: antialiased;
+        }
+        
+        .font-display {
+          font-family: ${displayFont} !important;
+        }
+        
+        .nav-link {
+          font-size: 12px;
+          color: rgba(255,255,255,0.5);
+          text-decoration: none;
+          padding: 6px 12px;
+          border-radius: 6px;
+          transition: color .15s, background .15s;
+        }
+        
+        .nav-link:hover {
+          color: #fff;
+          background: rgba(255,255,255,0.06);
+        }
+        
+        .nav-link.active {
+          color: #e8c547;
+        }
+        
+        .logout-btn {
+          background: rgba(232,197,71,0.1);
+          border: 1px solid rgba(232,197,71,0.25);
+          border-radius: 6px;
+          color: #e8c547;
+          padding: 4px 12px;
+          font-size: 11px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s;
+        }
+        
+        .logout-btn:hover {
+          background: rgba(232,197,71,0.2);
+        }
+        
+        .hamburger {
+          display: none;
+          flex-direction: column;
+          gap: 5px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
+        }
+        
+        .hamburger span {
+          display: block;
+          width: 20px;
+          height: 2px;
+          background: rgba(255,255,255,0.7);
+          border-radius: 2px;
+          transition: all 0.2s;
+        }
+        
+        .mobile-nav-menu {
+          display: none;
+          position: fixed;
+          top: 56px;
+          left: 0;
+          right: 0;
+          background: #1a1a2e;
+          border-bottom: 1px solid rgba(232,197,71,0.15);
+          padding: 1rem 1.5rem;
+          z-index: 40;
+          flex-direction: column;
+          gap: 10px;
+        }
+        
+        .mobile-nav-menu.open {
+          display: flex;
+        }
+        
+        .mobile-nav-link {
+          font-size: 13px;
+          color: rgba(255,255,255,0.7);
+          text-decoration: none;
+          padding: 8px 0;
+        }
+        
+        .stat-card {
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid rgba(0,0,0,0.07);
+          padding: 1rem;
+          border-top: 3px solid var(--accent);
+        }
+        
+        .summary-card {
+          border-radius: 12px;
+          padding: 1rem;
+        }
+        
+        .action-card {
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid rgba(0,0,0,0.07);
+          padding: 1.25rem;
+          text-decoration: none;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .action-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+        
+        @media (max-width: 768px) {
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .action-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .desktop-nav-links, .desktop-user-info {
+            display: none !important;
+          }
+          .hamburger {
+            display: flex;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .summary-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
-      <div style={{ minHeight: "100vh", background: "#f7f6f2" }}>
+      <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
         {/* NAV */}
         <nav
           style={{
@@ -221,27 +422,18 @@ export default function HostDashboard() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div
-                className="font-display"
-                style={{
-                  fontStyle: "italic",
-                  fontWeight: 300,
-                  fontSize: 20,
-                  color: "#fff",
-                }}
-              >
-                mar
-                <span
-                  style={{
-                    fontStyle: "normal",
-                    fontWeight: 500,
-                    color: "#e8c547",
-                  }}
-                >
-                  haba
-                </span>
-              </div>
+            <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'Fraunces', serif",
+                fontWeight: 500,
+                fontSize: "24px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
             </Link>
             <div
               className="desktop-nav-links"
@@ -259,6 +451,23 @@ export default function HostDashboard() {
             className="desktop-user-info"
             style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
+            {/* Language Toggle Button */}
+            <button
+              onClick={toggleLanguage}
+              style={{
+                background: "rgba(232,197,71,0.15)",
+                border: "1px solid rgba(232,197,71,0.3)",
+                borderRadius: 6,
+                padding: "4px 10px",
+                fontSize: 11,
+                cursor: "pointer",
+                color: "#e8c547",
+                fontFamily: "inherit",
+              }}
+            >
+              {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
+            </button>
+            
             <div
               style={{
                 width: 30,
@@ -289,10 +498,10 @@ export default function HostDashboard() {
                 borderRadius: 20,
               }}
             >
-              host
+              {t.host}
             </span>
             <button onClick={handleLogout} className="logout-btn">
-              logout
+              {t.logout}
             </button>
           </div>
 
@@ -321,6 +530,25 @@ export default function HostDashboard() {
 
         {/* Mobile nav */}
         <div className={`mobile-nav-menu ${mobileNavOpen ? "open" : ""}`}>
+          {/* Language Toggle in Mobile Menu */}
+          <button
+            onClick={toggleLanguage}
+            style={{
+              background: "rgba(232,197,71,0.15)",
+              border: "1px solid rgba(232,197,71,0.3)",
+              borderRadius: 6,
+              padding: "8px 12px",
+              fontSize: 12,
+              cursor: "pointer",
+              color: "#e8c547",
+              fontFamily: "inherit",
+              marginBottom: 10,
+              width: "100%",
+            }}
+          >
+            {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
+          </button>
+          
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
@@ -361,7 +589,7 @@ export default function HostDashboard() {
               </span>
             </div>
             <button onClick={handleLogout} className="logout-btn">
-              logout
+              {t.logout}
             </button>
           </div>
         </div>
@@ -411,7 +639,7 @@ export default function HostDashboard() {
                 <div
                   className="font-display"
                   style={{
-                    fontStyle: "italic",
+                    fontStyle: isAr ? "normal" : "italic",
                     fontWeight: 300,
                     fontSize: 22,
                     color: "#111118",
@@ -421,11 +649,11 @@ export default function HostDashboard() {
                   {user?.name}
                 </div>
                 <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>
-                  host account
+                  {t.hostAccount}
                 </div>
                 <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>
-                  Expiry Date:{" "}
-                  {new Date(user?.hostExpiryDate).toLocaleDateString()}
+                  {t.expiryDate}{" "}
+                  {user?.hostExpiryDate ? new Date(user.hostExpiryDate).toLocaleDateString() : t.notAvailable}
                 </div>
               </div>
             </div>
@@ -442,7 +670,7 @@ export default function HostDashboard() {
                 flexShrink: 0,
               }}
             >
-              + new listing
+              + {t.newListing}
             </Link>
           </div>
 
@@ -465,7 +693,7 @@ export default function HostDashboard() {
                 <div
                   className="font-display"
                   style={{
-                    fontStyle: "italic",
+                    fontStyle: isAr ? "normal" : "italic",
                     fontWeight: 300,
                     fontSize: 30,
                     color: "#111118",
@@ -516,13 +744,13 @@ export default function HostDashboard() {
               <div
                 className="font-display"
                 style={{
-                  fontStyle: "italic",
+                  fontStyle: isAr ? "normal" : "italic",
                   fontWeight: 300,
                   fontSize: 20,
                   color: "#111118",
                 }}
               >
-                booking summary
+                {t.bookingSummary}
               </div>
               <Link
                 href="/host/bookings"
@@ -532,25 +760,10 @@ export default function HostDashboard() {
                   textDecoration: "none",
                 }}
               >
-                view all →
+                {t.viewAll} →
               </Link>
             </div>
-            {isExpiringSoon && (
-              <div
-                style={{
-                  background: "#FAEEDA",
-                  color: "#633806",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  textAlign: "center",
-                  marginBottom: "12px",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                }}
-              >
-                ⚠ Your subscription is about to expire soon
-              </div>
-            )}
+
             <div
               className="summary-grid"
               style={{
@@ -569,7 +782,7 @@ export default function HostDashboard() {
                     <div
                       className="font-display"
                       style={{
-                        fontStyle: "italic",
+                        fontStyle: isAr ? "normal" : "italic",
                         fontWeight: 300,
                         fontSize: 28,
                         color: sColor,
@@ -611,14 +824,14 @@ export default function HostDashboard() {
             <div
               className="font-display"
               style={{
-                fontStyle: "italic",
+                fontStyle: isAr ? "normal" : "italic",
                 fontWeight: 300,
                 fontSize: 20,
                 color: "#111118",
                 marginBottom: "1rem",
               }}
             >
-              quick actions
+              {t.quickActions}
             </div>
           </div>
           <div
@@ -639,7 +852,7 @@ export default function HostDashboard() {
                 <div
                   className="font-display"
                   style={{
-                    fontStyle: "italic",
+                    fontStyle: isAr ? "normal" : "italic",
                     fontWeight: 300,
                     fontSize: 20,
                     color: "#111118",
@@ -659,7 +872,7 @@ export default function HostDashboard() {
                     fontWeight: 500,
                   }}
                 >
-                  go →
+                  {t.go} →
                 </div>
               </Link>
             ))}

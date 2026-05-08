@@ -1,15 +1,17 @@
 // app/api/admin/users/[id]/route.js
 import { NextResponse } from "next/server";
-import mongoose from "mongoose"; // 👈 Add this import
-
-import { verifyAdmin } from "@/middleware/adminAuth";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
+import { verifyAdminFromCookie } from "@/lib/adminAuth";
 
 // Get single user
 export async function GET(request, { params }) {
   try {
-    const auth = await verifyAdmin(request, "admin");
+    const resolvedParams = await params;
+    
+    // Verify admin using cookie
+    const auth = await verifyAdminFromCookie(request, "admin");
     if (auth.error) {
       return NextResponse.json(
         { message: auth.error },
@@ -19,13 +21,14 @@ export async function GET(request, { params }) {
 
     await connectToDatabase();
 
-    const user = await User.findById(params.id).select("-password");
+    const user = await User.findById(resolvedParams.id).select("-password");
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, user });
   } catch (error) {
+    console.error("GET user error:", error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
@@ -34,7 +37,9 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const auth = await verifyAdmin(request, "admin");
+    
+    // Verify admin using cookie
+    const auth = await verifyAdminFromCookie(request, "admin");
     if (auth.error) {
       return NextResponse.json(
         { message: auth.error },
@@ -75,35 +80,34 @@ export async function PUT(request, { params }) {
     if (email) user.email = email;
     if (phoneNumber) user.phoneNumber = phoneNumber;
 
-    // role (only super_admin)
+    // Update role (only super_admin)
     if (role && auth.user.role === "super_admin") {
       user.role = role;
     }
 
-    // 🔥 SAFE STATUS HANDLING
-if (status && auth.user.role === 'super_admin') {
-  user.status = status;
+    // Safe status handling
+    if (status && auth.user.role === 'super_admin') {
+      user.status = status;
 
-  // 🔥 HOST CONFIRMED
-  if (status === 'confirmed' && user.role === 'host') {
-    const expiry = new Date();
-    expiry.setMonth(expiry.getMonth() + 6);
+      // Host confirmed
+      if (status === 'confirmed' && user.role === 'host') {
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + 6);
+        user.hostExpiryDate = expiry;
+        user.statusReason = null;
+      }
 
-    user.hostExpiryDate = expiry;
-    user.statusReason = null;
-  }
+      // Manual pending
+      if (status === 'pending') {
+        user.statusReason = 'manual_pending';
+      }
 
-  // 🔥 MANUAL PENDING
-  if (status === 'pending') {
-    user.statusReason = 'manual_pending';
-  }
-
-  // 🔥 SUSPENDED
-  if (status === 'suspended') {
-    user.hostExpiryDate = null;
-    user.statusReason = 'admin_suspended';
-  }
-}
+      // Suspended
+      if (status === 'suspended') {
+        user.hostExpiryDate = null;
+        user.statusReason = 'admin_suspended';
+      }
+    }
 
     await user.save();
 
@@ -116,18 +120,18 @@ if (status && auth.user.role === 'super_admin') {
       user: userResponse,
     });
   } catch (error) {
+    console.error("PUT user error:", error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
 
-/// Delete user
+// Delete user
 export async function DELETE(request, { params }) {
   try {
-    // 👇 IMPORTANT: Await params (Next.js 15+)
     const resolvedParams = await params;
 
-    const auth = await verifyAdmin(request, "super_admin");
-
+    // Verify super_admin using cookie
+    const auth = await verifyAdminFromCookie(request, "super_admin");
     if (auth.error) {
       return NextResponse.json(
         { message: auth.error },
@@ -135,7 +139,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Now use resolvedParams instead of params
     if (!resolvedParams?.id) {
       return NextResponse.json(
         { message: "User ID is required" },
@@ -171,7 +174,6 @@ export async function DELETE(request, { params }) {
     });
   } catch (error) {
     console.error("Delete error:", error);
-
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

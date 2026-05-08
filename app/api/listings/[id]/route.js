@@ -8,7 +8,13 @@ import Booking from '@/models/Booking';
 export async function GET(request, { params }) {
   try {
     console.log('=== GET Listing API Called ===');
-    
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const unwrappedParams = await params;
     const { id } = unwrappedParams;
     
@@ -76,7 +82,7 @@ export async function GET(request, { params }) {
 // PUT - Update listing (including blocked dates)
 export async function PUT(request, { params }) {
   try {
-    const token = request.cookies.get('MarhabaToken')?.value;
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -115,7 +121,7 @@ export async function PUT(request, { params }) {
       );
     }
     
-    const { title, description, price, location, images, amenities, blockedDates } = await request.json();
+    const { title, description, price, location, images, amenities, blockedDates,rules, coordinates } = await request.json();
     
     const updatedListing = await Listing.findByIdAndUpdate(
       id,
@@ -124,7 +130,9 @@ export async function PUT(request, { params }) {
         description, 
         price, 
         location, 
+         coordinates,
         images, 
+        rules,
         amenities,
         blockedDates: blockedDates || listing.blockedDates || []
       },
@@ -147,7 +155,7 @@ export async function PUT(request, { params }) {
 // POST - Add blocked dates (host only)
 export async function POST(request, { params }) {
   try {
-    const token = request.cookies.get('MarhabaToken')?.value;
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -266,10 +274,10 @@ export async function POST(request, { params }) {
   }
 }
 
-// DELETE - Remove blocked dates
+// DELETE - Remove blocked dates OR delete entire listing
 export async function DELETE(request, { params }) {
   try {
-    const token = request.cookies.get('MarhabaToken')?.value;
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -282,11 +290,9 @@ export async function DELETE(request, { params }) {
     const unwrappedParams = await params;
     const { id } = unwrappedParams;
     
-    const { blockId } = await request.json();
-    
-    if (!blockId) {
+    if (!id) {
       return NextResponse.json(
-        { message: 'Block ID is required' },
+        { message: 'Listing ID is required' },
         { status: 400 }
       );
     }
@@ -305,8 +311,44 @@ export async function DELETE(request, { params }) {
     // Check if user is the host
     if (listing.host.toString() !== decoded.userId) {
       return NextResponse.json(
-        { message: 'Only the host can remove blocked dates' },
+        { message: 'Unauthorized' },
         { status: 403 }
+      );
+    }
+    
+    // Check if this is a delete listing request
+    const url = new URL(request.url);
+    const deleteListing = url.searchParams.get('deleteListing');
+    
+    // If deleteListing=true, delete the entire listing
+    if (deleteListing === 'true') {
+      // Delete the listing
+      await Listing.findByIdAndDelete(id);
+      // Delete all associated bookings
+      await Booking.deleteMany({ listing: id });
+      
+      return NextResponse.json({
+        message: 'Listing deleted successfully',
+      });
+    }
+    
+    // Otherwise, try to parse body for blockId (remove blocked date)
+    let blockId;
+    try {
+      const body = await request.json();
+      blockId = body.blockId;
+    } catch (e) {
+      // If no body and not deleteListing, return error
+      return NextResponse.json(
+        { message: 'Missing blockId or deleteListing parameter' },
+        { status: 400 }
+      );
+    }
+    
+    if (!blockId) {
+      return NextResponse.json(
+        { message: 'Block ID is required' },
+        { status: 400 }
       );
     }
     
@@ -327,7 +369,7 @@ export async function DELETE(request, { params }) {
       blockedDates: listing.blockedDates,
     });
   } catch (error) {
-    console.error('Remove blocked dates error:', error);
+    console.error('Delete error:', error);
     return NextResponse.json(
       { message: 'Internal server error', error: error.message },
       { status: 500 }

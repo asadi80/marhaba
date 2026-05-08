@@ -1,14 +1,15 @@
 // app/api/admin/stats/route.js
 import { NextResponse } from 'next/server';
-import { verifyAdmin } from '@/middleware/adminAuth';
 import { connectToDatabase } from '@/lib/mongodb';
+import { verifyAdminFromCookie } from '@/lib/adminAuth'; // Import from shared location
 import User from '@/models/User';
 import Listing from '@/models/Listing';
 import Booking from '@/models/Booking';
 
 export async function GET(request) {
   try {
-    const auth = await verifyAdmin(request, 'admin');
+    // Verify admin using cookie from imported helper
+    const auth = await verifyAdminFromCookie(request, 'admin');
     if (auth.error) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
     }

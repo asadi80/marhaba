@@ -2,16 +2,15 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { connectToDatabase } from '@/lib/mongodb';
-import { checkHostExpiry } from "@/lib/checkHostExpiry";
 import User from '@/models/User';
 import bcrypt from "bcryptjs";
 
+// app/api/auth/login/route.js (add this check)
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
 
-    console.log('Login attempt for email:', email);
-
+    // Validation
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
@@ -20,61 +19,80 @@ export async function POST(request) {
     }
 
     await connectToDatabase();
-    console.log('Database connected');
 
+    // Find user
     const user = await User.findOne({ email });
-    console.log('User found:', user ? 'Yes' : 'No');
-    
     if (!user) {
-      return NextResponse.json(
-        { message: 'User with this Email not found' },
-        { status: 401 }
-      );
-    }
-   
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('Password valid:', isValidPassword);
-    
-    if (!isValidPassword) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    const expiryResult = await checkHostExpiry(user);
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { message: 'Please verify your email address before logging in. Check your inbox for the verification link.' },
+        { status: 401 }
+      );
+    }
 
-    // Create MarhabaToken
-    const marhabaToken = jwt.sign(
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Check if host account is approved
+    if (user.role === 'host' && user.status !== 'confirmed' && user.status !== 'active') {
+      return NextResponse.json(
+        { message: 'Your host account is pending approval. You will receive an email once approved.' },
+        { status: 401 }
+      );
+    }
+
+    // Create token
+    const token = jwt.sign(
       { 
         userId: user._id, 
         email: user.email, 
         name: user.name,
-        userType: user.role,
         role: user.role,
-        tokenType: 'MarhabaToken'
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // REMOVED cookie setting - now just return token in response body
-    console.log('Login successful for:', email);
-    
-    return NextResponse.json({
+    // Prepare user response
+    const userResponse = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phoneNumber: user.phoneNumber,
+      status: user.status,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+    };
+
+    const response = NextResponse.json({
       success: true,
-      message: expiryResult.message || "Login successful",
-      statusUpdated: expiryResult.updated || false,
-      marhabaToken,  // Send token in response body
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        userType: user.role,
-        role: user.role,
-        status: user.status,
-      },
+      message: 'Login successful',
+      user: userResponse,
     });
+    
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    
+    return response;
     
   } catch (error) {
     console.error('Login error:', error);

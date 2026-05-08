@@ -6,7 +6,7 @@ import User from '@/models/User';
 
 export async function GET(request) {
   try {
-    const token = request.cookies.get('MarhabaToken')?.value;
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json(

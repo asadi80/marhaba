@@ -4,73 +4,79 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import "./style.css";
+
+function VerificationNotice({ email, onResend }) {
+  return (
+    <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-start">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="ml-3 flex-1">
+          <p className="text-sm text-yellow-700">
+            Please verify your email address before logging in.
+            <button
+              onClick={onResend}
+              className="ml-2 font-medium text-yellow-800 hover:text-yellow-900 underline"
+            >
+              Resend verification email
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  // useEffect(() => {
+  //   localStorage.removeItem("token");
+  //   localStorage.removeItem("user");
+  //   localStorage.removeItem("userType");
+  // }, []);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
-  
-  // Clear any existing session first
-  localStorage.removeItem('marhabaToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('userType');
-  localStorage.removeItem('tokenExpiry');
-  
-  try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    
-    const data = await res.json();
-    console.log("Login response:", { ok: res.ok, hasToken: !!data.marhabaToken, userRole: data.user?.userType });
-    
-    if (res.ok && data.marhabaToken) {
-      // Store data
-      localStorage.setItem('marhabaToken', data.marhabaToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('userType', data.user.userType);
-      localStorage.setItem('tokenExpiry', String(Date.now() + (7 * 24 * 60 * 60 * 1000)));
-      
-      // Verify storage
-      console.log("Stored token:", localStorage.getItem('marhabaToken'));
-      console.log("Stored user:", localStorage.getItem('user'));
-      
-      const userRole = data.user?.userType || data.user?.role;
-      console.log("User role determined:", userRole);
-      
-      // Check if routes exist before redirecting
-      const redirectPaths = {
-        admin: '/admin',
-        super_admin: '/admin',
-        host: '/host-dashboard',
-        user: '/dashboard'
-      };
-      
-      const redirectPath = redirectPaths[userRole] || '/dashboard';
-      console.log("Attempting to redirect to:", redirectPath);
-      
-      // Use window.location for hard redirect
-      router.replace(redirectPath);
-      
-    } else {
-      console.log("Login failed:", data.message);
-      setError(data.message || "Login failed");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include", // Important for cookies
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Redirect based on role
+        const role = data.user?.role;
+        if (role === "admin" || role === "super_admin") {
+          router.push("/admin");
+        } else if (role === "host") {
+          router.push("/host-dashboard");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        setError(data.message || "Login failed");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Something went wrong");
       setLoading(false);
     }
-  } catch (err) {
-    console.error("Login error:", err);
-    setError("Something went wrong");
-    setLoading(false);
-  }
-};
+  };
+
   return (
     <>
       <div className="page-wrap">
@@ -83,7 +89,7 @@ export default function LoginPage() {
             <div
               className="font-display"
               style={{
-                fontStyle: "italic",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
                 fontWeight: 300,
                 fontSize: 22,
                 color: "#fff",

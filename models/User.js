@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "confirmed", "suspended"],
-      default: function() {
+      default: function () {
         if (
           this.role === "user" ||
           this.role === "admin" ||
@@ -37,7 +37,7 @@ const UserSchema = new mongoose.Schema(
         }
         return "pending";
       },
-      required: function() {
+      required: function () {
         return this.role === "host";
       },
     },
@@ -55,6 +55,33 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
+    // Email confirmation fields
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // Password reset fields
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+    },
 
     hostDetails: {
       rating: { type: Number, default: 0 },
@@ -63,6 +90,10 @@ const UserSchema = new mongoose.Schema(
       joinedDate: { type: Date, default: Date.now },
       confirmedAt: { type: Date },
       expiresAt: { type: Date },
+      notificationSent: {
+        oneWeek: { type: Boolean, default: false },
+        twoDays: { type: Boolean, default: false },
+      },
     },
 
     userDetails: {
@@ -75,7 +106,7 @@ const UserSchema = new mongoose.Schema(
 );
 
 // 🔥 FIXED: Single pre-save middleware without using 'next'
-UserSchema.pre("save", function() {
+UserSchema.pre("save", function () {
   // If host is confirmed → set expiry
   if (this.role === "host" && this.status === "confirmed") {
     if (!this.hostExpiryDate) {
@@ -90,7 +121,7 @@ UserSchema.pre("save", function() {
   if (this.status === "pending") {
     this.hostExpiryDate = null;
   }
-  
+
   // No need to call next() - just return
 });
 
@@ -100,7 +131,7 @@ UserSchema.pre("save", function() {
 //   if (!this.isModified("password")) {
 //     return;
 //   }
-  
+
 //   const salt = await bcrypt.genSalt(10);
 //   this.password = await bcrypt.hash(this.password, salt);
 // });

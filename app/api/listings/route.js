@@ -43,7 +43,7 @@ export async function GET(request) {
 // POST - Create new listing (host only)
 export async function POST(request) {
   try {
-    const token = request.cookies.get('MarhabaToken')?.value;
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json(
@@ -66,9 +66,9 @@ export async function POST(request) {
     }
     
     // Extract data from request body
-    const { title, description, price, location, coordinates, images, amenities } = await request.json();
+    const { title, description, price, location, coordinates, images, amenities,  rules, category } = await request.json();
     
-    console.log('Received listing data:', { title, description, price, location, coordinates, images, amenities }); // Debug log
+    console.log('Received listing data:', { title, description, price, location, coordinates, images, amenities,rules, category }); // Debug log
     
     // Validation
     if (!title || !description || !price || !location || !coordinates) {
@@ -106,6 +106,8 @@ export async function POST(request) {
       images: images.filter(img => img && img.trim() !== ''), // Remove empty image URLs
       amenities: amenities || [],
       host: user._id,
+      rules: rules || [],
+      category: category || 'city'
     });
     
     // Update host's total listings count

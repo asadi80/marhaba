@@ -1,13 +1,14 @@
 // app/api/admin/users/route.js
 import { NextResponse } from 'next/server';
-import { verifyAdmin } from '@/middleware/adminAuth';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
+import { verifyAdminFromCookie } from '@/lib/adminAuth'; // Import from shared location
+
 
 export async function GET(request) {
   try {
     // Verify admin access
-    const auth = await verifyAdmin(request, 'admin');
+    const auth = await  verifyAdminFromCookie(request, 'admin');
     if (auth.error) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
