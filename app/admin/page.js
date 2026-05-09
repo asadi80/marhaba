@@ -308,7 +308,7 @@ export default function AdminDashboard() {
                               </div>
                               <div>
                                 {/* Clickable name → detail page */}
-                                <Link href={`/admin/users/${user._id}`} className="user-name-link">
+                                <Link href={`/admin/user/${user._id}`} className="user-name-link">
                                   {user.name}
                                 </Link>
                                 <div className="text-[11px] text-[#999]">#{user._id.slice(-6)}</div>
