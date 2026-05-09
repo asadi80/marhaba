@@ -1,10 +1,9 @@
-// app/reset-password/page.jsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-// import "./style.css";
+import "./style.css";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -13,20 +12,23 @@ function ResetPasswordContent() {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState(true);
 
   useEffect(() => {
     if (!token) {
       setIsValidToken(false);
-      setError("Invalid or missing reset token");
+      setError("Invalid or expired reset link");
     }
   }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setMessage("");
     setError("");
@@ -46,22 +48,30 @@ function ResetPasswordContent() {
     try {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword: password }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          newPassword: password,
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        setMessage("Password reset successfully! Redirecting to login...");
+        setMessage(
+          "Password reset successfully! Redirecting to login..."
+        );
+
         setTimeout(() => {
           router.push("/login");
-        }, 3000);
+        }, 2500);
       } else {
         setError(data.message || "Something went wrong");
       }
     } catch (err) {
-      console.error("Reset password error:", err);
+      console.error(err);
       setError("Something went wrong");
     } finally {
       setLoading(false);
@@ -71,9 +81,11 @@ function ResetPasswordContent() {
   if (!isValidToken) {
     return (
       <div className="page-wrap">
+        {/* LEFT */}
         <div className="left-panel">
           <div className="panel-deco" />
           <div className="panel-deco2" />
+
           <Link href="/" style={{ textDecoration: "none" }}>
             <div
               className="font-display"
@@ -96,14 +108,97 @@ function ResetPasswordContent() {
               </span>
             </div>
           </Link>
+
+          <div>
+            <div
+              className="font-display"
+              style={{
+                fontStyle: "italic",
+                fontWeight: 300,
+                fontSize: 38,
+                color: "#fff",
+                lineHeight: 1.15,
+                marginBottom: "1rem",
+              }}
+            >
+              Reset link
+              <br />
+              expired.
+            </div>
+
+            <p
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.35)",
+                lineHeight: 1.75,
+              }}
+            >
+              Your password reset link is invalid or has expired.
+              Request a new secure reset link.
+            </p>
+          </div>
         </div>
+
+        {/* RIGHT */}
         <div className="right-panel">
           <div className="form-wrap">
-            <div className="error-box fu" style={{ textAlign: "center" }}>
-              Invalid or expired reset link. Please request a new one.
+            <div className="mobile-logo">
+              <Link href="/" style={{ textDecoration: "none" }}>
+                <div
+                  className="font-display"
+                  style={{
+                    fontStyle: "italic",
+                    fontWeight: 300,
+                    fontSize: 22,
+                    color: "#111118",
+                    marginBottom: "2.5rem",
+                  }}
+                >
+                  mar
+                  <span
+                    style={{
+                      fontStyle: "normal",
+                      fontWeight: 500,
+                      color: "#e8c547",
+                    }}
+                  >
+                    haba
+                  </span>
+                </div>
+              </Link>
             </div>
-            <Link href="/forgot-password" className="submit-btn" style={{ textAlign: "center", display: "block" }}>
-              Request new link →
+
+            <div className="error-box">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="6"
+                  stroke="#A32D2D"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M7 4v3.5M7 9.5h.01"
+                  stroke="#A32D2D"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+
+              Invalid or expired reset link
+            </div>
+
+            <Link
+              href="/forgot-password"
+              className="submit-btn"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                textDecoration: "none",
+              }}
+            >
+              request new link →
             </Link>
           </div>
         </div>
@@ -113,7 +208,7 @@ function ResetPasswordContent() {
 
   return (
     <div className="page-wrap">
-      {/* ── Left Panel ── */}
+      {/* LEFT PANEL */}
       <div className="left-panel">
         <div className="panel-deco" />
         <div className="panel-deco2" />
@@ -153,10 +248,11 @@ function ResetPasswordContent() {
               marginBottom: "1rem",
             }}
           >
-            Create new
+            Create a new
             <br />
             password.
           </div>
+
           <p
             style={{
               fontSize: 13,
@@ -168,15 +264,36 @@ function ResetPasswordContent() {
           </p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 20,
+          }}
+        >
           {[
-            { val: "10,000+", label: "active travelers", c: "#378ADD" },
-            { val: "5,000+", label: "trusted hosts", c: "#e8c547" },
-            { val: "98%", label: "satisfaction rate", c: "#1D9E75" },
+            {
+              val: "Secure",
+              label: "password encryption",
+              c: "#378ADD",
+            },
+            {
+              val: "Protected",
+              label: "account recovery",
+              c: "#e8c547",
+            },
+            {
+              val: "Trusted",
+              label: "authentication system",
+              c: "#1D9E75",
+            },
           ].map(({ val, label, c }) => (
             <div
               key={label}
-              style={{ borderTop: `3px solid ${c}`, paddingTop: "0.8rem" }}
+              style={{
+                borderTop: `3px solid ${c}`,
+                paddingTop: "0.8rem",
+              }}
             >
               <div
                 className="font-display"
@@ -190,6 +307,7 @@ function ResetPasswordContent() {
               >
                 {val}
               </div>
+
               <div
                 style={{
                   fontSize: 10,
@@ -206,9 +324,10 @@ function ResetPasswordContent() {
         </div>
       </div>
 
-      {/* ── Right Panel ── */}
+      {/* RIGHT PANEL */}
       <div className="right-panel">
         <div className="form-wrap">
+          {/* MOBILE LOGO */}
           <div className="mobile-logo">
             <Link href="/" style={{ textDecoration: "none" }}>
               <div
@@ -249,11 +368,21 @@ function ResetPasswordContent() {
             >
               New password.
             </h1>
-            <p style={{ fontSize: 12, color: "#999", marginBottom: "2rem" }}>
+
+            <p
+              style={{
+                fontSize: 12,
+                color: "#999",
+                marginBottom: "2rem",
+              }}
+            >
               Remember your password?{" "}
               <Link
                 href="/login"
-                style={{ color: "#185FA5", textDecoration: "none" }}
+                style={{
+                  color: "#185FA5",
+                  textDecoration: "none",
+                }}
               >
                 Back to login
               </Link>
@@ -263,7 +392,13 @@ function ResetPasswordContent() {
           {message && (
             <div className="success-box fu">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="#27500A" strokeWidth="1.2" />
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="6"
+                  stroke="#27500A"
+                  strokeWidth="1.2"
+                />
                 <path
                   d="M4.5 7l2 2 3-4"
                   stroke="#27500A"
@@ -272,6 +407,7 @@ function ResetPasswordContent() {
                   strokeLinejoin="round"
                 />
               </svg>
+
               {message}
             </div>
           )}
@@ -279,7 +415,13 @@ function ResetPasswordContent() {
           {error && (
             <div className="error-box fu">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="#A32D2D" strokeWidth="1.2" />
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="6"
+                  stroke="#A32D2D"
+                  strokeWidth="1.2"
+                />
                 <path
                   d="M7 4v3.5M7 9.5h.01"
                   stroke="#A32D2D"
@@ -287,6 +429,7 @@ function ResetPasswordContent() {
                   strokeLinecap="round"
                 />
               </svg>
+
               {error}
             </div>
           )}
@@ -301,50 +444,129 @@ function ResetPasswordContent() {
               }}
             >
               <div>
-                <label className="field-label">New Password</label>
+                <label className="field-label">
+                  New password
+                </label>
+
                 <input
                   type="password"
                   required
                   className="field-input"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) =>
+                    setPassword(e.target.value)
+                  }
                 />
               </div>
+
               <div>
-                <label className="field-label">Confirm Password</label>
+                <label className="field-label">
+                  Confirm password
+                </label>
+
                 <input
                   type="password"
                   required
                   className="field-input"
                   placeholder="••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
                 />
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="submit-btn">
-              {loading ? "resetting..." : "reset password →"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="submit-btn"
+            >
+              {loading
+                ? "resetting password..."
+                : "reset password →"}
             </button>
           </form>
+
+          <div
+            className="fu fu3"
+            style={{
+              marginTop: "1.75rem",
+              textAlign: "center",
+            }}
+          >
+            <div className="security-tag">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path
+                  d="M5 1L1.5 2.5v3C1.5 7.4 3 8.8 5 9.5c2-0.7 3.5-2.1 3.5-4V2.5L5 1z"
+                  stroke="#0F6E56"
+                  strokeWidth="1"
+                  strokeLinejoin="round"
+                />
+              </svg>
+
+              Protected by industry-standard encryption
+            </div>
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .success-box {
+          background: #eaf3de;
+          border: 1px solid #c5d9b1;
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 12px;
+          color: #27500a;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 1.25rem;
+        }
+
+        .error-box {
+          background: #fdecec;
+          border: 1px solid #f5c2c2;
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 12px;
+          color: #a32d2d;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 1.25rem;
+        }
+      `}</style>
     </div>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="page-wrap">
-        <div className="right-panel" style={{ justifyContent: "center", alignItems: "center" }}>
-          <div className="form-wrap" style={{ textAlign: "center" }}>
-            Loading...
+    <Suspense
+      fallback={
+        <div className="page-wrap">
+          <div
+            className="right-panel"
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <div
+              className="form-wrap"
+              style={{
+                textAlign: "center",
+              }}
+            >
+              Loading...
+            </div>
           </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );
