@@ -56,11 +56,20 @@ export default function ListingsPage() {
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <div className="font-display" style={{ fontStyle: 'italic', fontWeight: 300, fontSize: 20, color: '#fff' }}>
-                mar<span style={{ fontStyle: 'normal', fontWeight: 500, color: '#e8c547' }}>haba</span>
-              </div>
+              <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
             <div className="desktop-nav" style={{ display: 'flex', gap: 2 }}>
               {NAV_LINKS.map(({ href, label, active }) => (
                 <Link key={href} href={href} className={`nav-link${active ? ' active' : ''}`}>{label}</Link>

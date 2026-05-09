@@ -85,28 +85,20 @@ export default function LoginPage() {
           <div className="panel-deco" />
           <div className="panel-deco2" />
 
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <div
-              className="font-display"
+          <Link
+              href="/"
               style={{
+                textDecoration: "none",
                 fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 300,
-                fontSize: 22,
-                color: "#fff",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#fcfcfc",
+                letterSpacing: "1px",
               }}
             >
-              mar
-              <span
-                style={{
-                  fontStyle: "normal",
-                  fontWeight: 500,
-                  color: "#e8c547",
-                }}
-              >
-                haba
-              </span>
-            </div>
-          </Link>
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
+
 
           <div>
             <div

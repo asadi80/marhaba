@@ -55,7 +55,20 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <Link href="/" className="relative z-10 w-fit no-underline">
           <span className="font-light text-[22px] text-white [font-family:'Fraunces',serif]">
-            mar<span className="font-medium text-[#e8c547]">haba</span>
+                <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#1a1a2e",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
+
           </span>
         </Link>
 

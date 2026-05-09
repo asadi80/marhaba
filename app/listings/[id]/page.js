@@ -830,20 +830,20 @@ export default function ListingDetail({ params }) {
         >
           {/* LEFT */}
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div
-                className="font-display"
-                style={{
-                  fontStyle: isAr ? "normal" : "italic",
-                  fontWeight: 300,
-                  fontSize: 20,
-                  color: "#fff",
-                }}
-              >
-                mar
-                <span style={{ fontWeight: 500, color: "#e8c547" }}>haba</span>
-              </div>
+             <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
 
             {/* Dashboard-style tabs */}
             <div className="desktop-nav" style={{ display: "flex", gap: 6 }}>

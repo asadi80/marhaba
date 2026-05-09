@@ -303,12 +303,13 @@ export default function HostBookings() {
                 fontFamily: "'Cairo', 'Tajawal', sans-serif",
                 fontWeight: 500,
                 fontSize: "26px",
-                color: "#ffffff",
+                color: "#fdfdfd",
                 letterSpacing: "1px",
               }}
             >
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
 
           <div
             className="desktop-nav"

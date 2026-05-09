@@ -247,9 +247,20 @@ console.log(cloudData);
         <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
           {/* NAV */}
           <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-            <Link href="/" style={{ textDecoration: "none", fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'Fraunces', serif", fontWeight: 500, fontSize: "24px", color: "#ffffff" }}>
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+              <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>
                 {userInitials}

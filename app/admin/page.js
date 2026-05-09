@@ -217,7 +217,20 @@ export default function AdminDashboard() {
         <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="font-display italic font-light text-xl text-white tracking-tight">
-              mar<span className="not-italic font-medium text-[#e8c547]">haba</span>
+                 <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
+
             </div>
             <div className="flex gap-0.5">
               {TABS.map((tab) => (
@@ -337,7 +350,7 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3">
                             {/* View button → same detail page */}
                             <Link
-                              href={`/admin/users/${user._id}`}
+                              href={`/admin/user/${user._id}`}
                               className="text-[11px] text-[#185FA5] border border-[#185FA5]/25 px-3 py-1 rounded hover:bg-[#E6F1FB] transition-all inline-block"
                             >
                               view

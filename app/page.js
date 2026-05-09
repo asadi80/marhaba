@@ -975,7 +975,7 @@ const fetchNearbyListings = async (lat, lng) => {
                 letterSpacing: "1px",
               }}
             >
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
 
             {/* Location Button */}

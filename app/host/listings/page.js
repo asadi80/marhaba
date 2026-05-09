@@ -350,9 +350,20 @@ useEffect(() => {
 
         {/* Nav */}
         <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(26,26,46,0.97)", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: 26, color: "#f3f3f5", letterSpacing: "1px" }}>
-            mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
-          </Link>
+              <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
+
           <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <Link href="/host-dashboard" className="nav-link">{t.overview}</Link>
             <Link href="/host/listings"  className="nav-link active">{t.myListings}</Link>

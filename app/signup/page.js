@@ -70,29 +70,20 @@ export default function Signup() {
         {/* ── Left Panel ── */}
         <div className="left-panel">
           <div>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div
-                className="font-display"
-                style={{
-                  fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 22,
-                  color: "#fff",
-                  marginBottom: "3rem",
-                }}
-              >
-                mar
-                <span
-                  style={{
-                    fontStyle: "normal",
-                    fontWeight: 500,
-                    color: "#e8c547",
-                  }}
-                >
-                  haba
-                </span>
-              </div>
+              <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
             <div className="left-dots">
               {Array.from({ length: 24 }).map((_, i) => (
                 <span key={i} />
