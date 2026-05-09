@@ -158,30 +158,20 @@ export default function Signup() {
         <div className="right-panel">
           <div className="form-wrap">
             {/* Mobile logo */}
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <div
-                className="font-display fu"
-                style={{
-                  fontStyle: "italic",
-                  fontWeight: 300,
-                  fontSize: 22,
-                  color: "#111118",
-                  marginBottom: "2rem",
-                }}
-              >
-                mar
-                <span
-                  style={{
-                    fontStyle: "normal",
-                    fontWeight: 500,
-                    color: "#e8c547",
-                  }}
-                >
-                  haba
-                </span>
-                <style>{`@media (min-width: 900px) { .hide-on-desktop { display: none !important; } }`}</style>
-              </div>
+                <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#1a1a2e",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
+
 
             <div className="fu">
               <h1
