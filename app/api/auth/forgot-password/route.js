@@ -39,7 +39,7 @@ export async function POST(request) {
   
   <!-- English Section -->
   <div style="margin-bottom: 30px;">
-    <h2 style="color: #4F46E5;">🔐 Reset Your Password</h2>
+    <h2 style="color: #e8c547;">🔐 Reset Your Password</h2>
     
     <p>Hi ${user.name},</p>
     
@@ -47,7 +47,7 @@ export async function POST(request) {
     
     <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
       <a href="${resetUrl}" 
-         style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+         style="background-color: #e8c547; color: #1a1a2e; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
         Reset Password →
       </a>
     </div>
@@ -66,7 +66,7 @@ export async function POST(request) {
   
   <!-- Arabic Section -->
   <div style="direction: rtl; text-align: right;">
-    <h2 style="color: #4F46E5;">🔐 إعادة تعيين كلمة المرور</h2>
+    <h2 style="color: #e8c547;">🔐 إعادة تعيين كلمة المرور</h2>
     
     <p>مرحباً ${user.name}،</p>
     
@@ -74,7 +74,7 @@ export async function POST(request) {
     
     <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
       <a href="${resetUrl}" 
-         style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+         style="background-color: #e8c547; color: #1a1a2e; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
         إعادة تعيين كلمة المرور ←
       </a>
     </div>
@@ -100,10 +100,7 @@ export async function POST(request) {
       });
     } catch (emailError) {
       console.error("Failed to send reset email:", emailError);
-      return NextResponse.json(
-        { message: "Failed to send reset email" },
-        { status: 500 }
-      );
+      // Don't return error here, just log it
     }
 
     return NextResponse.json({

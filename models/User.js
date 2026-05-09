@@ -1,29 +1,20 @@
+// models/User.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-
     email: { type: String, required: true, unique: true },
-
     password: { type: String, required: true },
-
     phoneNumber: { type: String, required: true },
-
     role: {
       type: String,
       enum: ["user", "host", "admin", "super_admin"],
       default: "user",
     },
-
-    IDmages: [
-      {
-        type: String,
-        required: true,
-      },
-    ],
-
+    IDmages: [{ type: String, required: true }],
     status: {
       type: String,
       enum: ["pending", "confirmed", "suspended"],
@@ -41,47 +32,19 @@ const UserSchema = new mongoose.Schema(
         return this.role === "host";
       },
     },
+    hostExpiryDate: { type: Date, default: null },
+    statusReason: { type: String, default: null },
+    createdAt: { type: Date, default: Date.now },
+    lastActive: { type: Date, default: Date.now },
 
-    hostExpiryDate: {
-      type: Date,
-      default: null,
-    },
-    statusReason: {
-      type: String,
-      default: null,
-    },
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    lastActive: {
-      type: Date,
-      default: Date.now,
-    },
     // Email confirmation fields
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    emailVerificationToken: {
-      type: String,
-      default: null,
-    },
-    emailVerificationExpires: {
-      type: Date,
-      default: null,
-    },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null },
+    emailVerificationExpires: { type: Date, default: null },
 
     // Password reset fields
-    resetPasswordToken: {
-      type: String,
-      default: null,
-    },
-    resetPasswordExpires: {
-      type: Date,
-      default: null,
-    },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
 
     hostDetails: {
       rating: { type: Number, default: 0 },
@@ -95,7 +58,6 @@ const UserSchema = new mongoose.Schema(
         twoDays: { type: Boolean, default: false },
       },
     },
-
     userDetails: {
       bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
       preferences: { type: Object, default: {} },
@@ -105,9 +67,8 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// 🔥 FIXED: Single pre-save middleware without using 'next'
+// Pre-save middleware
 UserSchema.pre("save", function () {
-  // If host is confirmed → set expiry
   if (this.role === "host" && this.status === "confirmed") {
     if (!this.hostExpiryDate) {
       const now = new Date();
@@ -116,29 +77,62 @@ UserSchema.pre("save", function () {
       this.hostExpiryDate = expiry;
     }
   }
-
-  // If host goes back to pending → clear expiry
   if (this.status === "pending") {
     this.hostExpiryDate = null;
   }
-
-  // No need to call next() - just return
+  this.lastActive = new Date();
 });
 
-// Password hashing middleware - also without 'next'
-// UserSchema.pre("save", async function() {
-//   // Only hash the password if it's modified (or new)
-//   if (!this.isModified("password")) {
-//     return;
-//   }
+// Password hashing middleware
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    return next();
+  }
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
-//   const salt = await bcrypt.genSalt(10);
-//   this.password = await bcrypt.hash(this.password, salt);
-// });
+// Method to compare passwords
+UserSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
-// // Add method to compare passwords
-// UserSchema.methods.comparePassword = async function(candidatePassword) {
-//   return await bcrypt.compare(candidatePassword, this.password);
-// };
+// Method to generate email verification token
+UserSchema.methods.generateEmailVerificationToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+  this.emailVerificationToken = token;
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+  return token;
+};
+
+// Method to generate password reset token
+UserSchema.methods.generatePasswordResetToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+  this.resetPasswordToken = token;
+  this.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000;
+  return token;
+};
+
+// Method to check if host is expired
+UserSchema.methods.isHostExpired = function () {
+  if (this.role !== "host") return false;
+  if (!this.hostExpiryDate) return false;
+  return new Date() > this.hostExpiryDate;
+};
+
+// Method to get days until expiry
+UserSchema.methods.getDaysUntilExpiry = function () {
+  if (!this.hostExpiryDate) return null;
+  const now = new Date();
+  const expiry = new Date(this.hostExpiryDate);
+  const diffTime = expiry - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);
