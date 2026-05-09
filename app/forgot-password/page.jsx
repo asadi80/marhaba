@@ -1,8 +1,6 @@
-// app/forgot-password/page.jsx
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 // import "./style.css";
 
@@ -11,10 +9,10 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setMessage("");
     setError("");
@@ -22,20 +20,24 @@ export default function ForgotPasswordPage() {
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        setMessage(data.message || "Password reset link sent to your email!");
+        setMessage(
+          data.message || "Password reset link sent to your email!"
+        );
         setEmail("");
       } else {
         setError(data.message || "Something went wrong");
       }
     } catch (err) {
-      console.error("Forgot password error:", err);
+      console.error(err);
       setError("Something went wrong");
     } finally {
       setLoading(false);
@@ -45,7 +47,7 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <div className="page-wrap">
-        {/* ── Left Panel ── */}
+        {/* LEFT PANEL */}
         <div className="left-panel">
           <div className="panel-deco" />
           <div className="panel-deco2" />
@@ -85,10 +87,11 @@ export default function ForgotPasswordPage() {
                 marginBottom: "1rem",
               }}
             >
-              Forgot your
+              Reset your
               <br />
-              password?
+              password.
             </div>
+
             <p
               style={{
                 fontSize: 13,
@@ -96,20 +99,40 @@ export default function ForgotPasswordPage() {
                 lineHeight: 1.75,
               }}
             >
-              Enter your email address and we'll send you a link to reset your
-              password.
+              Enter your email address and we’ll send you a secure reset link.
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+            }}
+          >
             {[
-              { val: "10,000+", label: "active travelers", c: "#378ADD" },
-              { val: "5,000+", label: "trusted hosts", c: "#e8c547" },
-              { val: "98%", label: "satisfaction rate", c: "#1D9E75" },
+              {
+                val: "Secure",
+                label: "password recovery",
+                c: "#378ADD",
+              },
+              {
+                val: "24/7",
+                label: "account protection",
+                c: "#e8c547",
+              },
+              {
+                val: "Encrypted",
+                label: "secure reset links",
+                c: "#1D9E75",
+              },
             ].map(({ val, label, c }) => (
               <div
                 key={label}
-                style={{ borderTop: `3px solid ${c}`, paddingTop: "0.8rem" }}
+                style={{
+                  borderTop: `3px solid ${c}`,
+                  paddingTop: "0.8rem",
+                }}
               >
                 <div
                   className="font-display"
@@ -123,6 +146,7 @@ export default function ForgotPasswordPage() {
                 >
                   {val}
                 </div>
+
                 <div
                   style={{
                     fontSize: 10,
@@ -139,10 +163,10 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        {/* ── Right Panel ── */}
+        {/* RIGHT PANEL */}
         <div className="right-panel">
           <div className="form-wrap">
-            {/* Mobile logo */}
+            {/* MOBILE LOGO */}
             <div className="mobile-logo">
               <Link href="/" style={{ textDecoration: "none" }}>
                 <div
@@ -181,13 +205,23 @@ export default function ForgotPasswordPage() {
                   marginBottom: 6,
                 }}
               >
-                Reset password.
+                Forgot password.
               </h1>
-              <p style={{ fontSize: 12, color: "#999", marginBottom: "2rem" }}>
+
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "#999",
+                  marginBottom: "2rem",
+                }}
+              >
                 Remember your password?{" "}
                 <Link
                   href="/login"
-                  style={{ color: "#185FA5", textDecoration: "none" }}
+                  style={{
+                    color: "#185FA5",
+                    textDecoration: "none",
+                  }}
                 >
                   Back to login
                 </Link>
@@ -197,7 +231,13 @@ export default function ForgotPasswordPage() {
             {message && (
               <div className="success-box fu">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6" stroke="#27500A" strokeWidth="1.2" />
+                  <circle
+                    cx="7"
+                    cy="7"
+                    r="6"
+                    stroke="#27500A"
+                    strokeWidth="1.2"
+                  />
                   <path
                     d="M4.5 7l2 2 3-4"
                     stroke="#27500A"
@@ -206,6 +246,7 @@ export default function ForgotPasswordPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
+
                 {message}
               </div>
             )}
@@ -227,6 +268,7 @@ export default function ForgotPasswordPage() {
                     strokeLinecap="round"
                   />
                 </svg>
+
                 {error}
               </div>
             )}
@@ -241,7 +283,10 @@ export default function ForgotPasswordPage() {
                 }}
               >
                 <div>
-                  <label className="field-label">Email address</label>
+                  <label className="field-label">
+                    Email address
+                  </label>
+
                   <input
                     type="email"
                     required
@@ -253,14 +298,23 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="submit-btn">
-                {loading ? "sending..." : "send reset link →"}
+              <button
+                type="submit"
+                disabled={loading}
+                className="submit-btn"
+              >
+                {loading
+                  ? "sending reset link..."
+                  : "send reset link →"}
               </button>
             </form>
 
             <div
               className="fu fu3"
-              style={{ marginTop: "1.75rem", textAlign: "center" }}
+              style={{
+                marginTop: "1.75rem",
+                textAlign: "center",
+              }}
             >
               <div className="security-tag">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -271,6 +325,7 @@ export default function ForgotPasswordPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
+
                 Protected by industry-standard encryption
               </div>
             </div>
@@ -286,6 +341,19 @@ export default function ForgotPasswordPage() {
           padding: 10px 12px;
           font-size: 12px;
           color: #27500a;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 1.25rem;
+        }
+
+        .error-box {
+          background: #fdecec;
+          border: 1px solid #f5c2c2;
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 12px;
+          color: #a32d2d;
           display: flex;
           align-items: center;
           gap: 8px;
