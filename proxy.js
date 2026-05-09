@@ -6,7 +6,7 @@ export function proxy(request) {
   const { pathname } = request.nextUrl;
   
   // Public routes
-  const publicRoutes = ['/', '/login', '/signup', '/verify-email-pending', '/resend-verification'];
+  const publicRoutes = ['/', '/login', '/signup', '/verify-email-pending', '/resend-verification', '/forgot-password', 'reset-password'];
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
