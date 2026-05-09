@@ -196,7 +196,7 @@ const fetchNearbyListings = async (lat, lng) => {
     { icon: "🏙️", label: isAr ? "مدينة" : "City" },
     { icon: "🏡", label: isAr ? "ريفي" : "Countryside" },
     { icon: "🏊", label: isAr ? "مسبح" : "Pool" },
-    { icon: "🌴", label: isAr ? "جزيرة" : "Islands" },
+    { icon: "🏜️", label: isAr? "صحراء":   "Desert" },
     { icon: "🏕️", label: isAr ? "تخييم" : "Camping" },
     { icon: "🛖", label: isAr ? "كوخ" : "Cabins" },
   ];
