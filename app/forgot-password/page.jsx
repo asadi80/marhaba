@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import "./style.css";
+// import "./style.css";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
