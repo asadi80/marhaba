@@ -85,7 +85,7 @@ export default function HostDashboard() {
         });
 
         // Check if ID was already uploaded
-        if (user?.idVerificationUrl) {
+        if (user?.idImages?.length > 0) {
           setUploadDone(true);
         }
       } catch (e) {
