@@ -144,7 +144,7 @@ export default function HostDashboard() {
       formData.append("folder", "host_ids");
 
       const cloudRes = await fetch(
-        `api/upload`,
+        `api/upload/host-id`,
         { method: "POST", body: formData }
       );
       const cloudData = await cloudRes.json();
@@ -160,7 +160,7 @@ console.log(cloudData);
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idVerificationUrl: cloudData.secure_url,
+          idVerificationUrl: cloudData.url,
           publicId: cloudData.public_id,
         }),
       });
