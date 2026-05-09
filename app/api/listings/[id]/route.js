@@ -1,26 +1,29 @@
+// app/api/listings/[id]/route.js
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { connectToDatabase } from '@/lib/mongodb';
 import Listing from '@/models/Listing';
 import Booking from '@/models/Booking';
+import mongoose from 'mongoose';
 
-// GET - Fetch single listing with its booked and blocked dates
+// GET - Fetch single listing with its booked and blocked dates (public)
 export async function GET(request, { params }) {
   try {
     console.log('=== GET Listing API Called ===');
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
     const unwrappedParams = await params;
     const { id } = unwrappedParams;
     
     if (!id) {
       return NextResponse.json(
         { message: 'Listing ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: 'Invalid listing ID format' },
         { status: 400 }
       );
     }
@@ -37,20 +40,31 @@ export async function GET(request, { params }) {
       );
     }
     
-    // Get bookings (confirmed and pending)
-    const bookings = await Booking.find({
-      listing: id,
-      status: { $in: ['confirmed', 'pending'] }
-    }).select('checkIn checkOut status');
+    // Get bookings (confirmed and pending) - only for authenticated users or just public info
+    const token = request.cookies.get('token')?.value;
+    let bookedDates = [];
     
-    // Format booked dates
-    const bookedDates = bookings.map(booking => ({
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-      status: booking.status,
-    }));
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Only show booked dates if user is authenticated (for booking purposes)
+        const bookings = await Booking.find({
+          listing: id,
+          status: { $in: ['confirmed', 'pending'] }
+        }).select('checkIn checkOut status');
+        
+        bookedDates = bookings.map(booking => ({
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+          status: booking.status,
+        }));
+      } catch (e) {
+        // If token is invalid, still show public info
+        console.log('Invalid token for listing view');
+      }
+    }
     
-    // Add blocked dates from listing (ensure it's an array)
+    // Add blocked dates from listing
     const blockedDates = (listing.blockedDates || []).map(block => ({
       checkIn: block.startDate,
       checkOut: block.endDate,
@@ -58,8 +72,8 @@ export async function GET(request, { params }) {
       reason: block.reason,
     }));
     
-    // Combine both booked and blocked dates
-    const allUnavailableDates = [...bookedDates, ...blockedDates];
+    // Combine both booked and blocked dates (only if authenticated)
+    const allUnavailableDates = token ? [...bookedDates, ...blockedDates] : blockedDates;
     
     return NextResponse.json({
       listing,
@@ -79,7 +93,7 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT - Update listing (including blocked dates)
+// PUT - Update listing (including blocked dates) - Host only
 export async function PUT(request, { params }) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -121,7 +135,7 @@ export async function PUT(request, { params }) {
       );
     }
     
-    const { title, description, price, location, images, amenities, blockedDates,rules, coordinates } = await request.json();
+    const { title, description, price, location, images, amenities, blockedDates, rules, coordinates, category } = await request.json();
     
     const updatedListing = await Listing.findByIdAndUpdate(
       id,
@@ -130,10 +144,11 @@ export async function PUT(request, { params }) {
         description, 
         price, 
         location, 
-         coordinates,
+        coordinates,
         images, 
         rules,
         amenities,
+        category: category || listing.category,
         blockedDates: blockedDates || listing.blockedDates || []
       },
       { new: true, runValidators: true }
@@ -167,6 +182,13 @@ export async function POST(request, { params }) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const unwrappedParams = await params;
     const { id } = unwrappedParams;
+    
+    if (!id) {
+      return NextResponse.json(
+        { message: 'Listing ID is required' },
+        { status: 400 }
+      );
+    }
     
     await connectToDatabase();
     

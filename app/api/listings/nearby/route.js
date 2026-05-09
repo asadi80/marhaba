@@ -1,6 +1,6 @@
 // app/api/listings/nearby/route.js
 import { NextResponse } from "next/server";
-import {connectToDatabase} from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import Listing from "@/models/Listing";
 
 // Haversine formula to calculate distance between two coordinates (in km)
@@ -30,34 +30,68 @@ export async function GET(request) {
     const lng = parseFloat(searchParams.get('lng'));
     const radius = parseFloat(searchParams.get('radius')) || 50; // Default 50km radius
     const limit = parseInt(searchParams.get('limit')) || 20;
+    const category = searchParams.get('category'); // Optional category filter
     
     // Validate coordinates
     if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
       return NextResponse.json(
-        { error: "Invalid coordinates. Please provide lat and lng parameters." },
+        { 
+          success: false,
+          error: "Invalid coordinates. Please provide valid lat and lng parameters." 
+        },
         { status: 400 }
       );
     }
     
-    // Fetch all listings with coordinates
-    const allListings = await Listing.find({
-      coordinates: { $exists: true, $ne: null }
-    })
+    // Build query
+    let query = {
+      coordinates: { $exists: true, $ne: null },
+      status: 'confirmed' // Only show confirmed listings
+    };
+    
+    // Add category filter if provided
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+    
+    // Fetch all listings with coordinates (only needed fields for performance)
+    const allListings = await Listing.find(query)
+      .select('title description price location coordinates images category host createdAt')
+      .lean(); // Use lean() for better performance
+    
+    if (!allListings || allListings.length === 0) {
+      return NextResponse.json({
+        success: true,
+        center: { lat, lng },
+        radius,
+        count: 0,
+        listings: [],
+        message: "No listings found in the specified area"
+      });
+    }
     
     // Filter listings by distance
     const nearbyListings = allListings
       .map(listing => {
+        // Skip listings without valid coordinates
+        if (!listing.coordinates || 
+            !listing.coordinates.lat || 
+            !listing.coordinates.lng) {
+          return null;
+        }
+        
         const distance = getDistanceFromLatLonInKm(
           lat, lng,
           listing.coordinates.lat,
           listing.coordinates.lng
         );
+        
         return {
-          ...listing.toObject(),
+          ...listing,
           distance: Math.round(distance * 10) / 10 // Round to 1 decimal
         };
       })
-      .filter(listing => listing.distance <= radius)
+      .filter(listing => listing && listing.distance <= radius)
       .sort((a, b) => a.distance - b.distance)
       .slice(0, limit);
     
@@ -66,13 +100,21 @@ export async function GET(request) {
       center: { lat, lng },
       radius,
       count: nearbyListings.length,
-      listings: nearbyListings
+      listings: nearbyListings,
+      filters: {
+        category: category || 'all',
+        limit
+      }
     });
     
   } catch (error) {
     console.error('Nearby listings error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: error.message 
+      },
       { status: 500 }
     );
   }

@@ -36,16 +36,16 @@ const UserSchema = new mongoose.Schema(
     statusReason: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
     lastActive: { type: Date, default: Date.now },
-
+    
     // Email confirmation fields
     emailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String, default: null },
     emailVerificationExpires: { type: Date, default: null },
-
+    
     // Password reset fields
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
-
+    
     hostDetails: {
       rating: { type: Number, default: 0 },
       totalListings: { type: Number, default: 0 },
@@ -64,9 +64,11 @@ const UserSchema = new mongoose.Schema(
       memberSince: { type: Date, default: Date.now },
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
+// Pre-save middleware
+// Pre-save middleware
 // Pre-save middleware
 UserSchema.pre("save", function () {
   if (this.role === "host" && this.status === "confirmed") {
@@ -77,56 +79,45 @@ UserSchema.pre("save", function () {
       this.hostExpiryDate = expiry;
     }
   }
+
   if (this.status === "pending") {
     this.hostExpiryDate = null;
   }
+
   this.lastActive = new Date();
 });
 
-// Password hashing middleware
-UserSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
-  }
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
 
 // Method to compare passwords
-UserSchema.methods.comparePassword = async function (candidatePassword) {
+UserSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Method to generate email verification token
-UserSchema.methods.generateEmailVerificationToken = function () {
-  const token = crypto.randomBytes(32).toString("hex");
+UserSchema.methods.generateEmailVerificationToken = function() {
+  const token = crypto.randomBytes(32).toString('hex');
   this.emailVerificationToken = token;
   this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
   return token;
 };
 
 // Method to generate password reset token
-UserSchema.methods.generatePasswordResetToken = function () {
-  const token = crypto.randomBytes(32).toString("hex");
+UserSchema.methods.generatePasswordResetToken = function() {
+  const token = crypto.randomBytes(32).toString('hex');
   this.resetPasswordToken = token;
   this.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000;
   return token;
 };
 
 // Method to check if host is expired
-UserSchema.methods.isHostExpired = function () {
+UserSchema.methods.isHostExpired = function() {
   if (this.role !== "host") return false;
   if (!this.hostExpiryDate) return false;
   return new Date() > this.hostExpiryDate;
 };
 
 // Method to get days until expiry
-UserSchema.methods.getDaysUntilExpiry = function () {
+UserSchema.methods.getDaysUntilExpiry = function() {
   if (!this.hostExpiryDate) return null;
   const now = new Date();
   const expiry = new Date(this.hostExpiryDate);
