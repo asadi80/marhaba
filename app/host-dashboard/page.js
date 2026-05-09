@@ -152,6 +152,7 @@ export default function HostDashboard() {
       if (!cloudRes.ok || cloudData.error) {
         throw new Error(cloudData.error?.message || "Cloudinary upload failed");
       }
+console.log(cloudData);
 
       // Save the URL to the user record via your API
       const saveRes = await fetch("/api/host/upload-id", {
