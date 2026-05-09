@@ -4,7 +4,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import "./style.css";
+// import "./style.css";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
