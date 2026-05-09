@@ -5,7 +5,6 @@ import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from "bcryptjs";
 
-// app/api/auth/login/route.js (add this check)
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
@@ -46,12 +45,31 @@ export async function POST(request) {
       );
     }
 
-    // Check if host account is approved
-    if (user.role === 'host' && user.status !== 'confirmed' && user.status !== 'active') {
-      return NextResponse.json(
-        { message: 'Your host account is pending approval. You will receive an email once approved.' },
-        { status: 401 }
-      );
+    // For hosts: Allow login even if pending, but track their status
+    let loginMessage = 'Login successful';
+    let requiresIdUpload = false;
+    let isHostApproved = true;
+
+    if (user.role === 'host') {
+      // Check if host has uploaded ID images
+      const hasIdImages = user.idImages && user.idImages.length > 0;
+      
+      if (user.status === 'pending') {
+        if (!hasIdImages) {
+          // Host hasn't uploaded ID yet - they need to upload
+          requiresIdUpload = true;
+          loginMessage = 'Please upload your ID/Passport to complete your host verification';
+        } else {
+          // Host has uploaded ID but waiting for approval
+          loginMessage = 'Your host account is pending admin approval. Some features are limited until approved.';
+          isHostApproved = false;
+        }
+      } else if (user.status === 'suspended') {
+        return NextResponse.json(
+          { message: 'Your account has been suspended. Please contact support.' },
+          { status: 401 }
+        );
+      }
     }
 
     // Create token
@@ -61,6 +79,8 @@ export async function POST(request) {
         email: user.email, 
         name: user.name,
         role: user.role,
+        status: user.status,
+        requiresIdUpload: requiresIdUpload
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -76,11 +96,14 @@ export async function POST(request) {
       status: user.status,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
+      requiresIdUpload: requiresIdUpload,
+      hasIdImages: user.idImages && user.idImages.length > 0,
+      isHostApproved: isHostApproved
     };
 
     const response = NextResponse.json({
       success: true,
-      message: 'Login successful',
+      message: loginMessage,
       user: userResponse,
     });
     

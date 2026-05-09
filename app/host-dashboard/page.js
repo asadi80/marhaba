@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
+import IDUploadModal from "@/components/IDUploadModal";
 import "./style.css";
 
 export default function HostDashboard() {
@@ -11,6 +12,8 @@ export default function HostDashboard() {
   const { lang, t, toggleLanguage } = useLanguage();
   const isAr = lang === 'ar';
   const [user, setUser] = useState(null);
+  const [showIDModal, setShowIDModal] = useState(false);
+  const [showApprovalBanner, setShowApprovalBanner] = useState(false);
   const [stats, setStats] = useState({
     totalListings: 0,
     totalBookings: 0,
@@ -55,7 +58,6 @@ export default function HostDashboard() {
         }
 
         const user = userData?.user || null;
-        console.log(user);
         
         const listings = Array.isArray(listingsData?.listings)
           ? listingsData.listings
@@ -72,15 +74,36 @@ export default function HostDashboard() {
           return;
         }
 
-        const confirmed = bookings.filter((b) => b.status === "confirmed");
+        // Check if host needs to upload ID
+        const needsIDUpload = user?.status === "pending" && (!user?.idImages || user?.idImages?.length === 0);
+        const isPendingWithID = user?.status === "pending" && user?.idImages?.length > 0;
+        
+        if (needsIDUpload) {
+          setShowIDModal(true);
+        } else if (isPendingWithID) {
+          setShowApprovalBanner(true);
+        }
 
-        setStats({
-          totalListings: listings.length,
-          totalBookings: bookings.length,
-          confirmedBookings: confirmed.length,
-          totalEarnings: confirmed.reduce((s, b) => s + (b.totalPrice || 0), 0),
-          rating: user?.hostDetails?.rating || 0,
-        });
+        // Only fetch stats for approved hosts or show empty stats for pending
+        if (user?.status === "confirmed") {
+          const confirmed = bookings.filter((b) => b.status === "confirmed");
+          setStats({
+            totalListings: listings.length,
+            totalBookings: bookings.length,
+            confirmedBookings: confirmed.length,
+            totalEarnings: confirmed.reduce((s, b) => s + (b.totalPrice || 0), 0),
+            rating: user?.hostDetails?.rating || 0,
+          });
+        } else {
+          // Show zero stats for pending hosts
+          setStats({
+            totalListings: 0,
+            totalBookings: 0,
+            confirmedBookings: 0,
+            totalEarnings: 0,
+            rating: 0,
+          });
+        }
       } catch (e) {
         console.error("Error fetching host data:", e);
         router.push("/login");
@@ -101,6 +124,13 @@ export default function HostDashboard() {
       console.error("Logout error:", error);
       router.push("/login");
     }
+  };
+
+  const handleIDUploadComplete = () => {
+    setShowIDModal(false);
+    setShowApprovalBanner(true);
+    // Refresh user data
+    window.location.reload();
   };
 
   const AVATAR_PAL = [
@@ -139,32 +169,8 @@ export default function HostDashboard() {
       </div>
     );
 
-  if (user?.role === "host" && user?.status === "pending") {
-    const isExpired = user?.statusReason === "expired";
-
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f7f6f2",
-          flexDirection: "column",
-          textAlign: "center",
-          padding: "20px",
-        }}
-      >
-        <h2 style={{ marginBottom: 10 }}>
-          {isExpired ? t.subscriptionExpired : t.accountPendingApproval}
-        </h2>
-
-        <p style={{ color: "#777", maxWidth: 400 }}>
-          {isExpired ? t.expiredMessage : t.pendingMessage}
-        </p>
-      </div>
-    );
-  }
+  // Remove the old pending check that blocks access
+  // Now hosts can access dashboard even when pending
 
   const userInitials =
     user?.name
@@ -177,6 +183,11 @@ export default function HostDashboard() {
   const avgPerBooking = stats.totalEarnings / (stats.confirmedBookings || 1);
   const pendingCount = stats.totalBookings - stats.confirmedBookings;
 
+  // Check if host is approved
+  const isApproved = user?.status === "confirmed";
+  const isPendingWithID = user?.status === "pending" && user?.idImages?.length > 0;
+  const needsIDUpload = user?.status === "pending" && (!user?.idImages || user?.idImages?.length === 0);
+
   // Format currency based on language
   const formatCurrency = (amount) => {
     if (isAr) {
@@ -186,9 +197,9 @@ export default function HostDashboard() {
   };
 
   const NAV_LINKS = [
-    { href: "/host-dashboard", label: t.overview },
-    { href: "/host/listings", label: t.myListings },
-    { href: "/host/bookings", label: t.bookings },
+    { href: "/host-dashboard", label: t.overview, requiresApproval: false },
+    { href: "/host/listings", label: t.myListings, requiresApproval: true },
+    { href: "/host/bookings", label: t.bookings, requiresApproval: true },
   ];
 
   const STAT_CARDS = [
@@ -241,12 +252,14 @@ export default function HostDashboard() {
       label: t.manageListings,
       desc: t.manageListingsDesc,
       accent: "#7F77DD",
+      requiresApproval: true,
     },
     {
       href: "/host/bookings",
       label: t.viewBookings,
       desc: t.viewBookingsDesc,
       accent: "#1D9E75",
+      requiresApproval: true,
     },
   ];
 
@@ -288,6 +301,12 @@ export default function HostDashboard() {
         
         .nav-link.active {
           color: #e8c547;
+        }
+        
+        .nav-link.disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+          pointer-events: none;
         }
         
         .logout-btn {
@@ -350,6 +369,11 @@ export default function HostDashboard() {
           padding: 8px 0;
         }
         
+        .mobile-nav-link.disabled {
+          opacity: 0.4;
+          pointer-events: none;
+        }
+        
         .stat-card {
           background: #fff;
           border-radius: 12px;
@@ -372,7 +396,13 @@ export default function HostDashboard() {
           transition: transform 0.2s, box-shadow 0.2s;
         }
         
-        .action-card:hover {
+        .action-card.disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          pointer-events: none;
+        }
+        
+        .action-card:hover:not(.disabled) {
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(0,0,0,0.08);
         }
@@ -439,10 +469,16 @@ export default function HostDashboard() {
               className="desktop-nav-links"
               style={{ display: "flex", gap: 2 }}
             >
-              {NAV_LINKS.map(({ href, label }) => (
-                <Link key={href} href={href} className="nav-link">
-                  {label}
-                </Link>
+              {NAV_LINKS.map(({ href, label, requiresApproval }) => (
+                requiresApproval && !isApproved ? (
+                  <span key={href} className="nav-link disabled" style={{ cursor: 'not-allowed' }}>
+                    {label}
+                  </span>
+                ) : (
+                  <Link key={href} href={href} className="nav-link">
+                    {label}
+                  </Link>
+                )
               ))}
             </div>
           </div>
@@ -498,7 +534,7 @@ export default function HostDashboard() {
                 borderRadius: 20,
               }}
             >
-              {t.host}
+              {!isApproved ? t.pending : t.host}
             </span>
             <button onClick={handleLogout} className="logout-btn">
               {t.logout}
@@ -530,7 +566,6 @@ export default function HostDashboard() {
 
         {/* Mobile nav */}
         <div className={`mobile-nav-menu ${mobileNavOpen ? "open" : ""}`}>
-          {/* Language Toggle in Mobile Menu */}
           <button
             onClick={toggleLanguage}
             style={{
@@ -549,15 +584,21 @@ export default function HostDashboard() {
             {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
           </button>
           
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="mobile-nav-link"
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {label}
-            </Link>
+          {NAV_LINKS.map(({ href, label, requiresApproval }) => (
+            requiresApproval && !isApproved ? (
+              <span key={href} className="mobile-nav-link disabled">
+                {label} 🔒
+              </span>
+            ) : (
+              <Link
+                key={href}
+                href={href}
+                className="mobile-nav-link"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                {label}
+              </Link>
+            )
           ))}
           <div
             style={{
@@ -602,6 +643,29 @@ export default function HostDashboard() {
             padding: "1.75rem 1.5rem",
           }}
         >
+          {/* Approval Banner for pending hosts with ID uploaded */}
+          {showApprovalBanner && (
+            <div style={{
+              background: "#fef3c7",
+              borderLeft: `4px solid #e8c547`,
+              padding: "1rem",
+              borderRadius: 8,
+              marginBottom: "1.25rem",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <svg className="h-5 w-5 text-yellow-400" style={{ width: 20, height: 20 }} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <strong style={{ color: "#92400e" }}>Account Pending Approval</strong>
+                  <p style={{ color: "#92400e", margin: 0, fontSize: 13 }}>
+                    Your ID has been submitted and is under review. You'll have full access once approved.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* PROFILE STRIP */}
           <div
             className="fu profile-strip"
@@ -657,24 +721,26 @@ export default function HostDashboard() {
                 </div>
               </div>
             </div>
-            <Link
-              href="/host/listings"
-              style={{
-                background: "#1a1a2e",
-                color: "#e8c547",
-                padding: "8px 18px",
-                borderRadius: 8,
-                fontSize: 12,
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              + {t.newListing}
-            </Link>
+            {isApproved && (
+              <Link
+                href="/host/listings"
+                style={{
+                  background: "#1a1a2e",
+                  color: "#e8c547",
+                  padding: "8px 18px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                + {t.newListing}
+              </Link>
+            )}
           </div>
 
-          {/* STAT CARDS */}
+          {/* STAT CARDS - Show placeholder if not approved */}
           <div
             className="fu fu1 stats-grid"
             style={{
@@ -688,7 +754,7 @@ export default function HostDashboard() {
               <div
                 key={label}
                 className="stat-card"
-                style={{ "--accent": accent }}
+                style={{ "--accent": accent, opacity: isApproved ? 1 : 0.6 }}
               >
                 <div
                   className="font-display"
@@ -701,7 +767,7 @@ export default function HostDashboard() {
                     marginBottom: 4,
                   }}
                 >
-                  {value}
+                  {!isApproved && (label === t.activeListings || label === t.totalBookings) ? "—" : value}
                 </div>
                 <div
                   style={{
@@ -715,14 +781,14 @@ export default function HostDashboard() {
                 </div>
                 {sub && (
                   <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>
-                    {sub}
+                    {!isApproved && label === t.totalEarnings ? "—" : sub}
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* BOOKING SUMMARY */}
+          {/* BOOKING SUMMARY - Show placeholder if not approved */}
           <div
             className="fu fu2"
             style={{
@@ -731,6 +797,7 @@ export default function HostDashboard() {
               border: "1px solid rgba(0,0,0,0.07)",
               padding: "1.5rem",
               marginBottom: "1.25rem",
+              opacity: isApproved ? 1 : 0.6,
             }}
           >
             <div
@@ -752,16 +819,18 @@ export default function HostDashboard() {
               >
                 {t.bookingSummary}
               </div>
-              <Link
-                href="/host/bookings"
-                style={{
-                  fontSize: 12,
-                  color: "#185FA5",
-                  textDecoration: "none",
-                }}
-              >
-                {t.viewAll} →
-              </Link>
+              {isApproved && (
+                <Link
+                  href="/host/bookings"
+                  style={{
+                    fontSize: 12,
+                    color: "#185FA5",
+                    textDecoration: "none",
+                  }}
+                >
+                  {t.viewAll} →
+                </Link>
+              )}
             </div>
 
             <div
@@ -790,7 +859,7 @@ export default function HostDashboard() {
                         marginBottom: 4,
                       }}
                     >
-                      {value}
+                      {!isApproved ? "—" : value}
                     </div>
                     <div
                       style={{
@@ -842,43 +911,84 @@ export default function HostDashboard() {
               gap: 10,
             }}
           >
-            {ACTION_CARDS.map(({ href, label, desc, accent }) => (
-              <Link
-                key={href}
-                href={href}
-                className="action-card"
-                style={{ "--accent": accent }}
-              >
+            {ACTION_CARDS.map(({ href, label, desc, accent, requiresApproval }) => (
+              requiresApproval && !isApproved ? (
                 <div
-                  className="font-display"
-                  style={{
-                    fontStyle: isAr ? "normal" : "italic",
-                    fontWeight: 300,
-                    fontSize: 20,
-                    color: "#111118",
-                    marginBottom: 6,
-                  }}
+                  key={href}
+                  className="action-card disabled"
+                  style={{ "--accent": accent }}
                 >
-                  {label}
+                  <div
+                    className="font-display"
+                    style={{
+                      fontStyle: isAr ? "normal" : "italic",
+                      fontWeight: 300,
+                      fontSize: 20,
+                      color: "#111118",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {label} 🔒
+                  </div>
+                  <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6 }}>
+                    {desc}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: accent,
+                      marginTop: "1rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {t.availableAfterApproval}
+                  </div>
                 </div>
-                <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6 }}>
-                  {desc}
-                </p>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: accent,
-                    marginTop: "1rem",
-                    fontWeight: 500,
-                  }}
+              ) : (
+                <Link
+                  key={href}
+                  href={href}
+                  className="action-card"
+                  style={{ "--accent": accent }}
                 >
-                  {t.go} →
-                </div>
-              </Link>
+                  <div
+                    className="font-display"
+                    style={{
+                      fontStyle: isAr ? "normal" : "italic",
+                      fontWeight: 300,
+                      fontSize: 20,
+                      color: "#111118",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6 }}>
+                    {desc}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: accent,
+                      marginTop: "1rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {t.go} →
+                  </div>
+                </Link>
+              )
             ))}
           </div>
         </main>
       </div>
+
+      {/* ID Upload Modal */}
+      <IDUploadModal 
+        isOpen={showIDModal}
+        onClose={() => router.push("/dashboard")}
+        onSuccess={handleIDUploadComplete}
+      />
     </>
   );
 }

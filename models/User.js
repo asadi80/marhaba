@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema(
       enum: ["user", "host", "admin", "super_admin"],
       default: "user",
     },
-    IDmages: [{ type: String, required: true }],
+    idImages: [{ type: String, required: true }],
     status: {
       type: String,
       enum: ["pending", "confirmed", "suspended"],
