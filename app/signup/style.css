@@ -20,15 +20,17 @@
         }
 
         /* ─ Left panel ─ */
-        .left-panel {
+       .left-panel {
           display: none;
           flex-direction: column;
           justify-content: space-between;
-          width: 400px;
+          width: 380px;
           flex-shrink: 0;
           background: #1a1a2e;
           padding: 2.5rem 3rem;
           border-right: 1px solid rgba(232,197,71,0.1);
+          position: relative;
+          overflow: hidden;
         }
 
         .left-dots {
