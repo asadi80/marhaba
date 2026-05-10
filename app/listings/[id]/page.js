@@ -913,20 +913,20 @@ export default function ListingDetail({ params }) {
               onClick={handleLogout}
               style={{
                 background: "transparent",
-                border: "1px solid rgba(255,255,255,0.2)",
+                border: "1px solid #e8c547",
                 borderRadius: 6,
                 padding: "5px 10px",
                 fontSize: 12,
-                color: "#fff",
+                color: "#e8c547",
                 cursor: "pointer",
                 transition: "all 0.2s",
                 fontFamily: "inherit",
               }}
               onMouseEnter={(e) =>
-                (e.target.style.border = "1px solid #e8c547")
+                (e.target.style.border = "1px solid #e64949")
               }
               onMouseLeave={(e) =>
-                (e.target.style.border = "1px solid rgba(255,255,255,0.2)")
+                (e.target.style.border = "1px solid #e8c547")
               }
             >
               {t.logout || "Logout"}
