@@ -654,14 +654,14 @@ useEffect(() => {
           )}
         </main>
 
-        <footer style={{ background: "#111118", borderTop: "1px solid rgba(232,197,71,0.08)", padding: "2rem 1.5rem", marginTop: "3rem" }}>
+        {/* <footer style={{ background: "#111118", borderTop: "1px solid rgba(232,197,71,0.08)", padding: "2rem 1.5rem", marginTop: "3rem" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 18, color: "#fff" }}>
               mar<span style={{ fontStyle: "normal", fontWeight: 500, color: "#e8c547" }}>haba</span>
             </div>
             <p style={{ fontSize: 11, color: "#333" }}>© 2024 Marhaba. {t.rights}</p>
           </div>
-        </footer>
+        </footer> */}
       </div>
     </>
   );
