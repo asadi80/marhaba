@@ -131,18 +131,8 @@ export default function Signup() {
       >
         {/* ── Left panel ──────────────────────────────────────────────────── */}
         <div
-          style={{
-            width: "38%",
-            background: "linear-gradient(160deg, #1a1a2e 0%, #2d2d5e 60%, #1a1a2e 100%)",
-            padding: "3rem 2.5rem",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            position: "relative",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-          className="left-panel-hide"
+    
+          className="left-panel"
         >
           {/* Subtle pattern */}
           <div
@@ -165,20 +155,18 @@ export default function Signup() {
 
           <div style={{ position: "relative" }}>
             {/* Logo */}
-            <Link
+             <Link
               href="/"
               style={{
                 textDecoration: "none",
-                fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
-                fontStyle: isAr ? "normal" : "italic",
-                fontWeight: 300,
-                fontSize: 26,
-                color: "#fff",
-                display: "block",
-                marginBottom: "2.5rem",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#fcfcfc",
+                letterSpacing: "1px",
               }}
             >
-              {copy.logo}
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
 
             {/* Dot grid */}
