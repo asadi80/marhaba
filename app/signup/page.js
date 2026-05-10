@@ -4,7 +4,39 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
-import "./style.css";
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-[10px] tracking-widest uppercase text-[#999] mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Input(props) {
+  return (
+    <input
+      {...props}
+      className="
+        w-full px-3 py-2.5 rounded-lg text-[13px] text-[#111118]
+        bg-[#fafaf8] border border-black/10
+        font-[family-name:var(--font-body)]
+        placeholder:text-[#c0bfbb]
+        outline-none
+        transition-[border-color,background,box-shadow] duration-150
+        hover:border-black/20
+        focus:border-[#185FA5] focus:bg-white focus:shadow-[0_0_0_3px_rgba(24,95,165,0.08)]
+      "
+    />
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Signup() {
   const router = useRouter();
@@ -22,15 +54,15 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ── Translations ──────────────────────────────────────────────────────────
+  // ── Translations ────────────────────────────────────────────────────────────
   const copy = {
-    logo:          isAr ? <>مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span></> : <>mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span></>,
-    heroTitle:     isAr ? <>مساحتك،<br />قواعدك.</> : <>Your space,<br />your rules.</>,
-    heroSub:       isAr ? "انضم إلى آلاف المستخدمين والمضيفين الذين يبنون علاقات حقيقية عبر منصتنا." : "Join thousands of users and hosts building meaningful connections through our platform.",
+    logo:         isAr ? <>مر<span className="font-bold text-[#e8c547]">حبا</span></> : <>mar<span className="font-bold text-[#e8c547]">haba</span></>,
+    heroTitle:    isAr ? <>مساحتك،<br />قواعدك.</> : <>Your space,<br />your rules.</>,
+    heroSub:      isAr ? "انضم إلى آلاف المستخدمين والمضيفين الذين يبنون علاقات حقيقية عبر منصتنا." : "Join thousands of users and hosts building meaningful connections through our platform.",
     stats: [
-      { stat: "12,400+", label: isAr ? "إعلان نشط"       : "active listings",   c: "#378ADD" },
-      { stat: "98%",     label: isAr ? "معدل الرضا"       : "satisfaction rate", c: "#e8c547" },
-      { stat: "40+",     label: isAr ? "مدينة مغطاة"      : "cities covered",    c: "#1D9E75" },
+      { stat: "12,400+", label: isAr ? "إعلان نشط"  : "active listings",   color: "#378ADD" },
+      { stat: "98%",     label: isAr ? "معدل الرضا"  : "satisfaction rate", color: "#e8c547" },
+      { stat: "40+",     label: isAr ? "مدينة مغطاة" : "cities covered",    color: "#1D9E75" },
     ],
     createAccount: isAr ? "إنشاء حساب"          : "Create account",
     alreadyHave:   isAr ? "لديك حساب بالفعل؟"   : "Already have one?",
@@ -61,14 +93,7 @@ export default function Signup() {
     langToggle:    isAr ? "🇬🇧 English"           : "🇸🇦 عربي",
   };
 
-  const arabicFont   = "'Cairo', 'Tajawal', 'Almarai', sans-serif";
-  const englishFont  = "'DM Mono', monospace";
-  const arabicDisplay  = "'Cairo', 'Tajawal', sans-serif";
-  const englishDisplay = "'Fraunces', serif";
-  const bodyFont    = isAr ? arabicFont    : englishFont;
-  const displayFont = isAr ? arabicDisplay : englishDisplay;
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -76,18 +101,12 @@ export default function Signup() {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setError(copy.pwMismatch);
-      return;
-    }
-    if (formData.password.length < 6) {
-      setError(copy.pwShort);
-      return;
-    }
+    if (formData.password !== formData.confirmPassword) return setError(copy.pwMismatch);
+    if (formData.password.length < 6) return setError(copy.pwShort);
 
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/signup", {
+      const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,8 +119,8 @@ export default function Signup() {
         credentials: "include",
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       localStorage.setItem("pendingVerificationEmail", formData.email);
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
@@ -113,177 +132,97 @@ export default function Signup() {
 
   return (
     <>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: ${bodyFont}; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      {/* Google Fonts */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        @keyframes fadeUp  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeUp    { animation: fadeUp 0.4s ease both; }
+        .animate-spin-fast { animation: spin 0.7s linear infinite; }
       `}</style>
 
       <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          direction: isAr ? "rtl" : "ltr",
-          fontFamily: bodyFont,
-        }}
+        dir={isAr ? "rtl" : "ltr"}
+        className="min-h-screen flex bg-[#f7f6f2]"
+        style={{ fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'DM Mono',monospace" }}
       >
-        {/* ── Left panel ──────────────────────────────────────────────────── */}
-        <div
-    
-          className="left-panel"
-        >
-          {/* Subtle pattern */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: "repeating-linear-gradient(45deg, #e8c547 0px, #e8c547 1px, transparent 1px, transparent 36px)",
-              opacity: 0.035,
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "radial-gradient(ellipse at 20% 50%, rgba(232,197,71,0.12) 0%, transparent 60%)",
-              pointerEvents: "none",
-            }}
-          />
 
-          <div style={{ position: "relative" }}>
+        {/* ── Left panel ──────────────────────────────────────────────────────── */}
+        <aside className="hidden lg:flex flex-col justify-between w-[380px] shrink-0 bg-[#1a1a2e] px-12 py-10 border-r border-[#e8c547]/10 relative overflow-hidden">
+          {/* Decorative patterns */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.035]"
+            style={{ backgroundImage: "repeating-linear-gradient(45deg,#e8c547 0px,#e8c547 1px,transparent 1px,transparent 36px)" }}
+          />
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_20%_50%,rgba(232,197,71,0.12)_0%,transparent_60%)]" />
+
+          <div className="relative space-y-8">
             {/* Logo */}
-             <Link
+            <Link
               href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#fcfcfc",
-                letterSpacing: "1px",
-              }}
+              className="no-underline text-[26px] text-white/90 tracking-wide"
+              style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500 }}
             >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+              مر<span className="font-bold text-[#e8c547]">حبا</span>
             </Link>
 
             {/* Dot grid */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(6,1fr)",
-                gap: 10,
-                marginBottom: "2rem",
-                width: "fit-content",
-              }}
-            >
+            <div className="grid grid-cols-6 gap-2.5 w-fit opacity-[0.08]">
               {Array.from({ length: 24 }).map((_, i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: "50%",
-                    background: "rgba(232,197,71,0.25)",
-                    display: "block",
-                  }}
-                />
+                <span key={i} className="block w-1.5 h-1.5 rounded-full bg-[#e8c547]" />
               ))}
             </div>
 
-            {/* Headline */}
-            <div
-              style={{
-                fontFamily: displayFont,
-                fontStyle: isAr ? "normal" : "italic",
-                fontWeight: 300,
-                fontSize: 36,
-                color: "#fff",
-                lineHeight: 1.15,
-                marginBottom: "1.25rem",
-              }}
-            >
-              {copy.heroTitle}
+            {/* Hero text */}
+            <div>
+              <h2
+                className="text-[36px] text-white font-light leading-[1.15] mb-5"
+                style={{
+                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontStyle: isAr ? "normal" : "italic",
+                }}
+              >
+                {copy.heroTitle}
+              </h2>
+              <p className="text-[13px] text-white/40 leading-relaxed">{copy.heroSub}</p>
             </div>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", lineHeight: 1.8 }}>
-              {copy.heroSub}
-            </p>
           </div>
 
           {/* Stats */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20, position: "relative" }}>
-            {copy.stats.map(({ stat, label, c }) => (
-              <div key={label} style={{ borderTop: `3px solid ${c}`, paddingTop: "0.8rem" }}>
+          <div className="flex flex-col gap-5 relative">
+            {copy.stats.map(({ stat, label, color }) => (
+              <div key={label} style={{ borderTop: `3px solid ${color}` }} className="pt-3">
                 <div
+                  className="text-[28px] text-white font-light leading-none"
                   style={{
-                    fontFamily: displayFont,
+                    fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
                     fontStyle: isAr ? "normal" : "italic",
-                    fontWeight: 300,
-                    fontSize: 28,
-                    color: "#fff",
-                    lineHeight: 1,
                   }}
                 >
                   {stat}
                 </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.28)",
-                    marginTop: 5,
-                  }}
-                >
+                <div className="text-[10px] tracking-widest uppercase text-white/30 mt-1.5">
                   {label}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </aside>
 
-        {/* ── Right panel ─────────────────────────────────────────────────── */}
-        <div
-          style={{
-            flex: 1,
-            background: "#f7f6f2",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "2rem 1.5rem",
-            overflowY: "auto",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 460,
-              animation: "fadeUp 0.4s ease both",
-            }}
-          >
-            {/* Top bar: mobile logo + lang toggle */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "2rem",
-              }}
-            >
-              {/* Mobile-only logo */}
+        {/* ── Right panel ─────────────────────────────────────────────────────── */}
+        <main className="flex-1 flex items-center justify-center px-6 py-8 overflow-y-auto">
+          <div className="w-full max-w-[460px] animate-fadeUp">
+
+            {/* Top bar */}
+            <div className="flex items-center justify-between mb-8">
+              {/* Mobile logo */}
               <Link
                 href="/"
+                className="lg:hidden no-underline text-[24px] text-[#1a1a2e] font-light"
                 style={{
-                  textDecoration: "none",
                   fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
                   fontStyle: isAr ? "normal" : "italic",
-                  fontWeight: 300,
-                  fontSize: 24,
-                  color: "#1a1a2e",
                 }}
-                className="mobile-logo-show"
               >
                 {copy.logo}
               </Link>
@@ -291,62 +230,44 @@ export default function Signup() {
               {/* Language toggle */}
               <button
                 onClick={toggleLanguage}
-                style={{
-                  background: "rgba(26,26,46,0.07)",
-                  border: "1px solid rgba(26,26,46,0.12)",
-                  borderRadius: 20,
-                  padding: "5px 14px",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  color: "#1a1a2e",
-                  fontFamily: bodyFont,
-                  fontWeight: 500,
-                  transition: "background 0.15s",
-                  marginLeft: isAr ? 0 : "auto",
-                  marginRight: isAr ? "auto" : 0,
-                }}
+                className="
+                  bg-[#1a1a2e]/[0.07] border border-[#1a1a2e]/[0.12]
+                  rounded-2xl px-3.5 py-1 text-[12px] font-medium text-[#1a1a2e]
+                  cursor-pointer transition-colors duration-150
+                  hover:bg-[#1a1a2e]/[0.12]
+                  ms-auto
+                "
+                style={{ fontFamily: "inherit" }}
               >
                 {copy.langToggle}
               </button>
             </div>
 
             {/* Heading */}
-            <div style={{ marginBottom: "1.75rem" }}>
+            <div className="mb-7">
               <h1
+                className="text-[30px] text-[#111118] font-light leading-tight mb-1.5"
                 style={{
-                  fontFamily: displayFont,
+                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
                   fontStyle: isAr ? "normal" : "italic",
-                  fontWeight: 300,
-                  fontSize: 30,
-                  color: "#111118",
-                  marginBottom: 6,
-                  lineHeight: 1.1,
                 }}
               >
                 {copy.createAccount}
               </h1>
-              <p style={{ fontSize: 12, color: "#999" }}>
+              <p className="text-[12px] text-[#999]">
                 {copy.alreadyHave}{" "}
-                <Link href="/login" style={{ color: "#185FA5", textDecoration: "none", fontWeight: 500 }}>
+                <Link href="/login" className="text-[#185FA5] no-underline font-medium">
                   {copy.signIn}
                 </Link>
               </p>
             </div>
 
             {/* User type toggle */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "#999",
-                  marginBottom: 8,
-                }}
-              >
+            <div className="mb-6">
+              <p className="text-[10px] tracking-widest uppercase text-[#999] mb-2">
                 {copy.joinAs}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { value: "user", label: copy.traveler, desc: copy.travelerDesc },
                   { value: "host", label: copy.host,     desc: copy.hostDesc     },
@@ -357,28 +278,19 @@ export default function Signup() {
                       key={value}
                       type="button"
                       onClick={() => setFormData({ ...formData, userType: value })}
-                      style={{
-                        background: active ? "#1a1a2e" : "#fff",
-                        border: active ? "2px solid #1a1a2e" : "2px solid #e5e3dc",
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                        cursor: "pointer",
-                        textAlign: isAr ? "right" : "left",
-                        transition: "all 0.15s",
-                        fontFamily: bodyFont,
-                      }}
+                      className={`
+                        rounded-xl px-4 py-3 cursor-pointer transition-all duration-150
+                        ${isAr ? "text-right" : "text-left"}
+                        ${active
+                          ? "bg-[#1a1a2e] border-2 border-[#1a1a2e]"
+                          : "bg-white border-2 border-[#e5e3dc] hover:border-black/20"}
+                      `}
+                      style={{ fontFamily: "inherit" }}
                     >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: active ? "#e8c547" : "#111118",
-                          marginBottom: 2,
-                        }}
-                      >
+                      <div className={`text-[13px] font-semibold mb-0.5 ${active ? "text-[#e8c547]" : "text-[#111118]"}`}>
                         {label}
                       </div>
-                      <div style={{ fontSize: 11, color: active ? "rgba(232,197,71,0.65)" : "#aaa" }}>
+                      <div className={`text-[11px] ${active ? "text-[#e8c547]/65" : "text-[#aaa]"}`}>
                         {desc}
                       </div>
                     </button>
@@ -388,85 +300,32 @@ export default function Signup() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: "1rem" }}>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <Field label={copy.fullName}>
+                <Input name="name" type="text" required placeholder={copy.namePh} value={formData.name} onChange={handleChange} />
+              </Field>
 
-                <Field label={copy.fullName}>
-                  <Input
-                    name="name"
-                    type="text"
-                    required
-                    placeholder={copy.namePh}
-                    value={formData.name}
-                    onChange={handleChange}
-                    bodyFont={bodyFont}
-                  />
+              <Field label={copy.email}>
+                <Input name="email" type="email" required placeholder={copy.emailPh} value={formData.email} onChange={handleChange} />
+              </Field>
+
+              <Field label={copy.phone}>
+                <Input name="phoneNumber" type="tel" required placeholder={copy.phonePh} value={formData.phoneNumber} onChange={handleChange} />
+              </Field>
+
+              {/* Password row */}
+              <div className="grid grid-cols-2 gap-2">
+                <Field label={copy.password}>
+                  <Input name="password" type="password" required placeholder={copy.passwordPh} value={formData.password} onChange={handleChange} />
                 </Field>
-
-                <Field label={copy.email}>
-                  <Input
-                    name="email"
-                    type="email"
-                    required
-                    placeholder={copy.emailPh}
-                    value={formData.email}
-                    onChange={handleChange}
-                    bodyFont={bodyFont}
-                  />
+                <Field label={copy.confirm}>
+                  <Input name="confirmPassword" type="password" required placeholder={copy.confirmPh} value={formData.confirmPassword} onChange={handleChange} />
                 </Field>
-
-                <Field label={copy.phone}>
-                  <Input
-                    name="phoneNumber"
-                    type="tel"
-                    required
-                    placeholder={copy.phonePh}
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    bodyFont={bodyFont}
-                  />
-                </Field>
-
-                {/* Password row */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Field label={copy.password}>
-                    <Input
-                      name="password"
-                      type="password"
-                      required
-                      placeholder={copy.passwordPh}
-                      value={formData.password}
-                      onChange={handleChange}
-                      bodyFont={bodyFont}
-                    />
-                  </Field>
-                  <Field label={copy.confirm}>
-                    <Input
-                      name="confirmPassword"
-                      type="password"
-                      required
-                      placeholder={copy.confirmPh}
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      bodyFont={bodyFont}
-                    />
-                  </Field>
-                </div>
               </div>
 
               {/* Error */}
               {error && (
-                <div
-                  style={{
-                    background: "#FFF5F5",
-                    border: "1px solid #FEB2B2",
-                    color: "#C53030",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    fontSize: 12,
-                    marginBottom: "1rem",
-                  }}
-                >
+                <div className="px-3.5 py-2.5 bg-[#FCEBEB] border border-[#a32d2d]/15 rounded-lg text-[12px] text-[#791F1F]">
                   {error}
                 </div>
               )}
@@ -475,112 +334,35 @@ export default function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                style={{
-                  width: "100%",
-                  background: loading ? "#555" : "#1a1a2e",
-                  color: "#e8c547",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "12px 20px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  fontFamily: bodyFont,
-                  transition: "background 0.15s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
+                className="
+                  w-full py-3 px-5 mt-1
+                  bg-[#1a1a2e] text-[#e8c547]
+                  rounded-xl border-none text-[13px] font-semibold
+                  flex items-center justify-center gap-2
+                  transition-[opacity,transform] duration-150
+                  hover:not(:disabled):opacity-90 hover:not(:disabled):-translate-y-px
+                  disabled:opacity-45 disabled:cursor-not-allowed
+                  cursor-pointer
+                "
+                style={{ fontFamily: "inherit" }}
               >
                 {loading && (
-                  <span
-                    style={{
-                      width: 14,
-                      height: 14,
-                      border: "2px solid rgba(232,197,71,0.3)",
-                      borderTopColor: "#e8c547",
-                      borderRadius: "50%",
-                      animation: "spin 0.7s linear infinite",
-                      display: "inline-block",
-                    }}
-                  />
+                  <span className="animate-spin-fast inline-block w-3.5 h-3.5 rounded-full border-2 border-[#e8c547]/30 border-t-[#e8c547]" />
                 )}
                 {loading ? copy.submitting : copy.submit}
               </button>
             </form>
 
-            {/* Legal note */}
-            <p
-              style={{
-                fontSize: 11,
-                color: "#bbb",
-                textAlign: "center",
-                marginTop: "1.25rem",
-                lineHeight: 1.7,
-              }}
-            >
+            {/* Legal */}
+            <p className="text-[11px] text-[#bbb] text-center mt-5 leading-relaxed">
               {copy.terms}{" "}
-              <span style={{ color: "#185FA5", cursor: "pointer" }}>{copy.termsLink}</span>{" "}
+              <span className="text-[#185FA5] cursor-pointer">{copy.termsLink}</span>{" "}
               {copy.and}{" "}
-              <span style={{ color: "#185FA5", cursor: "pointer" }}>{copy.privacyLink}</span>
+              <span className="text-[#185FA5] cursor-pointer">{copy.privacyLink}</span>
             </p>
           </div>
-        </div>
+        </main>
       </div>
-
-      {/* Responsive helpers */}
-      <style>{`
-        .left-panel-hide { display: flex; }
-        .mobile-logo-show { display: none; }
-        @media (max-width: 700px) {
-          .left-panel-hide { display: none !important; }
-          .mobile-logo-show { display: block !important; }
-        }
-      `}</style>
     </>
-  );
-}
-
-// ── Tiny sub-components ───────────────────────────────────────────────────────
-function Field({ label, children }) {
-  return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#999",
-          marginBottom: 5,
-        }}
-      >
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Input({ bodyFont, ...props }) {
-  return (
-    <input
-      {...props}
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        background: "#fff",
-        border: "1.5px solid #e5e3dc",
-        borderRadius: 8,
-        fontSize: 13,
-        color: "#111118",
-        fontFamily: bodyFont,
-        outline: "none",
-        transition: "border-color 0.15s",
-      }}
-      onFocus={(e) => (e.target.style.borderColor = "#1a1a2e")}
-      onBlur={(e)  => (e.target.style.borderColor = "#e5e3dc")}
-    />
   );
 }
