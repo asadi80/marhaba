@@ -488,8 +488,18 @@ console.log(cloudData);
         {/* NAV */}
         <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <Link href="/" style={{ textDecoration: "none", fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'Fraunces', serif", fontWeight: 500, fontSize: "24px", color: "#ffffff", letterSpacing: "1px" }}>
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
+                <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
             <div className="desktop-nav-links" style={{ display: "flex", gap: 2 }}>
               {NAV_LINKS.map(({ href, label }) => (
