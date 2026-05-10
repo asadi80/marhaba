@@ -1,46 +1,79 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import "./style.css";
+import { useLanguage } from "@/hooks/useLanguage";
 
-function VerificationNotice({ email, onResend }) {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Field({ label, children }) {
   return (
-    <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-      <div className="flex items-start">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <div className="ml-3 flex-1">
-          <p className="text-sm text-yellow-700">
-            Please verify your email address before logging in.
-            <button
-              onClick={onResend}
-              className="ml-2 font-medium text-yellow-800 hover:text-yellow-900 underline"
-            >
-              Resend verification email
-            </button>
-          </p>
-        </div>
-      </div>
+    <div>
+      <label className="block text-[10px] tracking-widest uppercase text-[#999] mb-1.5">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  // useEffect(() => {
-  //   localStorage.removeItem("token");
-  //   localStorage.removeItem("user");
-  //   localStorage.removeItem("userType");
-  // }, []);
 
+function Input(props) {
+  return (
+    <input
+      {...props}
+      className="
+        w-full px-3 py-2.5 rounded-lg text-[13px] text-[#111118]
+        bg-[#fafaf8] border border-black/10
+        font-[family-name:var(--font-body)]
+        placeholder:text-[#c0bfbb]
+        outline-none
+        transition-[border-color,background,box-shadow] duration-150
+        hover:border-black/20
+        focus:border-[#185FA5] focus:bg-white focus:shadow-[0_0_0_3px_rgba(24,95,165,0.08)]
+      "
+    />
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { lang, toggleLanguage } = useLanguage();
+  const isAr = lang === "ar";
+
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+
+  // ── Translations ────────────────────────────────────────────────────────────
+  const copy = {
+    logo:        isAr ? <>مر<span className="font-bold text-[#e8c547]">حبا</span></> : <>mar<span className="font-bold text-[#e8c547]">haba</span></>,
+    heroTitle:   isAr ? <>يسعدنا<br />عودتك.</> : <>Good to see<br />you again.</>,
+    heroSub:     isAr ? "سجّل دخولك لإدارة حجوزاتك وقوائمك وإعدادات حسابك." : "Sign in to manage your bookings, listings, and account settings.",
+    stats: [
+      { val: "10,000+", label: isAr ? "مسافر نشط"   : "active travelers", color: "#378ADD" },
+      { val: "5,000+",  label: isAr ? "مضيف موثوق"  : "trusted hosts",    color: "#e8c547" },
+      { val: "98%",     label: isAr ? "معدل الرضا"   : "satisfaction rate", color: "#1D9E75" },
+    ],
+    welcome:     isAr ? "أهلاً بعودتك."    : "Welcome back.",
+    noAccount:   isAr ? "ليس لديك حساب؟"  : "No account yet?",
+    signupFree:  isAr ? "سجّل مجاناً"      : "Sign up free",
+    emailLabel:  isAr ? "البريد الإلكتروني" : "Email",
+    emailPh:     isAr ? "ahmed@example.com" : "you@example.com",
+    passLabel:   isAr ? "كلمة المرور"      : "Password",
+    passPh:      "••••••••",
+    forgot:      isAr ? "نسيت؟"            : "forgot?",
+    submit:      isAr ? "تسجيل الدخول ←"  : "sign in →",
+    submitting:  isAr ? "جارٍ الدخول..."  : "signing in...",
+    security:    isAr ? "محمي بتشفير معياري" : "Protected by industry-standard encryption",
+    langToggle:  isAr ? "🇬🇧 English"      : "🇸🇦 عربي",
+    error:       isAr ? "حدث خطأ ما"      : "Something went wrong",
+  };
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -51,264 +84,222 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-        credentials: "include", // Important for cookies
+        credentials: "include",
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        // Redirect based on role
         const role = data.user?.role;
-        if (role === "admin" || role === "super_admin") {
-          router.push("/admin");
-        } else if (role === "host") {
-          router.push("/host-dashboard");
-        } else {
-          router.push("/dashboard");
-        }
+        if (role === "admin" || role === "super_admin") router.push("/admin");
+        else if (role === "host") router.push("/host-dashboard");
+        else router.push("/dashboard");
       } else {
-        setError(data.message || "Login failed");
+        setError(data.message || (isAr ? "فشل تسجيل الدخول" : "Login failed"));
         setLoading(false);
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Something went wrong");
+    } catch {
+      setError(copy.error);
       setLoading(false);
     }
   };
 
   return (
     <>
-      <div className="page-wrap">
-        {/* ── Left Panel ── */}
-        <div className="left-panel">
-          <div className="panel-deco" />
-          <div className="panel-deco2" />
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        @keyframes fadeUp  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        .animate-fadeUp   { animation: fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+        .fu1 { animation-delay: 0.08s; }
+        .fu2 { animation-delay: 0.16s; }
+        .fu3 { animation-delay: 0.24s; }
+        .animate-spin-fast { animation: spin 0.7s linear infinite; }
+      `}</style>
 
-          <Link
+      <div
+        dir={isAr ? "rtl" : "ltr"}
+        className="min-h-screen flex bg-[#f7f6f2]"
+        style={{ fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'DM Mono',monospace" }}
+      >
+
+        {/* ── Left panel ────────────────────────────────────────────────────── */}
+        <aside className="hidden lg:flex flex-col justify-between w-[380px] shrink-0 bg-[#1a1a2e] px-12 py-10 border-r border-[#e8c547]/10 relative overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute -bottom-16 -end-16 w-56 h-56 rounded-full border border-[#e8c547]/[0.08] pointer-events-none" />
+          <div className="absolute -bottom-5 -end-5 w-36 h-36 rounded-full border border-[#e8c547]/[0.06] pointer-events-none" />
+
+          <div className="relative space-y-10">
+            {/* Logo */}
+            <Link
               href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#fcfcfc",
-                letterSpacing: "1px",
-              }}
+              className="no-underline text-[26px] text-white/90 tracking-wide"
+              style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500 }}
             >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+              مر<span className="font-bold text-[#e8c547]">حبا</span>
             </Link>
 
-
-          <div>
-            <div
-              className="font-display"
-              style={{
-                fontStyle: "italic",
-                fontWeight: 300,
-                fontSize: 38,
-                color: "#fff",
-                lineHeight: 1.15,
-                marginBottom: "1rem",
-              }}
-            >
-              Good to see
-              <br />
-              you again.
+            {/* Hero text */}
+            <div>
+              <h2
+                className="text-[38px] text-white font-light leading-[1.15] mb-4"
+                style={{
+                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontStyle: isAr ? "normal" : "italic",
+                }}
+              >
+                {copy.heroTitle}
+              </h2>
+              <p className="text-[13px] text-white/35 leading-relaxed">{copy.heroSub}</p>
             </div>
-            <p
-              style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.35)",
-                lineHeight: 1.75,
-              }}
-            >
-              Sign in to manage your bookings, listings, and account settings.
-            </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {[
-              { val: "10,000+", label: "active travelers", c: "#378ADD" },
-              { val: "5,000+", label: "trusted hosts", c: "#e8c547" },
-              { val: "98%", label: "satisfaction rate", c: "#1D9E75" },
-            ].map(({ val, label, c }) => (
-              <div
-                key={label}
-                style={{ borderTop: `3px solid ${c}`, paddingTop: "0.8rem" }}
-              >
+          {/* Stats */}
+          <div className="flex flex-col gap-5 relative">
+            {copy.stats.map(({ val, label, color }) => (
+              <div key={label} style={{ borderTop: `3px solid ${color}` }} className="pt-3">
                 <div
-                  className="font-display"
+                  className="text-[26px] text-white font-light leading-none"
                   style={{
-                    fontStyle: "italic",
-                    fontWeight: 300,
-                    fontSize: 26,
-                    color: "#fff",
-                    lineHeight: 1,
+                    fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                    fontStyle: isAr ? "normal" : "italic",
                   }}
                 >
                   {val}
                 </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.3)",
-                    marginTop: 4,
-                  }}
-                >
+                <div className="text-[10px] tracking-widest uppercase text-white/30 mt-1">
                   {label}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </aside>
 
-        {/* ── Right Panel ── */}
-        <div className="right-panel">
-          <div className="form-wrap">
-            {/* Mobile logo */}
-            <div className="mobile-logo">
+        {/* ── Right panel ───────────────────────────────────────────────────── */}
+        <main className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto">
+          <div className="w-full max-w-[360px]">
+
+            {/* Top bar: mobile logo + lang toggle */}
+            <div className="flex items-center justify-between mb-8">
               <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#1a1a2e",
-                letterSpacing: "1px",
-              }}
-            >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
-
-            </div>
-
-            <div className="fu fu1">
-              <h1
-                className="font-display"
+                href="/"
+                className="lg:hidden no-underline text-[26px] text-[#1a1a2e]"
                 style={{
-                  fontStyle: "italic",
+                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontStyle: isAr ? "normal" : "italic",
                   fontWeight: 300,
-                  fontSize: 32,
-                  color: "#111118",
-                  lineHeight: 1.1,
-                  marginBottom: 6,
                 }}
               >
-                Welcome back.
+                {copy.logo}
+              </Link>
+
+              <button
+                onClick={toggleLanguage}
+                className="
+                  bg-[#1a1a2e]/[0.07] border border-[#1a1a2e]/[0.12]
+                  rounded-2xl px-3.5 py-1 text-[12px] font-medium text-[#1a1a2e]
+                  cursor-pointer transition-colors duration-150 hover:bg-[#1a1a2e]/[0.12]
+                  ms-auto
+                "
+                style={{ fontFamily: "inherit" }}
+              >
+                {copy.langToggle}
+              </button>
+            </div>
+
+            {/* Heading */}
+            <div className="animate-fadeUp fu1 mb-8">
+              <h1
+                className="text-[32px] text-[#111118] font-light leading-tight mb-1.5"
+                style={{
+                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontStyle: isAr ? "normal" : "italic",
+                }}
+              >
+                {copy.welcome}
               </h1>
-              <p style={{ fontSize: 12, color: "#999", marginBottom: "2rem" }}>
-                No account yet?{" "}
-                <Link
-                  href="/signup"
-                  style={{ color: "#185FA5", textDecoration: "none" }}
-                >
-                  Sign up free
+              <p className="text-[12px] text-[#999]">
+                {copy.noAccount}{" "}
+                <Link href="/signup" className="text-[#185FA5] no-underline font-medium">
+                  {copy.signupFree}
                 </Link>
               </p>
             </div>
 
+            {/* Error */}
             {error && (
-              <div className="error-box fu">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="6"
-                    stroke="#A32D2D"
-                    strokeWidth="1.2"
-                  />
-                  <path
-                    d="M7 4v3.5M7 9.5h.01"
-                    stroke="#A32D2D"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                  />
+              <div className="animate-fadeUp flex items-center gap-2 px-3.5 py-2.5 bg-[#FCEBEB] border border-[#a32d2d]/15 rounded-lg text-[12px] text-[#791F1F] mb-5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+                  <circle cx="7" cy="7" r="6" stroke="#A32D2D" strokeWidth="1.2" />
+                  <path d="M7 4v3.5M7 9.5h.01" stroke="#A32D2D" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="fu fu2">
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 14,
-                  marginBottom: "1.75rem",
-                }}
-              >
-                <div>
-                  <label className="field-label">Email</label>
-                  <input
-                    type="email"
-                    required
-                    className="field-input"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="animate-fadeUp fu2 space-y-3.5">
+              <Field label={copy.emailLabel}>
+                <Input
+                  type="email"
+                  required
+                  placeholder={copy.emailPh}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </Field>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] tracking-widest uppercase text-[#999]">
+                    {copy.passLabel}
+                  </label>
+                  <Link href="/forgot-password" className="text-[11px] text-[#185FA5] no-underline">
+                    {copy.forgot}
+                  </Link>
                 </div>
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <label className="field-label" style={{ margin: 0 }}>
-                      Password
-                    </label>
-                    <Link
-                      href="/forgot-password"
-                      style={{
-                        fontSize: 11,
-                        color: "#185FA5",
-                        textDecoration: "none",
-                      }}
-                    >
-                      forgot?
-                    </Link>
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    className="field-input"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                <Input
+                  type="password"
+                  required
+                  placeholder={copy.passPh}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
 
-              <button type="submit" disabled={loading} className="submit-btn">
-                {loading ? "signing in..." : "sign in →"}
+              <button
+                type="submit"
+                disabled={loading}
+                className="
+                  w-full py-3 mt-2
+                  bg-[#1a1a2e] text-[#e8c547]
+                  rounded-xl border-none text-[13px] font-semibold tracking-wide
+                  flex items-center justify-center gap-2
+                  transition-[opacity,transform] duration-150
+                  hover:enabled:opacity-90 hover:enabled:-translate-y-px
+                  disabled:opacity-45 disabled:cursor-not-allowed
+                  cursor-pointer
+                "
+                style={{ fontFamily: "inherit" }}
+              >
+                {loading && (
+                  <span className="animate-spin-fast inline-block w-3.5 h-3.5 rounded-full border-2 border-[#e8c547]/30 border-t-[#e8c547]" />
+                )}
+                {loading ? copy.submitting : copy.submit}
               </button>
             </form>
 
-            <div
-              className="fu fu3"
-              style={{ marginTop: "1.75rem", textAlign: "center" }}
-            >
-              <div className="security-tag">
+            {/* Security badge */}
+            <div className="animate-fadeUp fu3 mt-7 text-center">
+              <span className="inline-flex items-center gap-1.5 bg-[#1D9E75]/10 border border-[#1D9E75]/20 rounded-2xl px-3 py-1 text-[11px] text-[#0F6E56]">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path
-                    d="M5 1L1.5 2.5v3C1.5 7.4 3 8.8 5 9.5c2-0.7 3.5-2.1 3.5-4V2.5L5 1z"
-                    stroke="#0F6E56"
-                    strokeWidth="1"
-                    strokeLinejoin="round"
-                  />
+                  <path d="M5 1L1.5 2.5v3C1.5 7.4 3 8.8 5 9.5c2-0.7 3.5-2.1 3.5-4V2.5L5 1z" stroke="#0F6E56" strokeWidth="1" strokeLinejoin="round" />
                 </svg>
-                Protected by industry-standard encryption
-              </div>
+                {copy.security}
+              </span>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     </>
   );
