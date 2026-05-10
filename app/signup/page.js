@@ -111,7 +111,7 @@ export default function Signup() {
     }
   };
 
- return (
+  return (
   <>
     <div
       className={`min-h-screen flex bg-[#f7f6f2] ${
@@ -435,6 +435,28 @@ export default function Signup() {
     </div>
   </>
 );
+}
+
+// ── Tiny sub-components ───────────────────────────────────────────────────────
+function Field({ label, children }) {
+  return (
+    <div>
+      <label
+        style={{
+          display: "block",
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "#999",
+          marginBottom: 5,
+        }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 function Input({ bodyFont, ...props }) {
   return (
