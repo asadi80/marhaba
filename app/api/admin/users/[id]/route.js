@@ -1,8 +1,9 @@
-// app/api/admin/users/[id]/route.js
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
+import Listing from "@/models/Listing";
+import Booking from "@/models/Booking";
 import { verifyAdminFromCookie } from "@/lib/adminAuth";
 
 // Get single user
@@ -87,6 +88,7 @@ export async function PUT(request, { params }) {
 
     // Safe status handling
     if (status && auth.user.role === 'super_admin') {
+      const previousStatus = user.status;
       user.status = status;
 
       // Host confirmed
@@ -102,10 +104,39 @@ export async function PUT(request, { params }) {
         user.statusReason = 'manual_pending';
       }
 
-      // Suspended
+      // Suspended - suspend all listings and bookings
       if (status === 'suspended') {
         user.hostExpiryDate = null;
         user.statusReason = 'admin_suspended';
+        
+        // Suspend all user's listings
+        await Listing.updateMany(
+          { host: user._id },
+          { status: 'suspended' }
+        );
+        
+        // Cancel all pending bookings for this user's listings
+        await Booking.updateMany(
+          { 
+            listing: { $in: await Listing.find({ host: user._id }).distinct('_id') },
+            status: 'pending'
+          },
+          { status: 'cancelled' }
+        );
+        
+        // Cancel all bookings made by this user
+        await Booking.updateMany(
+          { user: user._id, status: 'pending' },
+          { status: 'cancelled' }
+        );
+      }
+      
+      // Reactivated from suspension - reactivate listings
+      if (previousStatus === 'suspended' && status !== 'suspended') {
+        await Listing.updateMany(
+          { host: user._id },
+          { status: 'active' }
+        );
       }
     }
 
@@ -125,7 +156,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-// Delete user
+// Delete user - delete all listings and bookings
 export async function DELETE(request, { params }) {
   try {
     const resolvedParams = await params;
@@ -166,12 +197,56 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await user.deleteOne();
+    // Start a session for transaction to ensure all operations succeed or fail together
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    return NextResponse.json({
-      success: true,
-      message: "User deleted successfully",
-    });
+    try {
+      // Find all listings by this user
+      const userListings = await Listing.find({ host: user._id }).session(session);
+      const listingIds = userListings.map(listing => listing._id);
+      
+      // Delete all bookings for these listings
+      if (listingIds.length > 0) {
+        await Booking.deleteMany(
+          { listing: { $in: listingIds } },
+          { session }
+        );
+      }
+      
+      // Delete all bookings made by this user
+      await Booking.deleteMany(
+        { user: user._id },
+        { session }
+      );
+      
+      // Delete all listings by this user
+      await Listing.deleteMany(
+        { host: user._id },
+        { session }
+      );
+      
+      // Finally delete the user
+      await user.deleteOne({ session });
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      
+      return NextResponse.json({
+        success: true,
+        message: "User and all associated listings and bookings deleted successfully",
+        deletedCount: {
+          listings: listingIds.length,
+          bookings: await Booking.countDocuments({ user: user._id })
+        }
+      });
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (error) {
     console.error("Delete error:", error);
     return NextResponse.json({ message: error.message }, { status: 500 });

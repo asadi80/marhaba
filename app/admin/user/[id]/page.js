@@ -78,6 +78,8 @@ function StatusBadge({ status }) {
     confirmed: "bg-[#EAF3DE] text-[#27500A]",
     pending: "bg-[#FAEEDA] text-[#633806]",
     suspended: "bg-[#FCEBEB] text-[#791F1F]",
+    active: "bg-[#EAF3DE] text-[#27500A]",
+    cancelled: "bg-[#FCEBEB] text-[#791F1F]",
   };
   return (
     <span
@@ -108,6 +110,82 @@ function RoleBadge({ role }) {
   );
 }
 
+// Booking Card Component
+function BookingCard({ booking, type }) {
+  return (
+    <div className="border border-black/[0.06] rounded-lg p-3 hover:bg-[#fafaf8] transition-all">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-[#111118] mb-1">
+            {type === "host" ? "Guest:" : "Listing:"}
+          </p>
+          <p className="text-sm font-medium text-[#185FA5]">
+            {type === "host" ? booking.user?.name || booking.userId : booking.listing?.title || booking.listingId}
+          </p>
+        </div>
+        <StatusBadge status={booking.status} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs text-[#666] mt-2">
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Check In</span>
+          <p className="text-[#111118] mt-0.5">
+            {new Date(booking.checkIn).toLocaleDateString()}
+          </p>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Check Out</span>
+          <p className="text-[#111118] mt-0.5">
+            {new Date(booking.checkOut).toLocaleDateString()}
+          </p>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Guests</span>
+          <p className="text-[#111118] mt-0.5">{booking.guests}</p>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Total</span>
+          <p className="text-[#111118] mt-0.5 font-medium">${booking.totalPrice}</p>
+        </div>
+      </div>
+      <p className="text-[10px] text-[#999] mt-2">
+        Booked: {new Date(booking.createdAt).toLocaleDateString()}
+      </p>
+    </div>
+  );
+}
+
+// Listing Card Component
+function ListingCard({ listing }) {
+  return (
+    <div className="border border-black/[0.06] rounded-lg overflow-hidden hover:shadow-md transition-all">
+      {listing.images?.[0] && (
+        <div className="h-32 bg-cover bg-center" 
+             style={{ backgroundImage: `url(${listing.images[0]})` }} />
+      )}
+      <div className="p-3">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="text-sm font-medium text-[#111118] line-clamp-1">
+            {listing.title}
+          </h3>
+          <StatusBadge status={listing.status || "active"} />
+        </div>
+        <p className="text-xs text-[#666] mb-2 line-clamp-2">
+          {listing.description}
+        </p>
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-[#185FA5] font-medium">${listing.price}/night</span>
+          <span className="text-[#999]">{listing.location}</span>
+        </div>
+        {listing.blockedDates?.length > 0 && (
+          <p className="text-[10px] text-[#A32D2D] mt-2">
+            {listing.blockedDates.length} blocked date(s)
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function UserDetailPage() {
   const router = useRouter();
@@ -116,12 +194,16 @@ export default function UserDetailPage() {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [targetUser, setTargetUser] = useState(null);
+  const [userListings, setUserListings] = useState([]);
+  const [userBookings, setUserBookings] = useState([]);
+  const [listingsBookings, setListingsBookings] = useState([]);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [lightboxImg, setLightboxImg] = useState(null);
+  const [activeTab, setActiveTab] = useState("info"); // info, listings, bookings
 
   const isSuperAdmin = currentUser?.role === "super_admin";
 
@@ -156,9 +238,39 @@ export default function UserDetailPage() {
         status: data.user.status,
         statusReason: data.user.statusReason || "",
       });
+      
+      // Fetch user's listings and bookings
+      await fetchUserListings();
+      await fetchUserBookings();
+      
     } catch (err) {
       showNotification(err.message || "Failed to load user", "error");
     } finally { setLoading(false); }
+  };
+  
+  const fetchUserListings = async () => {
+    try {
+      const res = await authFetch(`/api/admin/users/${userId}/listings`);
+      if (res && res.ok) {
+        const data = await res.json();
+        setUserListings(data.listings || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch listings:", err);
+    }
+  };
+  
+  const fetchUserBookings = async () => {
+    try {
+      const res = await authFetch(`/api/admin/users/${userId}/bookings`);
+      if (res && res.ok) {
+        const data = await res.json();
+        setUserBookings(data.bookingsAsGuest || []);
+        setListingsBookings(data.bookingsAsHost || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch bookings:", err);
+    }
   };
 
   const handleSave = async () => {
@@ -176,6 +288,10 @@ export default function UserDetailPage() {
       if (data.success) {
         showNotification("User updated successfully", "success");
         setTargetUser((prev) => ({ ...prev, ...(data.user ?? updates) }));
+        // Refresh listings if status changed
+        if (updates.status) {
+          await fetchUserListings();
+        }
       } else {
         showNotification(data.message || "Update failed", "error");
       }
@@ -184,14 +300,14 @@ export default function UserDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete ${targetUser.name}? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${targetUser.name}? This will also delete all their listings and bookings. This cannot be undone.`)) return;
     setDeleting(true);
     try {
       const res = await authFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        showNotification("User deleted", "success");
-        setTimeout(() => router.push("/admin"), 1000);
+        showNotification(`User deleted with ${data.deletedCount?.listings || 0} listings and associated bookings`, "success");
+        setTimeout(() => router.push("/admin"), 1500);
       } else {
         showNotification(data.message, "error");
         setDeleting(false);
@@ -276,15 +392,14 @@ export default function UserDetailPage() {
       {/* ── Navbar ── */}
       <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-4 sm:px-8 h-14 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-           <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: "26px", color: "#1a1a2e", letterSpacing: "1px" }}>
-              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
+          <Link href="/" className="text-white font-serif text-2xl">
+            Mar<span className="text-[#e8c547]">haba</span>
+          </Link>
           <Link href="/admin" className="text-white/50 hover:text-white/80 text-xs transition-colors truncate">
             ← back to users
           </Link>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          {/* Avatar circle — inline style for dynamic color only */}
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
             style={{ background: "#e8c547", color: "#1a1a2e" }}
@@ -299,7 +414,7 @@ export default function UserDetailPage() {
       </nav>
 
       {/* ── Page content ── */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* Profile header card */}
         <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -333,192 +448,294 @@ export default function UserDetailPage() {
           )}
         </div>
 
-        {/* Responsive layout: single col → 3-col grid */}
-        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5">
-
-          {/* ── LEFT: read-only info panels ── */}
-          <div className="flex flex-col gap-5">
-
-            {/* Account info */}
-            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
-              <SectionTitle>account info</SectionTitle>
-              <InfoRow label="User ID" value={targetUser._id} mono />
-              <InfoRow label="Created" value={fmt(targetUser.createdAt)} />
-              <InfoRow label="Last active" value={fmt(targetUser.lastActive)} />
-              <InfoRow label="Email verified" value={targetUser.emailVerified ? "Yes" : "No"} />
-            </div>
-
-            {/* Host details — hosts only */}
-            {targetUser.role === "host" && (
-              <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
-                <SectionTitle>host details</SectionTitle>
-                <InfoRow label="Rating" value={targetUser.hostDetails?.rating?.toFixed(1) ?? "0.0"} />
-                <InfoRow label="Listings" value={targetUser.hostDetails?.totalListings ?? 0} />
-                <InfoRow label="Verified" value={targetUser.hostDetails?.verified ? "Yes" : "No"} />
-                <InfoRow label="Joined" value={fmt(targetUser.hostDetails?.joinedDate)} />
-                <InfoRow label="Confirmed" value={fmt(targetUser.hostDetails?.confirmedAt)} />
-                <InfoRow label="Expires" value={fmt(targetUser.hostExpiryDate)} />
-                <InfoRow label="Status reason" value={targetUser.statusReason} />
-                <InfoRow label="Notif 1wk" value={targetUser.hostDetails?.notificationSent?.oneWeek ? "Sent" : "Not sent"} />
-                <InfoRow label="Notif 2d" value={targetUser.hostDetails?.notificationSent?.twoDays ? "Sent" : "Not sent"} />
-              </div>
-            )}
-
-            {/* User details */}
-            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
-              <SectionTitle>user details</SectionTitle>
-              <InfoRow label="Member since" value={fmt(targetUser.userDetails?.memberSince)} />
-              <InfoRow label="Bookings" value={targetUser.userDetails?.bookings?.length ?? 0} />
-            </div>
+        {/* Tabs */}
+        <div className="border-b border-black/[0.06] mb-6">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveTab("info")}
+              className={`px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === "info"
+                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
+                  : "text-[#666] hover:text-[#111118]"
+              }`}
+            >
+              Account Info
+            </button>
+            <button
+              onClick={() => setActiveTab("listings")}
+              className={`px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === "listings"
+                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
+                  : "text-[#666] hover:text-[#111118]"
+              }`}
+            >
+              Listings ({userListings.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === "bookings"
+                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
+                  : "text-[#666] hover:text-[#111118]"
+              }`}
+            >
+              Bookings ({userBookings.length + listingsBookings.length})
+            </button>
           </div>
+        </div>
 
-          {/* ── RIGHT: editable form + ID images ── */}
-          <div className="flex flex-col gap-5 lg:col-span-2">
-
-            {/* Edit form */}
-            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
-              <SectionTitle>edit user</SectionTitle>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                <Field label="full name">
-                  <input
-                    className={inputCls}
-                    value={form.name ?? ""}
-                    onChange={set("name")}
-                    disabled={!isSuperAdmin}
-                  />
-                </Field>
-
-                <Field label="email">
-                  <input
-                    type="email"
-                    className={inputCls}
-                    value={form.email ?? ""}
-                    onChange={set("email")}
-                    disabled={!isSuperAdmin}
-                  />
-                </Field>
-
-                {/* Phone — editable by all admins */}
-                <Field label="phone number">
-                  <input
-                    type="tel"
-                    className={inputCls}
-                    value={form.phoneNumber ?? ""}
-                    onChange={set("phoneNumber")}
-                  />
-                </Field>
-
-                <Field label="role">
-                  <select
-                    className={inputCls}
-                    value={form.role ?? ""}
-                    onChange={set("role")}
-                    disabled={!isSuperAdmin || targetUser.role === "super_admin"}
-                  >
-                    <option value="user">User</option>
-                    <option value="host">Host</option>
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </Field>
-
-                {/* Status — editable by all admins */}
-                <Field label="status">
-                  <select
-                    className={inputCls}
-                    value={form.status ?? ""}
-                    onChange={set("status")}
-                  >
-                    <option value="confirmed">Confirmed — starts 6-month timer</option>
-                    <option value="pending">Pending</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </Field>
-
-                {/* Status reason — editable by all admins */}
-                <Field label="status reason (optional)">
-                  <input
-                    className={inputCls}
-                    value={form.statusReason ?? ""}
-                    onChange={set("statusReason")}
-                    placeholder="e.g. expired, violation..."
-                  />
-                </Field>
+        {/* Tab Content */}
+        {activeTab === "info" && (
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5">
+            {/* LEFT: read-only info panels */}
+            <div className="flex flex-col gap-5">
+              {/* Account info */}
+              <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
+                <SectionTitle>account info</SectionTitle>
+                <InfoRow label="User ID" value={targetUser._id} mono />
+                <InfoRow label="Created" value={fmt(targetUser.createdAt)} />
+                <InfoRow label="Last active" value={fmt(targetUser.lastActive)} />
+                <InfoRow label="Email verified" value={targetUser.emailVerified ? "Yes" : "No"} />
               </div>
 
-              {!isSuperAdmin && (
-                <p className="text-[11px] text-[#bbb] mt-4 leading-relaxed">
-                  As an admin you can update phone number and status. Super admins can edit all fields.
-                </p>
+              {/* Host details — hosts only */}
+              {targetUser.role === "host" && (
+                <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
+                  <SectionTitle>host details</SectionTitle>
+                  <InfoRow label="Rating" value={targetUser.hostDetails?.rating?.toFixed(1) ?? "0.0"} />
+                  <InfoRow label="Listings" value={targetUser.hostDetails?.totalListings ?? 0} />
+                  <InfoRow label="Verified" value={targetUser.hostDetails?.verified ? "Yes" : "No"} />
+                  <InfoRow label="Joined" value={fmt(targetUser.hostDetails?.joinedDate)} />
+                  <InfoRow label="Confirmed" value={fmt(targetUser.hostDetails?.confirmedAt)} />
+                  <InfoRow label="Expires" value={fmt(targetUser.hostExpiryDate)} />
+                  <InfoRow label="Status reason" value={targetUser.statusReason} />
+                </div>
               )}
 
-              <div className="flex justify-end mt-5">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-[#1a1a2e] text-[#e8c547] text-xs px-5 sm:px-6 py-2.5 rounded-md hover:bg-[#16213e] disabled:opacity-50 transition-all"
-                >
-                  {saving ? "saving..." : "save changes"}
-                </button>
+              {/* User details */}
+              <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
+                <SectionTitle>user details</SectionTitle>
+                <InfoRow label="Member since" value={fmt(targetUser.userDetails?.memberSince)} />
+                <InfoRow label="Bookings made" value={userBookings.length} />
+                <InfoRow label="Listings" value={userListings.length} />
               </div>
             </div>
 
-            {/* ID Images */}
-            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
-              <SectionTitle>
-                id documents
-                <span className="text-sm not-italic font-normal text-[#999]">
-                  ({targetUser.idImages?.length ?? 0})
-                </span>
-              </SectionTitle>
+            {/* RIGHT: editable form + ID images */}
+            <div className="flex flex-col gap-5 lg:col-span-2">
+              {/* Edit form */}
+              <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+                <SectionTitle>edit user</SectionTitle>
 
-              {!targetUser.idImages?.length ? (
-                <div className="flex items-center justify-center py-10 text-[#bbb] text-sm">
-                  No ID documents uploaded yet.
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="full name">
+                    <input
+                      className={inputCls}
+                      value={form.name ?? ""}
+                      onChange={set("name")}
+                      disabled={!isSuperAdmin}
+                    />
+                  </Field>
+
+                  <Field label="email">
+                    <input
+                      type="email"
+                      className={inputCls}
+                      value={form.email ?? ""}
+                      onChange={set("email")}
+                      disabled={!isSuperAdmin}
+                    />
+                  </Field>
+
+                  <Field label="phone number">
+                    <input
+                      type="tel"
+                      className={inputCls}
+                      value={form.phoneNumber ?? ""}
+                      onChange={set("phoneNumber")}
+                    />
+                  </Field>
+
+                  <Field label="role">
+                    <select
+                      className={inputCls}
+                      value={form.role ?? ""}
+                      onChange={set("role")}
+                      disabled={!isSuperAdmin || targetUser.role === "super_admin"}
+                    >
+                      <option value="user">User</option>
+                      <option value="host">Host</option>
+                      <option value="admin">Admin</option>
+                      <option value="super_admin">Super Admin</option>
+                    </select>
+                  </Field>
+
+                  <Field label="status">
+                    <select
+                      className={inputCls}
+                      value={form.status ?? ""}
+                      onChange={set("status")}
+                    >
+                      <option value="confirmed">Confirmed — starts 6-month timer</option>
+                      <option value="pending">Pending</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </Field>
+
+                  <Field label="status reason (optional)">
+                    <input
+                      className={inputCls}
+                      value={form.statusReason ?? ""}
+                      onChange={set("statusReason")}
+                      placeholder="e.g. expired, violation..."
+                    />
+                  </Field>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {targetUser.idImages.map((url, i) => {
-                    const isPdf = url.toLowerCase().includes(".pdf") || url.includes("/raw/");
-                    return isPdf ? (
-                      <a
-                        key={i}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex flex-col items-center justify-center gap-2 border border-black/10 rounded-lg p-4 sm:p-6 text-center hover:bg-[#fafaf8] transition-all"
-                      >
-                        <span className="text-3xl">📄</span>
-                        <span className="text-[11px] text-[#185FA5]">PDF — open</span>
-                      </a>
-                    ) : (
-                      <div key={i} className="relative group rounded-lg overflow-hidden border border-black/10">
-                        <img
-                          src={url}
-                          alt={`ID doc ${i + 1}`}
-                          className="w-full h-28 sm:h-32 object-cover cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.02]"
-                          onClick={() => setLightboxImg(url)}
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all pointer-events-none rounded-lg" />
+
+                {!isSuperAdmin && (
+                  <p className="text-[11px] text-[#bbb] mt-4 leading-relaxed">
+                    As an admin you can update phone number and status. Super admins can edit all fields.
+                  </p>
+                )}
+
+                <div className="flex justify-end mt-5">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-[#1a1a2e] text-[#e8c547] text-xs px-5 sm:px-6 py-2.5 rounded-md hover:bg-[#16213e] disabled:opacity-50 transition-all"
+                  >
+                    {saving ? "saving..." : "save changes"}
+                  </button>
+                </div>
+              </div>
+
+              {/* ID Images */}
+              <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+                <SectionTitle>
+                  id documents
+                  <span className="text-sm not-italic font-normal text-[#999]">
+                    ({targetUser.idImages?.length ?? 0})
+                  </span>
+                </SectionTitle>
+
+                {!targetUser.idImages?.length ? (
+                  <div className="flex items-center justify-center py-10 text-[#bbb] text-sm">
+                    No ID documents uploaded yet.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {targetUser.idImages.map((url, i) => {
+                      const isPdf = url.toLowerCase().includes(".pdf") || url.includes("/raw/");
+                      return isPdf ? (
                         <a
+                          key={i}
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 text-[10px] bg-white/90 px-2 py-1 rounded text-[#185FA5] transition-all"
+                          className="flex flex-col items-center justify-center gap-2 border border-black/10 rounded-lg p-4 sm:p-6 text-center hover:bg-[#fafaf8] transition-all"
                         >
-                          open ↗
+                          <span className="text-3xl">📄</span>
+                          <span className="text-[11px] text-[#185FA5]">PDF — open</span>
                         </a>
-                      </div>
-                    );
-                  })}
+                      ) : (
+                        <div key={i} className="relative group rounded-lg overflow-hidden border border-black/10">
+                          <img
+                            src={url}
+                            alt={`ID doc ${i + 1}`}
+                            className="w-full h-28 sm:h-32 object-cover cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.02]"
+                            onClick={() => setLightboxImg(url)}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all pointer-events-none rounded-lg" />
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 text-[10px] bg-white/90 px-2 py-1 rounded text-[#185FA5] transition-all"
+                          >
+                            open ↗
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Listings Tab */}
+        {activeTab === "listings" && (
+          <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+            <SectionTitle>
+              user's listings
+              <span className="text-sm not-italic font-normal text-[#999]">
+                ({userListings.length})
+              </span>
+            </SectionTitle>
+            
+            {userListings.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
+                This user has no listings yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userListings.map((listing) => (
+                  <ListingCard key={listing._id} listing={listing} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bookings Tab */}
+        {activeTab === "bookings" && (
+          <div className="space-y-6">
+            {/* Bookings as Guest */}
+            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+              <SectionTitle>
+                bookings made by this user
+                <span className="text-sm not-italic font-normal text-[#999]">
+                  ({userBookings.length})
+                </span>
+              </SectionTitle>
+              
+              {userBookings.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
+                  This user hasn't made any bookings yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {userBookings.map((booking) => (
+                    <BookingCard key={booking._id} booking={booking} type="guest" />
+                  ))}
                 </div>
               )}
             </div>
 
+            {/* Bookings as Host */}
+            <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+              <SectionTitle>
+                bookings on user's listings
+                <span className="text-sm not-italic font-normal text-[#999]">
+                  ({listingsBookings.length})
+                </span>
+              </SectionTitle>
+              
+              {listingsBookings.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
+                  No bookings have been made on this user's listings yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {listingsBookings.map((booking) => (
+                    <BookingCard key={booking._id} booking={booking} type="host" />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

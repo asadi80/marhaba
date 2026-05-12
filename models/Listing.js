@@ -27,9 +27,18 @@ const ListingSchema = new mongoose.Schema({
       required: true,
     },
   ],
-   category: {
+  category: {
     type: String,
-    enum: ["beachfront", "mountain", "city", "countryside", "pool", "desert", "camping", "cabins"],
+    enum: [
+      "beachfront",
+      "mountain",
+      "city",
+      "countryside",
+      "pool",
+      "desert",
+      "camping",
+      "cabins",
+    ],
     required: true,
     default: "city",
   },
@@ -45,9 +54,12 @@ const ListingSchema = new mongoose.Schema({
   },
   rules: {
     type: [String],
-    default: [
-     
-    ],
+    default: [],
+  },
+  status: {
+    type: String,
+    enum: ["active", "suspended", "deleted"],
+    default: "active",
   },
   blockedDates: {
     type: [
