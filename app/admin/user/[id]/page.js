@@ -276,9 +276,9 @@ export default function UserDetailPage() {
       {/* ── Navbar ── */}
       <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-4 sm:px-8 h-14 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-          <span className="font-serif italic font-light text-xl text-white tracking-tight flex-shrink-0">
-            mar<span className="not-italic font-medium text-[#e8c547]">haba</span>
-          </span>
+           <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: "26px", color: "#1a1a2e", letterSpacing: "1px" }}>
+              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
           <Link href="/admin" className="text-white/50 hover:text-white/80 text-xs transition-colors truncate">
             ← back to users
           </Link>
