@@ -509,16 +509,16 @@ export default function UserDashboard() {
                 onClick={handleLogout}
                 style={{
                   background: "none",
-                  border: "0.5px solid rgba(255,255,255,.15)",
+                  border: "0.5px solid #e8c547",
                   borderRadius: 4,
-                  color: "rgba(255,255,255,.4)",
+                  color: "#e8c547",
                   fontFamily: "inherit",
                   fontSize: 11,
                   padding: "4px 10px",
                   cursor: "pointer",
                 }}
               >
-                {isAr ? "خروج" : "out"}
+                {isAr ? "خروج" : "logout"}
               </button>
             </div>
           </div>
