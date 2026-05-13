@@ -86,8 +86,9 @@ export async function PUT(request, { params }) {
       user.role = role;
     }
 
-    // Track if host is being confirmed
+    // Track if host is being confirmed or suspended
     let wasHostJustConfirmed = false;
+    let wasHostJustSuspended = false;
     let wasPreviouslyHost = user.role === "host";
     
     // Safe status handling
@@ -113,6 +114,7 @@ export async function PUT(request, { params }) {
       if (status === 'suspended') {
         user.hostExpiryDate = null;
         user.statusReason = 'admin_suspended';
+        wasHostJustSuspended = true;
         
         // Suspend all user's listings
         await Listing.updateMany(
@@ -177,6 +179,28 @@ export async function PUT(request, { params }) {
         console.log('Host confirmation email sent to:', user.email);
       } catch (emailError) {
         console.error('Failed to send host confirmation email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+
+    // Send email notification if host was just suspended
+    if (wasHostJustSuspended && user.email && user.role === 'host') {
+      try {
+        // Import sendEmail function
+        const { sendEmail } = await import('@/lib/sendEmail');
+        
+        // Create bilingual email content for suspension
+        const emailContent = getHostSuspensionEmailContent(user);
+        
+        await sendEmail({
+          to: user.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+        });
+        console.log('Host suspension email sent to:', user.email);
+      } catch (emailError) {
+        console.error('Failed to send host suspension email:', emailError);
         // Don't fail the request if email fails
       }
     }
@@ -317,6 +341,166 @@ function getHostConfirmationEmailContent(host, expiryDate, daysUntilExpiry) {
   };
 }
 
+// Bilingual email template for host suspension
+function getHostSuspensionEmailContent(host) {
+  const formattedDate = formatDateForEmail(new Date());
+  const supportEmail = "support@marhaba.com";
+  const supportUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/contact`;
+  
+  return {
+    subject: `Important: Your Host Account Has Been Suspended / مهم: تم تعليق حساب المضيف الخاص بك - Marhaba`,
+    text: `English: Your host account has been suspended. Your listings are no longer visible and you cannot receive new bookings. Please contact support at ${supportEmail} for more information.\n\nالعربية: تم تعليق حساب المضيف الخاص بك. لم تعد عقاراتك مرئية ولا يمكنك استقبال حجوزات جديدة. يرجى الاتصال بالدعم على ${supportEmail} للمزيد من المعلومات.`,
+    html: `
+<div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f6f2;">
+  
+  <!-- English Section -->
+  <div style="margin-bottom: 30px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
+    </div>
+    
+    <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+      <span style="color: #791F1F; font-size: 12px; font-weight: 600;">⚠️ ACCOUNT SUSPENDED</span>
+    </div>
+    
+    <h2 style="color: #791F1F;">Account Suspension Notice</h2>
+    
+    <p>Dear ${host.name},</p>
+    
+    <p>We regret to inform you that your <strong>host account has been suspended</strong> by the Marhaba admin team.</p>
+    
+    <div style="background: #FEF3C7; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+      <h3 style="margin-top: 0; color: #92400e;">📋 What this means for you:</h3>
+      <ul style="color: #78350F; margin: 10px 0; padding-left: 20px;">
+        <li>Your listings are no longer visible to guests</li>
+        <li>You cannot receive new booking requests</li>
+        <li>Existing pending bookings have been cancelled</li>
+        <li>You cannot add or modify your listings</li>
+      </ul>
+    </div>
+    
+    <div style="background: #E6F1FB; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #0C447C;">❓ Why was my account suspended?</h3>
+      <p style="color: #0C447C; margin: 10px 0;">
+        Common reasons for suspension include:
+      </p>
+      <ul style="color: #0C447C; margin: 10px 0; padding-left: 20px;">
+        <li>Violation of our terms of service</li>
+        <li>Complaints from guests</li>
+        <li>Expired verification documents</li>
+        <li>Inappropriate conduct</li>
+      </ul>
+    </div>
+    
+    <div style="background: #EAF3DE; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #27500A;">📞 How to resolve this:</h3>
+      <p style="color: #27500A; margin: 10px 0;">
+        To have your account reinstated, please contact our support team:
+      </p>
+      <div style="margin: 15px 0;">
+        <p><strong>📧 Email:</strong> <a href="mailto:${supportEmail}" style="color: #185FA5;">${supportEmail}</a></p>
+        <p><strong>🌐 Contact Form:</strong> <a href="${supportUrl}" style="color: #185FA5;">${supportUrl}</a></p>
+      </div>
+      <p style="color: #27500A; font-size: 13px; margin-top: 10px;">
+        Please provide your account details and any relevant information to help us resolve this matter quickly.
+      </p>
+    </div>
+    
+    <div style="background: #FAEEDA; padding: 15px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0; color: #633806; font-size: 13px;">
+        <strong>🕒 Response Time:</strong> Our support team typically responds within 24-48 hours.
+      </p>
+    </div>
+    
+    <a href="mailto:${supportEmail}" 
+       style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; text-align: center;">
+      Contact Support →
+    </a>
+    
+    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+      We apologize for any inconvenience this may cause. Our team is here to help resolve any issues.
+    </p>
+  </div>
+  
+  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
+  
+  <!-- Arabic Section -->
+  <div style="direction: rtl; text-align: right;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
+    </div>
+    
+    <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+      <span style="color: #791F1F; font-size: 12px; font-weight: 600;">⚠️ الحساب معلق</span>
+    </div>
+    
+    <h2 style="color: #791F1F;">إشعار تعليق الحساب</h2>
+    
+    <p>عزيزي ${host.name}،</p>
+    
+    <p>نأسف لإبلاغك بأن <strong>حساب المضيف الخاص بك قد تم تعليقه</strong> من قبل فريق إدارة مرحبا.</p>
+    
+    <div style="background: #FEF3C7; padding: 20px; border-radius: 12px; margin: 20px 0; border-right: 4px solid #f59e0b;">
+      <h3 style="margin-top: 0; color: #92400e;">📋 ماذا يعني هذا بالنسبة لك:</h3>
+      <ul style="color: #78350F; margin: 10px 0; padding-right: 20px;">
+        <li>عقاراتك لم تعد مرئية للضيوف</li>
+        <li>لا يمكنك استقبال طلبات حجز جديدة</li>
+        <li>تم إلغاء الحجوزات المعلقة الحالية</li>
+        <li>لا يمكنك إضافة أو تعديل عقاراتك</li>
+      </ul>
+    </div>
+    
+    <div style="background: #E6F1FB; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #0C447C;">❓ لماذا تم تعليق حسابي؟</h3>
+      <p style="color: #0C447C; margin: 10px 0;">
+        تشمل الأسباب الشائعة للتعليق:
+      </p>
+      <ul style="color: #0C447C; margin: 10px 0; padding-right: 20px;">
+        <li>انتهاك شروط الخدمة الخاصة بنا</li>
+        <li>شكاوى من الضيوف</li>
+        <li>انتهاء صلاحية مستندات التحقق</li>
+        <li>سلوك غير لائق</li>
+      </ul>
+    </div>
+    
+    <div style="background: #EAF3DE; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #27500A;">📞 كيفية حل هذه المشكلة:</h3>
+      <p style="color: #27500A; margin: 10px 0;">
+        لإعادة تفعيل حسابك، يرجى التواصل مع فريق الدعم:
+      </p>
+      <div style="margin: 15px 0;">
+        <p><strong>📧 البريد الإلكتروني:</strong> <a href="mailto:${supportEmail}" style="color: #185FA5;">${supportEmail}</a></p>
+        <p><strong>🌐 نموذج الاتصال:</strong> <a href="${supportUrl}" style="color: #185FA5;">${supportUrl}</a></p>
+      </div>
+      <p style="color: #27500A; font-size: 13px; margin-top: 10px;">
+        يرجى تقديم تفاصيل حسابك وأي معلومات ذات صلة لمساعدتنا في حل هذه المشكلة بسرعة.
+      </p>
+    </div>
+    
+    <div style="background: #FAEEDA; padding: 15px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0; color: #633806; font-size: 13px;">
+        <strong>🕒 وقت الاستجابة:</strong> عادةً ما يرد فريق الدعم في غضون 24-48 ساعة.
+      </p>
+    </div>
+    
+    <a href="mailto:${supportEmail}" 
+       style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; text-align: center;">
+      اتصل بالدعم ←
+    </a>
+    
+    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+      نعتذر عن أي إزعاج قد يسببه هذا. فريقنا هنا للمساعدة في حل أي مشاكل.
+    </p>
+  </div>
+  
+  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
+  <p style="color: #6b7280; font-size: 12px; text-align: center;">
+    Thank you for being part of Marhaba! / شكراً لكونك جزءاً من مرحبا!
+  </p>
+</div>
+    `
+  };
+}
 // Delete user - delete all listings and bookings
 export async function DELETE(request, { params }) {
   try {
