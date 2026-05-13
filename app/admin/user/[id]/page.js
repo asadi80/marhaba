@@ -556,7 +556,7 @@ export default function UserDetailPage() {
                     />
                   </Field>
 
-                  <Field label="role">
+                  {/* <Field label="role">
                     <select
                       className={inputCls}
                       value={form.role ?? ""}
@@ -568,7 +568,7 @@ export default function UserDetailPage() {
                       <option value="admin">Admin</option>
                       <option value="super_admin">Super Admin</option>
                     </select>
-                  </Field>
+                  </Field> */}
 
                   <Field label="status">
                     <select
