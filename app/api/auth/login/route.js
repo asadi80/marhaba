@@ -1,8 +1,8 @@
 // app/api/auth/login/route.js
-import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
+import { NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+import { connectToDatabase } from "@/lib/mongodb";
+import User from "@/models/User";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -12,8 +12,8 @@ export async function POST(request) {
     // Validation
     if (!email || !password) {
       return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
+        { message: "Email and password are required" },
+        { status: 400 },
       );
     }
 
@@ -23,16 +23,19 @@ export async function POST(request) {
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
+        { message: "Invalid credentials" },
+        { status: 401 },
       );
     }
 
     // Check if email is verified
     if (!user.emailVerified) {
       return NextResponse.json(
-        { message: 'Please verify your email address before logging in. Check your inbox for the verification link.' },
-        { status: 401 }
+        {
+          message:
+            "Please verify your email address before logging in. Check your inbox for the verification link.  يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد.",
+        },
+        { status: 401 },
       );
     }
 
@@ -40,50 +43,54 @@ export async function POST(request) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
+        { message: "Invalid credentials" },
+        { status: 401 },
       );
     }
 
     // For hosts: Allow login even if pending, but track their status
-    let loginMessage = 'Login successful';
+    let loginMessage = "Login successful";
     let requiresIdUpload = false;
     let isHostApproved = true;
 
-    if (user.role === 'host') {
+    if (user.role === "host") {
       // Check if host has uploaded ID images
       const hasIdImages = user.idImages && user.idImages.length > 0;
-      
-      if (user.status === 'pending') {
+
+      if (user.status === "pending") {
         if (!hasIdImages) {
           // Host hasn't uploaded ID yet - they need to upload
           requiresIdUpload = true;
-          loginMessage = 'Please upload your ID/Passport to complete your host verification';
+          loginMessage =
+            "Please upload your ID/Passport to complete your host verification";
         } else {
           // Host has uploaded ID but waiting for approval
-          loginMessage = 'Your host account is pending admin approval. Some features are limited until approved.';
+          loginMessage =
+            "Your host account is pending admin approval. Some features are limited until approved.";
           isHostApproved = false;
         }
-      } else if (user.status === 'suspended') {
+      } else if (user.status === "suspended") {
         return NextResponse.json(
-          { message: 'Your account has been suspended. Please contact support.' },
-          { status: 401 }
+          {
+            message: "Your account has been suspended. Please contact support.",
+          },
+          { status: 401 },
         );
       }
     }
 
     // Create token
     const token = jwt.sign(
-      { 
-        userId: user._id, 
-        email: user.email, 
+      {
+        userId: user._id,
+        email: user.email,
         name: user.name,
         role: user.role,
         status: user.status,
-        requiresIdUpload: requiresIdUpload
+        requiresIdUpload: requiresIdUpload,
       },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: "7d" },
     );
 
     // Prepare user response
@@ -98,7 +105,7 @@ export async function POST(request) {
       createdAt: user.createdAt,
       requiresIdUpload: requiresIdUpload,
       hasIdImages: user.idImages && user.idImages.length > 0,
-      isHostApproved: isHostApproved
+      isHostApproved: isHostApproved,
     };
 
     const response = NextResponse.json({
@@ -106,22 +113,21 @@ export async function POST(request) {
       message: loginMessage,
       user: userResponse,
     });
-    
-    response.cookies.set('token', token, {
+
+    response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
-    
+
     return response;
-    
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
-      { status: 500 }
+      { message: "Internal server error", error: error.message },
+      { status: 500 },
     );
   }
 }
