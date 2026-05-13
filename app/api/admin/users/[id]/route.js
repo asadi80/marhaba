@@ -298,7 +298,7 @@ function getHostConfirmationEmailContent(host, expiryDate, daysUntilExpiry) {
       </ul>
     </div>
     
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/dashboard" 
+    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host-dashboard" 
        style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
       الذهاب إلى لوحة التحكم ←
     </a>

@@ -43,20 +43,32 @@ export async function GET(request) {
       );
     }
     
-    // Build query
+    // Build query - Only show listings that are:
+    // 1. Have valid coordinates
+    // 2. Are confirmed (host status)
+    // 3. Are active (not suspended or deleted)
     let query = {
       coordinates: { $exists: true, $ne: null },
-      status: 'confirmed' // Only show confirmed listings
+      status: { $in: ['active', 'confirmed'] }, // Include both 'active' and 'confirmed' for backward compatibility
+      $or: [
+        { status: 'active' },
+        { status: 'confirmed' } // For older listings that might still use 'confirmed'
+      ]
     };
+    
+    // Also need to join with User model to check host status
+    // Since listing doesn't have direct status field, we need to populate host and check their status
+    // Alternative approach: Add status field to listing model
     
     // Add category filter if provided
     if (category && category !== 'all') {
       query.category = category;
     }
     
-    // Fetch all listings with coordinates (only needed fields for performance)
+    // Fetch listings and populate host to check host status
     const allListings = await Listing.find(query)
       .select('title description price location coordinates images category host createdAt')
+      .populate('host', 'status role name') // Populate host to check their status
       .lean(); // Use lean() for better performance
     
     if (!allListings || allListings.length === 0) {
@@ -70,13 +82,23 @@ export async function GET(request) {
       });
     }
     
-    // Filter listings by distance
+    // Filter listings by distance AND host status
     const nearbyListings = allListings
       .map(listing => {
         // Skip listings without valid coordinates
         if (!listing.coordinates || 
             !listing.coordinates.lat || 
             !listing.coordinates.lng) {
+          return null;
+        }
+        
+        // Skip listings whose host is suspended
+        if (listing.host && listing.host.status === 'suspended') {
+          return null;
+        }
+        
+        // Skip if host is not a host role (shouldn't happen but safe check)
+        if (listing.host && listing.host.role !== 'host') {
           return null;
         }
         
@@ -88,7 +110,9 @@ export async function GET(request) {
         
         return {
           ...listing,
-          distance: Math.round(distance * 10) / 10 // Round to 1 decimal
+          distance: Math.round(distance * 10) / 10, // Round to 1 decimal
+          hostName: listing.host?.name || 'Unknown Host',
+          hostStatus: listing.host?.status
         };
       })
       .filter(listing => listing && listing.distance <= radius)
