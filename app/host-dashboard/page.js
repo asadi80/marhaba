@@ -344,197 +344,147 @@ export default function HostDashboard() {
   }
 
   // --- PENDING STATE: show ID upload UI ---
-  if (user?.role === "host" && user?.status === "pending") {
-    const isExpired = user?.statusReason === "expired";
-    const alreadyUploaded = uploadDone || !!user?.idVerificationUrl;
-    const userInitials =
-      user?.name
-        ?.split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() ?? "H";
-    const { bg: aviBg, color: aviColor } = avi(user?.name);
+// --- SUSPENDED STATE: Show suspended message ---
+if (user?.role === "host" && user?.status === "suspended") {
+  const userInitials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "H";
+  const { bg: aviBg, color: aviColor } = avi(user?.name);
+  
+  // Get suspended translations
+  const suspendedText = t.suspended || {
+    title: isAr ? "تم تعليق حساب المضيف الخاص بك" : "Your Host Account Has Been Suspended",
+    description: isAr ? "لقد تم تعليق حساب المضيف الخاص بك. لا يمكنك حالياً إدارة عقاراتك أو استقبال حجوزات جديدة." : "Your host account has been suspended. You cannot manage your listings or receive new bookings at this time.",
+    contactSupport: isAr ? "للتواصل مع الدعم:" : "Contact Support:",
+    contactMessage: isAr ? "يرجى التواصل مع فريق الدعم لحل هذه المشكلة واستعادة حسابك. يمكنك مراسلتنا على البريد الإلكتروني أو استخدام نموذج الاتصال." : "Please contact our support team to resolve this issue and restore your account. You can reach us via email or the contact form.",
+    whatThisMeans: isAr ? "ماذا يعني هذا؟" : "What does this mean?",
+    implications: {
+      listingsHidden: isAr ? "لن تظهر عقاراتك في نتائج البحث" : "Your listings will not appear in search results",
+      noNewBookings: isAr ? "لا يمكن استقبال حجوزات جديدة" : "Cannot receive new bookings",
+      existingBookings: isAr ? "الحجوزات الحالية قد تتأثر" : "Existing bookings may be affected",
+      noModifications: isAr ? "لن تتمكن من إضافة أو تعديل العقارات" : "Cannot add or modify listings"
+    },
+    contactButton: isAr ? "اتصل بالدعم" : "Contact Support",
+    backToHome: isAr ? "العودة إلى الرئيسية" : "Back to Home"
+  };
+  
+  return (
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .suspended-card { animation: fadeUp 0.4s ease both; }
+      `}</style>
 
-    return (
-      <>
-        <style jsx global>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&display=swap');
-          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-          .pending-card { animation: fadeUp 0.4s ease both; }
-          .upload-drop-zone { border: 2px dashed #d0cfc8; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-          .upload-drop-zone:hover, .upload-drop-zone.drag-over { border-color: #e8c547; background: rgba(232,197,71,0.04); }
-          .upload-btn { background: #1a1a2e; color: #e8c547; border: none; border-radius: 8px; padding: 10px 24px; font-size: 13px; cursor: pointer; font-family: inherit; transition: opacity 0.15s; width: 100%; margin-top: 1rem; }
-          .upload-btn:hover { opacity: 0.85; }
-          .upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        `}</style>
+      <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
+        {/* NAV */}
+        <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
+          <Link
+            href="/"
+            style={{
+              textDecoration: "none",
+              fontFamily: "'Cairo', 'Tajawal', sans-serif",
+              fontWeight: 500,
+              fontSize: "26px",
+              color: "#ffffff",
+              letterSpacing: "1px",
+            }}
+          >
+            مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+          </Link>
 
-        <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
-          {/* NAV */}
-          <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-            <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#ffffff",
-                letterSpacing: "1px",
-              }}
-            >
-              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>
-                {userInitials}
-              </div>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
-              <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.logout || "Logout"}
-              </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>
+              {userInitials}
             </div>
-          </nav>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
+            <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+              {t.logout || "Logout"}
+            </button>
+          </div>
+        </nav>
 
-          <main style={{ maxWidth: 560, margin: "0 auto", padding: "3rem 1.5rem" }}>
-            <div className="pending-card" style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "2.5rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
+        <main style={{ maxWidth: 600, margin: "0 auto", padding: "3rem 1.5rem" }}>
+          <div className="suspended-card" style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "2.5rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", textAlign: "center" }}>
+            
+            {/* Suspended Icon */}
+            <div style={{ fontSize: 64, marginBottom: "1rem" }}>⚠️</div>
+            
+            {/* Status Badge */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+              <span style={{ background: "#FCEBEB", color: "#791F1F", fontSize: 11, fontWeight: 600, padding: "4px 14px", borderRadius: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                {isAr ? "الحساب معلق" : "Account Suspended"}
+              </span>
+            </div>
 
-              {/* Status badge */}
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
-                <span style={{ background: isExpired ? "#FEE2E2" : "#FAEEDA", color: isExpired ? "#991B1B" : "#633806", fontSize: 11, fontWeight: 600, padding: "4px 14px", borderRadius: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  {isExpired ? (isAr ? "انتهت الصلاحية" : "Expired") : (isAr ? "قيد المراجعة" : "Pending Approval")}
-                </span>
+            {/* Title */}
+            <div style={{ marginBottom: "1.75rem" }}>
+              <h2 style={{ fontFamily: displayFont, fontStyle: isAr ? "normal" : "italic", fontWeight: 500, fontSize: 24, color: "#791F1F", marginBottom: 12 }}>
+                {suspendedText.title}
+              </h2>
+              <div style={{ fontSize: 14, color: "#555", lineHeight: 1.7, marginTop: 8 }}>
+                {suspendedText.description}
               </div>
+            </div>
 
-              {/* Title */}
-              <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-                <h2 style={{ fontFamily: displayFont, fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 26, color: "#111118", marginBottom: 8 }}>
-                  {isExpired
-                    ? (isAr ? "انتهت صلاحية اشتراكك" : "Subscription Expired")
-                    : (isAr ? "مرحباً بك في لوحة المضيف" : "Welcome, Host")}
-                </h2>
-                <p style={{ fontSize: 13, color: "#777", lineHeight: 1.7, maxWidth: 380, margin: "0 auto" }}>
-                  {alreadyUploaded
-                    ? (isAr ? "تم استلام وثيقة الهوية. سيتم مراجعة حسابك من قِبل الفريق وستتلقى إشعاراً عند التفعيل." : "Your ID document has been received. Our team will review your account and notify you once it's approved.")
-                    : (isAr ? "لإتمام التسجيل كمضيف والتمكن من إضافة العقارات، يرجى رفع صورة من وثيقة هويتك الرسمية." : "To complete your host registration and start adding listings, please upload a copy of your official ID document.")
-                  }
-                </p>
+            {/* Message Box */}
+            <div style={{ background: "#FEF3C7", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem", textAlign: "left" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>📧</span>
+                {suspendedText.contactSupport}
               </div>
-
-              {/* Already uploaded — waiting state */}
-              {alreadyUploaded ? (
-                <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "1.25rem", textAlign: "center" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-                  <div style={{ fontSize: 13, color: "#27500A", fontWeight: 500 }}>
-                    {isAr ? "تم رفع الهوية بنجاح" : "ID uploaded successfully"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#27500A", opacity: 0.7, marginTop: 4 }}>
-                    {isAr ? "في انتظار موافقة الإدارة" : "Awaiting admin approval"}
-                  </div>
+              <div style={{ fontSize: 13, color: "#78350F", lineHeight: 1.6 }}>
+                {suspendedText.contactMessage}
+              </div>
+              <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #FDE68A" }}>
+                <div style={{ fontSize: 12, color: "#78350F", marginBottom: 4 }}>
+                  📧 support@marhaba.com
                 </div>
-              ) : (
-                /* Upload form */
-                <>
-                  {/* Drop zone */}
-                  <div
-                    className={`upload-drop-zone${dragOver ? " drag-over" : ""}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]); }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e.target.files[0])}
-                    />
-
-                    {idPreview ? (
-                      <div>
-                        <img src={idPreview} alt="ID preview" style={{ maxHeight: 160, maxWidth: "100%", borderRadius: 8, objectFit: "contain", marginBottom: 8 }} />
-                        <div style={{ fontSize: 12, color: "#555" }}>{idFile?.name}</div>
-                      </div>
-                    ) : idFile ? (
-                      <div>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
-                        <div style={{ fontSize: 12, color: "#555" }}>{idFile.name}</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: 36, marginBottom: 10 }}>🪪</div>
-                        <div style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>
-                          {isAr ? "اسحب الملف هنا أو انقر للاختيار" : "Drag & drop or click to choose"}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#aaa" }}>
-                          {isAr ? "JPG · PNG · PDF — بحد أقصى 10 ميغابايت" : "JPG · PNG · PDF — max 10 MB"}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Error */}
-                  {uploadError && (
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#C53030", background: "#FFF5F5", border: "1px solid #FEB2B2", borderRadius: 8, padding: "8px 12px" }}>
-                      {uploadError}
-                    </div>
-                  )}
-
-                  {/* Upload button */}
-                  <button
-                    className="upload-btn"
-                    onClick={handleUploadID}
-                    disabled={!idFile || uploading}
-                  >
-                    {uploading ? (
-                      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                        <span style={{ width: 14, height: 14, border: "2px solid rgba(232,197,71,0.3)", borderTopColor: "#e8c547", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
-                        {isAr ? "جارٍ الرفع..." : "Uploading..."}
-                      </span>
-                    ) : (
-                      isAr ? "رفع الهوية" : "Submit ID for Verification"
-                    )}
-                  </button>
-
-                  {/* Info note */}
-                  <p style={{ fontSize: 11, color: "#bbb", textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
-                    {isAr
-                      ? "سيتم استخدام هذه الوثيقة للتحقق من هويتك فقط ولن تُشارك مع أي طرف آخر."
-                      : "This document will only be used for identity verification and will not be shared with third parties."}
-                  </p>
-                </>
-              )}
-
-              {/* Steps indicator */}
-              <div style={{ marginTop: "2rem", display: "flex", gap: 0, borderTop: "1px solid #f0ede8", paddingTop: "1.25rem" }}>
-                {[
-                  { step: 1, label: isAr ? "إنشاء الحساب" : "Create Account", done: true },
-                  { step: 2, label: isAr ? "رفع الهوية" : "Upload ID", done: alreadyUploaded },
-                  { step: 3, label: isAr ? "موافقة الإدارة" : "Admin Approval", done: false },
-                  { step: 4, label: isAr ? "إضافة عقارات" : "Add Listings", done: false },
-                ].map((s, i, arr) => (
-                  <div key={s.step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-                    {i < arr.length - 1 && (
-                      <div style={{ position: "absolute", top: 13, left: "50%", right: "-50%", height: 2, background: s.done ? "#1D9E75" : "#e5e3dc", zIndex: 0 }} />
-                    )}
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: s.done ? "#1D9E75" : "#e5e3dc", color: s.done ? "#fff" : "#aaa", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", position: "relative", zIndex: 1 }}>
-                      {s.done ? "✓" : s.step}
-                    </div>
-                    <div style={{ fontSize: 10, color: s.done ? "#27500A" : "#aaa", lineHeight: 1.3 }}>{s.label}</div>
-                  </div>
-                ))}
+                <div style={{ fontSize: 12, color: "#78350F" }}>
+                  🌐 www.marhaba.com/contact
+                </div>
               </div>
             </div>
-          </main>
-        </div>
-      </>
-    );
-  }
+
+            {/* What this means */}
+            <div style={{ textAlign: "left", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#791F1F", marginBottom: 12 }}>
+                {suspendedText.whatThisMeans}
+              </div>
+              <ul style={{ fontSize: 12, color: "#666", paddingLeft: isAr ? 20 : 20, lineHeight: 1.8 }}>
+                <li>{suspendedText.implications.listingsHidden}</li>
+                <li>{suspendedText.implications.noNewBookings}</li>
+                <li>{suspendedText.implications.existingBookings}</li>
+                <li>{suspendedText.implications.noModifications}</li>
+              </ul>
+            </div>
+
+            {/* Contact Button */}
+            <a 
+              href="mailto:support@marhaba.com"
+              style={{ display: "inline-block", background: "#1a1a2e", color: "#e8c547", padding: "10px 24px", borderRadius: 8, fontSize: 13, textDecoration: "none", fontWeight: 500 }}
+            >
+              {suspendedText.contactButton}
+            </a>
+
+            {/* Back to Home */}
+            <div style={{ marginTop: "1.5rem" }}>
+              <Link href="/" style={{ fontSize: 12, color: "#185FA5", textDecoration: "none" }}>
+                ← {suspendedText.backToHome}
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
 
   // --- MAIN DASHBOARD (confirmed hosts) ---
   const userInitials =
