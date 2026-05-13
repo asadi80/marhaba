@@ -7,7 +7,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import "./style.css";
 
 const CLOUDINARY_CLOUD_NAME = "dcakmhk1o";
-const CLOUDINARY_UPLOAD_PRESET = "host_id_verification"; // create an unsigned preset in Cloudinary dashboard
+const CLOUDINARY_UPLOAD_PRESET = "host_id_verification";
 
 export default function HostDashboard() {
   const router = useRouter();
@@ -137,7 +137,6 @@ export default function HostDashboard() {
     setUploading(true);
     setUploadError("");
     try {
-      // Upload to Cloudinary
       const formData = new FormData();
       formData.append("file", idFile);
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
@@ -152,9 +151,7 @@ export default function HostDashboard() {
       if (!cloudRes.ok || cloudData.error) {
         throw new Error(cloudData.error?.message || "Cloudinary upload failed");
       }
-console.log(cloudData);
 
-      // Save the URL to the user record via your API
       const saveRes = await fetch("/api/host/upload-id", {
         method: "POST",
         credentials: "include",
@@ -215,6 +212,137 @@ console.log(cloudData);
       </div>
     );
 
+  // --- SUSPENDED STATE: Show suspended message ---
+  if (user?.role === "host" && user?.status === "suspended") {
+    const userInitials =
+      user?.name
+        ?.split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() ?? "H";
+    const { bg: aviBg, color: aviColor } = avi(user?.name);
+    
+    return (
+      <>
+        <style jsx global>{`
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
+          @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+          .suspended-card { animation: fadeUp 0.4s ease both; }
+        `}</style>
+
+        <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
+          {/* NAV */}
+          <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
+            <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#ffffff",
+                letterSpacing: "1px",
+              }}
+            >
+              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>
+                {userInitials}
+              </div>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
+              <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                {t.logout || "Logout"}
+              </button>
+            </div>
+          </nav>
+
+          <main style={{ maxWidth: 600, margin: "0 auto", padding: "3rem 1.5rem" }}>
+            <div className="suspended-card" style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "2.5rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", textAlign: "center" }}>
+              
+              {/* Suspended Icon */}
+              <div style={{ fontSize: 64, marginBottom: "1rem" }}>⚠️</div>
+              
+              {/* Status Badge */}
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+                <span style={{ background: "#FCEBEB", color: "#791F1F", fontSize: 11, fontWeight: 600, padding: "4px 14px", borderRadius: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  {isAr ? "الحساب معلق" : "Account Suspended"}
+                </span>
+              </div>
+
+              {/* Title */}
+              <div style={{ marginBottom: "1.75rem" }}>
+                <h2 style={{ fontFamily: displayFont, fontStyle: isAr ? "normal" : "italic", fontWeight: 500, fontSize: 24, color: "#791F1F", marginBottom: 12 }}>
+                  {isAr ? "تم تعليق حساب المضيف الخاص بك" : "Your Host Account Has Been Suspended"}
+                </h2>
+                <div style={{ fontSize: 14, color: "#555", lineHeight: 1.7, marginTop: 8 }}>
+                  {isAr 
+                    ? "لقد تم تعليق حساب المضيف الخاص بك. لا يمكنك حالياً إدارة عقاراتك أو استقبال حجوزات جديدة."
+                    : "Your host account has been suspended. You cannot manage your listings or receive new bookings at this time."
+                  }
+                </div>
+              </div>
+
+              {/* Message Box */}
+              <div style={{ background: "#FEF3C7", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem", textAlign: "left" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>📧</span>
+                  {isAr ? "للتواصل مع الدعم:" : "Contact Support:"}
+                </div>
+                <div style={{ fontSize: 13, color: "#78350F", lineHeight: 1.6 }}>
+                  {isAr 
+                    ? "يرجى التواصل مع فريق الدعم لحل هذه المشكلة واستعادة حسابك. يمكنك مراسلتنا على البريد الإلكتروني أو استخدام نموذج الاتصال."
+                    : "Please contact our support team to resolve this issue and restore your account. You can reach us via email or the contact form."
+                  }
+                </div>
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #FDE68A" }}>
+                  <div style={{ fontSize: 12, color: "#78350F", marginBottom: 4 }}>
+                    📧 support@marhaba.com
+                  </div>
+                  <div style={{ fontSize: 12, color: "#78350F" }}>
+                    🌐 www.marhaba.com/contact
+                  </div>
+                </div>
+              </div>
+
+              {/* What this means */}
+              <div style={{ textAlign: "left", marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#791F1F", marginBottom: 12 }}>
+                  {isAr ? "ماذا يعني هذا؟" : "What does this mean?"}
+                </div>
+                <ul style={{ fontSize: 12, color: "#666", paddingLeft: isAr ? 20 : 20, lineHeight: 1.8 }}>
+                  <li>{isAr ? "لن تظهر عقاراتك في نتائج البحث" : "Your listings will not appear in search results"}</li>
+                  <li>{isAr ? "لا يمكن استقبال حجوزات جديدة" : "Cannot receive new bookings"}</li>
+                  <li>{isAr ? "الحجوزات الحالية قد تتأثر" : "Existing bookings may be affected"}</li>
+                  <li>{isAr ? "لن تتمكن من إضافة أو تعديل العقارات" : "Cannot add or modify listings"}</li>
+                </ul>
+              </div>
+
+              {/* Contact Button */}
+              <a 
+                href="mailto:support@marhaba.com"
+                style={{ display: "inline-block", background: "#1a1a2e", color: "#e8c547", padding: "10px 24px", borderRadius: 8, fontSize: 13, textDecoration: "none", fontWeight: 500 }}
+              >
+                {isAr ? "اتصل بالدعم" : "Contact Support"}
+              </a>
+
+              {/* Back to Home */}
+              <div style={{ marginTop: "1.5rem" }}>
+                <Link href="/" style={{ fontSize: 12, color: "#185FA5", textDecoration: "none" }}>
+                  ← {isAr ? "العودة إلى الرئيسية" : "Back to Home"}
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </>
+    );
+  }
+
   // --- PENDING STATE: show ID upload UI ---
   if (user?.role === "host" && user?.status === "pending") {
     const isExpired = user?.statusReason === "expired";
@@ -247,7 +375,7 @@ console.log(cloudData);
         <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
           {/* NAV */}
           <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-              <Link
+            <Link
               href="/"
               style={{
                 textDecoration: "none",
@@ -258,7 +386,7 @@ console.log(cloudData);
                 letterSpacing: "1px",
               }}
             >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -488,7 +616,7 @@ console.log(cloudData);
         {/* NAV */}
         <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                <Link
+            <Link
               href="/"
               style={{
                 textDecoration: "none",
@@ -499,7 +627,7 @@ console.log(cloudData);
                 letterSpacing: "1px",
               }}
             >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
             <div className="desktop-nav-links" style={{ display: "flex", gap: 2 }}>
               {NAV_LINKS.map(({ href, label }) => (
