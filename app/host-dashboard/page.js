@@ -255,6 +255,9 @@ export default function HostDashboard() {
                 {userInitials}
               </div>
               <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
+               <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#e8c547", fontFamily: "inherit" }}>
+              {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+            </button>
               <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.logout || "Logout"}
               </button>
@@ -404,6 +407,9 @@ if (user?.role === "host" && user?.status === "suspended") {
               {userInitials}
             </div>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
+             <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#e8c547", fontFamily: "inherit" }}>
+              {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+            </button>
             <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
               {t.logout || "Logout"}
             </button>
