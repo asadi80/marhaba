@@ -344,7 +344,7 @@ function getHostConfirmationEmailContent(host, expiryDate, daysUntilExpiry) {
 // Bilingual email template for host suspension
 function getHostSuspensionEmailContent(host) {
   const formattedDate = formatDateForEmail(new Date());
-  const supportEmail = "support@marhaba.com";
+  const supportEmail = "support@mar-haba.ly";
   const supportUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/contact`;
   
   return {

@@ -304,10 +304,10 @@ export default function HostDashboard() {
                 </div>
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #FDE68A" }}>
                   <div style={{ fontSize: 12, color: "#78350F", marginBottom: 4 }}>
-                    📧 support@marhaba.com
+                    📧 support@mar-haba.ly
                   </div>
                   <div style={{ fontSize: 12, color: "#78350F" }}>
-                    🌐 www.marhaba.com/contact
+                    🌐 www.mar-haba.ly/contact
                   </div>
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function HostDashboard() {
 
               {/* Contact Button */}
               <a 
-                href="mailto:support@marhaba.com"
+                href="mailto:support@mar-haba.ly"
                 style={{ display: "inline-block", background: "#1a1a2e", color: "#e8c547", padding: "10px 24px", borderRadius: 8, fontSize: 13, textDecoration: "none", fontWeight: 500 }}
               >
                 {isAr ? "اتصل بالدعم" : "Contact Support"}
