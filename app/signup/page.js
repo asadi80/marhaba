@@ -216,13 +216,12 @@ export default function Signup() {
             {/* Top bar */}
             <div className="flex items-center justify-between mb-8">
               {/* Mobile logo */}
-              <Link
-              href="/"
-              className="no-underline text-[26px] text-white/90 tracking-wide"
-              style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500 }}
-            >
-              مر<span className="font-bold text-[#e8c547]">حبا</span>
-            </Link>
+             <Link
+            href="/"
+            className="no-underline font-[Cairo,Tajawal,sans-serif] font-medium text-[26px] text-[#1a1a2e] tracking-wide"
+          >
+            مر<span className="font-bold text-yellow-400">حبا</span>
+          </Link>
 
               {/* Language toggle */}
               <button
