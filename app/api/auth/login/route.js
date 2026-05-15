@@ -28,13 +28,16 @@ export async function POST(request) {
       );
     }
 
-    // Check if email is verified
- // Check if email is verified
+// Check if email is verified
 if (!user.emailVerified) {
   return NextResponse.json(
     {
-      message: "Please verify your email address before logging in. Check your inbox for the verification link, or click here to resend: https://www.mar-haba.ly/resend-verification. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو انقر هنا لإعادة الإرسال: https://www.mar-haba.ly/resend-verification",
-      htmlMessage: `Please verify your email address before logging in. Check your inbox for the verification link, or <a href="https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}" target="_blank" style="color: #3B82F6; text-decoration: underline;">click here to resend</a>. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو <a href="https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}" target="_blank" style="color: #3B82F6; text-decoration: underline;">انقر هنا لإعادة الإرسال</a>`,
+      message: "Please verify your email address before logging in.",
+      details: {
+        checkInbox: "Check your inbox for the verification link",
+        resendAction: "click here to resend",
+        arabicMessage: "يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو انقر هنا لإعادة الإرسال"
+      },
       requiresVerification: true,
       email: user.email,
       resendLink: `https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}`
