@@ -120,7 +120,9 @@ function BookingCard({ booking, type }) {
             {type === "host" ? "Guest:" : "Listing:"}
           </p>
           <p className="text-sm font-medium text-[#185FA5]">
-            {type === "host" ? booking.user?.name || booking.userId : booking.listing?.title || booking.listingId}
+            {type === "host"
+              ? booking.user?.name || booking.userId
+              : booking.listing?.title || booking.listingId}
           </p>
         </div>
         <StatusBadge status={booking.status} />
@@ -133,7 +135,9 @@ function BookingCard({ booking, type }) {
           </p>
         </div>
         <div>
-          <span className="text-[10px] uppercase tracking-wider">Check Out</span>
+          <span className="text-[10px] uppercase tracking-wider">
+            Check Out
+          </span>
           <p className="text-[#111118] mt-0.5">
             {new Date(booking.checkOut).toLocaleDateString()}
           </p>
@@ -144,7 +148,9 @@ function BookingCard({ booking, type }) {
         </div>
         <div>
           <span className="text-[10px] uppercase tracking-wider">Total</span>
-          <p className="text-[#111118] mt-0.5 font-medium">${booking.totalPrice}</p>
+          <p className="text-[#111118] mt-0.5 font-medium">
+            ${booking.totalPrice}
+          </p>
         </div>
       </div>
       <p className="text-[10px] text-[#999] mt-2">
@@ -159,8 +165,10 @@ function ListingCard({ listing }) {
   return (
     <div className="border border-black/[0.06] rounded-lg overflow-hidden hover:shadow-md transition-all">
       {listing.images?.[0] && (
-        <div className="h-32 bg-cover bg-center" 
-             style={{ backgroundImage: `url(${listing.images[0]})` }} />
+        <div
+          className="h-32 bg-cover bg-center"
+          style={{ backgroundImage: `url(${listing.images[0]})` }}
+        />
       )}
       <div className="p-3">
         <div className="flex justify-between items-start mb-2">
@@ -173,7 +181,9 @@ function ListingCard({ listing }) {
           {listing.description}
         </p>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-[#185FA5] font-medium">${listing.price}/night</span>
+          <span className="text-[#185FA5] font-medium">
+            ${listing.price}/night
+          </span>
           <span className="text-[#999]">{listing.location}</span>
         </div>
         {listing.blockedDates?.length > 0 && (
@@ -207,8 +217,12 @@ export default function UserDetailPage() {
 
   const isSuperAdmin = currentUser?.role === "super_admin";
 
-  useEffect(() => { fetchCurrentUser(); }, []);
-  useEffect(() => { if (currentUser) fetchTargetUser(); }, [currentUser, userId]);
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+  useEffect(() => {
+    if (currentUser) fetchTargetUser();
+  }, [currentUser, userId]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -216,10 +230,13 @@ export default function UserDetailPage() {
       if (!res) return;
       const data = await res.json();
       if (!res.ok || !["admin", "super_admin"].includes(data.user.role)) {
-        router.push("/"); return;
+        router.push("/");
+        return;
       }
       setCurrentUser(data.user);
-    } catch { router.push("/login"); }
+    } catch {
+      router.push("/login");
+    }
   };
 
   const fetchTargetUser = async () => {
@@ -238,16 +255,17 @@ export default function UserDetailPage() {
         status: data.user.status,
         statusReason: data.user.statusReason || "",
       });
-      
+
       // Fetch user's listings and bookings
       await fetchUserListings();
       await fetchUserBookings();
-      
     } catch (err) {
       showNotification(err.message || "Failed to load user", "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
-  
+
   const fetchUserListings = async () => {
     try {
       const res = await authFetch(`/api/admin/users/${userId}/listings`);
@@ -259,7 +277,7 @@ export default function UserDetailPage() {
       console.error("Failed to fetch listings:", err);
     }
   };
-  
+
   const fetchUserBookings = async () => {
     try {
       const res = await authFetch(`/api/admin/users/${userId}/bookings`);
@@ -277,8 +295,19 @@ export default function UserDetailPage() {
     setSaving(true);
     try {
       const updates = isSuperAdmin
-        ? { name: form.name, email: form.email, phoneNumber: form.phoneNumber, role: form.role, status: form.status, statusReason: form.statusReason }
-        : { phoneNumber: form.phoneNumber, status: form.status, statusReason: form.statusReason };
+        ? {
+            name: form.name,
+            email: form.email,
+            phoneNumber: form.phoneNumber,
+            role: form.role,
+            status: form.status,
+            statusReason: form.statusReason,
+          }
+        : {
+            phoneNumber: form.phoneNumber,
+            status: form.status,
+            statusReason: form.statusReason,
+          };
 
       const res = await authFetch(`/api/admin/users/${userId}`, {
         method: "PUT",
@@ -295,18 +324,31 @@ export default function UserDetailPage() {
       } else {
         showNotification(data.message || "Update failed", "error");
       }
-    } catch { showNotification("Error saving changes", "error"); }
-    finally { setSaving(false); }
+    } catch {
+      showNotification("Error saving changes", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete ${targetUser.name}? This will also delete all their listings and bookings. This cannot be undone.`)) return;
+    if (
+      !confirm(
+        `Delete ${targetUser.name}? This will also delete all their listings and bookings. This cannot be undone.`,
+      )
+    )
+      return;
     setDeleting(true);
     try {
-      const res = await authFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      const res = await authFetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (data.success) {
-        showNotification(`User deleted with ${data.deletedCount?.listings || 0} listings and associated bookings`, "success");
+        showNotification(
+          `User deleted with ${data.deletedCount?.listings || 0} listings and associated bookings`,
+          "success",
+        );
         setTimeout(() => router.push("/admin"), 1500);
       } else {
         showNotification(data.message, "error");
@@ -328,7 +370,9 @@ export default function UserDetailPage() {
   const fmt = (dateStr) =>
     dateStr
       ? new Date(dateStr).toLocaleDateString("en-US", {
-          day: "numeric", month: "short", year: "numeric",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
         })
       : null;
 
@@ -345,18 +389,29 @@ export default function UserDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#f7f6f2]">
         <p className="text-[#999] text-sm">User not found.</p>
-        <Link href="/admin" className="text-xs text-[#185FA5] underline">← back to admin</Link>
+        <Link href="/admin" className="text-xs text-[#185FA5] underline">
+          ← back to admin
+        </Link>
       </div>
     );
   }
 
   const avi = getAvatarStyle(targetUser.name);
-  const userInitials = targetUser.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-  const adminInitials = currentUser.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const userInitials = targetUser.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const adminInitials = currentUser.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#f7f6f2]">
-
       {/* ── Lightbox ── */}
       {lightboxImg && (
         <div
@@ -382,7 +437,9 @@ export default function UserDetailPage() {
       {notification && (
         <div
           className={`fixed top-4 right-4 z-40 px-5 py-3 rounded-lg text-sm text-white bg-[#1a1a2e] border-l-4 ${
-            notification.type === "success" ? "border-[#e8c547]" : "border-[#E24B4A]"
+            notification.type === "success"
+              ? "border-[#e8c547]"
+              : "border-[#E24B4A]"
           }`}
         >
           {notification.message}
@@ -392,10 +449,23 @@ export default function UserDetailPage() {
       {/* ── Navbar ── */}
       <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-4 sm:px-8 h-14 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-           <Link href="/" style={{ textDecoration: "none", fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: "26px", color: "#ffffff", letterSpacing: "1px" }}>
-              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
-          <Link href="/admin" className="text-white/50 hover:text-white/80 text-xs transition-colors truncate">
+          <Link
+            href="/"
+            style={{
+              textDecoration: "none",
+              fontFamily: "'Cairo','Tajawal',sans-serif",
+              fontWeight: 500,
+              fontSize: "26px",
+              color: "#ffffff",
+              letterSpacing: "1px",
+            }}
+          >
+            مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+          </Link>
+          <Link
+            href="/admin"
+            className="text-white/50 hover:text-white/80 text-xs transition-colors truncate"
+          >
             ← back to users
           </Link>
         </div>
@@ -406,7 +476,9 @@ export default function UserDetailPage() {
           >
             {adminInitials}
           </div>
-          <span className="text-xs text-white/70 hidden sm:block">{currentUser.name}</span>
+          <span className="text-xs text-white/70 hidden sm:block">
+            {currentUser.name}
+          </span>
           <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full hidden sm:inline">
             {currentUser.role}
           </span>
@@ -415,7 +487,6 @@ export default function UserDetailPage() {
 
       {/* ── Page content ── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-
         {/* Profile header card */}
         <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -432,7 +503,9 @@ export default function UserDetailPage() {
               <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                 <RoleBadge role={targetUser.role} />
                 <StatusBadge status={targetUser.status} />
-                <span className="text-[11px] text-[#bbb]">#{targetUser._id?.slice(-8)}</span>
+                <span className="text-[11px] text-[#bbb]">
+                  #{targetUser._id?.slice(-8)}
+                </span>
               </div>
             </div>
           </div>
@@ -494,28 +567,58 @@ export default function UserDetailPage() {
                 <SectionTitle>account info</SectionTitle>
                 <InfoRow label="User ID" value={targetUser._id} mono />
                 <InfoRow label="Created" value={fmt(targetUser.createdAt)} />
-                <InfoRow label="Last active" value={fmt(targetUser.lastActive)} />
-                <InfoRow label="Email verified" value={targetUser.emailVerified ? "Yes" : "No"} />
+                <InfoRow
+                  label="Last active"
+                  value={fmt(targetUser.lastActive)}
+                />
+                <InfoRow
+                  label="Email verified"
+                  value={targetUser.emailVerified ? "Yes" : "No"}
+                />
               </div>
 
               {/* Host details — hosts only */}
               {targetUser.role === "host" && (
                 <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
                   <SectionTitle>host details</SectionTitle>
-                  <InfoRow label="Rating" value={targetUser.hostDetails?.rating?.toFixed(1) ?? "0.0"} />
-                  <InfoRow label="Listings" value={targetUser.hostDetails?.totalListings ?? 0} />
-                  <InfoRow label="Verified" value={targetUser.hostDetails?.verified ? "Yes" : "No"} />
-                  <InfoRow label="Joined" value={fmt(targetUser.hostDetails?.joinedDate)} />
-                  <InfoRow label="Confirmed" value={fmt(targetUser.hostDetails?.confirmedAt)} />
-                  <InfoRow label="Expires" value={fmt(targetUser.hostExpiryDate)} />
-                  <InfoRow label="Status reason" value={targetUser.statusReason} />
+                  <InfoRow
+                    label="Rating"
+                    value={targetUser.hostDetails?.rating?.toFixed(1) ?? "0.0"}
+                  />
+                  <InfoRow
+                    label="Listings"
+                    value={targetUser.hostDetails?.totalListings ?? 0}
+                  />
+                  <InfoRow
+                    label="Verified"
+                    value={targetUser.hostDetails?.verified ? "Yes" : "No"}
+                  />
+                  <InfoRow
+                    label="Joined"
+                    value={fmt(targetUser.hostDetails?.joinedDate)}
+                  />
+                  <InfoRow
+                    label="Confirmed"
+                    value={fmt(targetUser.hostDetails?.confirmedAt)}
+                  />
+                  <InfoRow
+                    label="Expires"
+                    value={fmt(targetUser.hostExpiryDate)}
+                  />
+                  <InfoRow
+                    label="Status reason"
+                    value={targetUser.statusReason}
+                  />
                 </div>
               )}
 
               {/* User details */}
               <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-5">
                 <SectionTitle>user details</SectionTitle>
-                <InfoRow label="Member since" value={fmt(targetUser.userDetails?.memberSince)} />
+                <InfoRow
+                  label="Member since"
+                  value={fmt(targetUser.userDetails?.memberSince)}
+                />
                 <InfoRow label="Bookings made" value={userBookings.length} />
                 <InfoRow label="Listings" value={userListings.length} />
               </div>
@@ -570,51 +673,58 @@ export default function UserDetailPage() {
                     </select>
                   </Field> */}
 
-                 <Field label="status">
-  <select
-    className={inputCls}
-    value={form.status ?? ""}
-    onChange={set("status")}
-  >
-    {targetUser?.role === "host" ? (
-      // Host status options
-      <>
-        <option value="confirmed">Confirmed — starts 6-month timer</option>
-        <option value="pending">Pending</option>
-        <option value="suspended">Suspended</option>
-      </>
-    ) : (
-      // Regular user status options
-      <>
-        <option value="confirmed">Confirmed</option>
-        <option value="pending">Pending</option>
-        <option value="suspended">Suspended</option>
-      </>
-    )}
-  </select>
-  
-  {/* Helpful notes based on selection */}
-  {targetUser?.role === "host" && form.status === "confirmed" && (
-    <p className="text-[11px] text-[#27500A] mt-1">
-      ⏱️ 6-month timer starts now. Host will need to re-verify after 6 months.
-    </p>
-  )}
-  {targetUser?.role === "host" && form.status === "pending" && (
-    <p className="text-[11px] text-[#633806] mt-1">
-      ⚠️ Pending hosts need to upload ID documents for verification.
-    </p>
-  )}
-  {form.status === "suspended" && (
-    <p className="text-[11px] text-[#791F1F] mt-1">
-      ⚠️ Suspended users cannot log in or make bookings.
-    </p>
-  )}
-  {targetUser?.role !== "host" && form.status === "pending" && (
-    <p className="text-[11px] text-[#633806] mt-1">
-      ⏳ User is awaiting confirmation.
-    </p>
-  )}
-</Field>
+                  <Field label="status">
+                    <select
+                      className={inputCls}
+                      value={form.status ?? ""}
+                      onChange={set("status")}
+                    >
+                      {targetUser?.role === "host" ? (
+                        // Host status options
+                        <>
+                          <option value="confirmed">
+                            Confirmed — starts 6-month timer
+                          </option>
+                          <option value="pending">Pending</option>
+                          <option value="suspended">Suspended</option>
+                        </>
+                      ) : (
+                        // Regular user status options
+                        <>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="pending">Pending</option>
+                          <option value="suspended">Suspended</option>
+                        </>
+                      )}
+                    </select>
+
+                    {/* Helpful notes based on selection */}
+                    {targetUser?.role === "host" &&
+                      form.status === "confirmed" && (
+                        <p className="text-[11px] text-[#27500A] mt-1">
+                          ⏱️ 6-month timer starts now. Host will need to
+                          re-verify after 6 months.
+                        </p>
+                      )}
+                    {targetUser?.role === "host" &&
+                      form.status === "pending" && (
+                        <p className="text-[11px] text-[#633806] mt-1">
+                          ⚠️ Pending hosts need to upload ID documents for
+                          verification.
+                        </p>
+                      )}
+                    {form.status === "suspended" && (
+                      <p className="text-[11px] text-[#791F1F] mt-1">
+                        ⚠️ Suspended users cannot log in or make bookings.
+                      </p>
+                    )}
+                    {targetUser?.role !== "host" &&
+                      form.status === "pending" && (
+                        <p className="text-[11px] text-[#633806] mt-1">
+                          ⏳ User is awaiting confirmation.
+                        </p>
+                      )}
+                  </Field>
 
                   <Field label="status reason (optional)">
                     <input
@@ -628,7 +738,8 @@ export default function UserDetailPage() {
 
                 {!isSuperAdmin && (
                   <p className="text-[11px] text-[#bbb] mt-4 leading-relaxed">
-                    As an admin you can update phone number and status. Super admins can edit all fields.
+                    As an admin you can update phone number and status. Super
+                    admins can edit all fields.
                   </p>
                 )}
 
@@ -659,7 +770,9 @@ export default function UserDetailPage() {
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {targetUser.idImages.map((url, i) => {
-                      const isPdf = url.toLowerCase().includes(".pdf") || url.includes("/raw/");
+                      const isPdf =
+                        url.toLowerCase().includes(".pdf") ||
+                        url.includes("/raw/");
                       return isPdf ? (
                         <a
                           key={i}
@@ -669,10 +782,15 @@ export default function UserDetailPage() {
                           className="flex flex-col items-center justify-center gap-2 border border-black/10 rounded-lg p-4 sm:p-6 text-center hover:bg-[#fafaf8] transition-all"
                         >
                           <span className="text-3xl">📄</span>
-                          <span className="text-[11px] text-[#185FA5]">PDF — open</span>
+                          <span className="text-[11px] text-[#185FA5]">
+                            PDF — open
+                          </span>
                         </a>
                       ) : (
-                        <div key={i} className="relative group rounded-lg overflow-hidden border border-black/10">
+                        <div
+                          key={i}
+                          className="relative group rounded-lg overflow-hidden border border-black/10"
+                        >
                           <img
                             src={url}
                             alt={`ID doc ${i + 1}`}
@@ -707,7 +825,7 @@ export default function UserDetailPage() {
                 ({userListings.length})
               </span>
             </SectionTitle>
-            
+
             {userListings.length === 0 ? (
               <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
                 This user has no listings yet.
@@ -733,7 +851,7 @@ export default function UserDetailPage() {
                   ({userBookings.length})
                 </span>
               </SectionTitle>
-              
+
               {userBookings.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
                   This user hasn't made any bookings yet.
@@ -741,7 +859,11 @@ export default function UserDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {userBookings.map((booking) => (
-                    <BookingCard key={booking._id} booking={booking} type="guest" />
+                    <BookingCard
+                      key={booking._id}
+                      booking={booking}
+                      type="guest"
+                    />
                   ))}
                 </div>
               )}
@@ -755,7 +877,7 @@ export default function UserDetailPage() {
                   ({listingsBookings.length})
                 </span>
               </SectionTitle>
-              
+
               {listingsBookings.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
                   No bookings have been made on this user's listings yet.
@@ -763,7 +885,11 @@ export default function UserDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {listingsBookings.map((booking) => (
-                    <BookingCard key={booking._id} booking={booking} type="host" />
+                    <BookingCard
+                      key={booking._id}
+                      booking={booking}
+                      type="host"
+                    />
                   ))}
                 </div>
               )}
