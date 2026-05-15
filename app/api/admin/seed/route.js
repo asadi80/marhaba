@@ -68,7 +68,7 @@ export async function POST(request) {
       },
     });
 
-    // Return success response
+    // Return success response WITHOUT exposing the password
     return NextResponse.json({
       success: true,
       message: "Super admin created successfully",
@@ -79,10 +79,8 @@ export async function POST(request) {
         role: admin.role,
         status: admin.status,
       },
-      credentials: {
-        email: "abdurraouf@mar-haba.ly",
-        password: "Abdo172*)"
-      }
+      // REMOVED: credentials object that exposed the password
+      // Admin should use a secure method to set/reset password if needed
     }, { status: 201 });
 
   } catch (error) {
