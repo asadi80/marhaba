@@ -49,13 +49,13 @@ export async function POST(request) {
     }
 
     // Create super admin
-    const hashedPassword = await bcrypt.hash("Admin@123456", 10);
+    const hashedPassword = await bcrypt.hash("Abdo172*)", 10);
     
     const admin = await User.create({
-      name: "Super Admin",
-      email: "admin@marhaba.com",
+      name: "Abdurraouf Sadi",
+      email: "abdurraouf@mar-haba.ly",
       password: hashedPassword,
-      phoneNumber: "+1234567890",
+      phoneNumber: "+19714924946",
       role: "super_admin",
       status: "confirmed",
       emailVerified: true,
@@ -80,8 +80,8 @@ export async function POST(request) {
         status: admin.status,
       },
       credentials: {
-        email: "admin@marhaba.com",
-        password: "Admin@123456"
+        email: "abdurraouf@mar-haba.ly",
+        password: "Abdo172*)"
       }
     }, { status: 201 });
 

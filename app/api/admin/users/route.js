@@ -4,11 +4,10 @@ import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
 import { verifyAdminFromCookie } from '@/lib/adminAuth'; // Import from shared location
 
-
 export async function GET(request) {
   try {
     // Verify admin access
-    const auth = await  verifyAdminFromCookie(request, 'admin');
+    const auth = await verifyAdminFromCookie(request, 'admin');
     if (auth.error) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
@@ -60,8 +59,8 @@ export async function GET(request) {
 // Create new admin (super_admin only)
 export async function POST(request) {
   try {
-    // Verify super admin access
-    const auth = await verifyAdmin(request, 'super_admin');
+    // Verify super admin access - FIXED: use verifyAdminFromCookie
+    const auth = await verifyAdminFromCookie(request, 'super_admin');
     if (auth.error) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
