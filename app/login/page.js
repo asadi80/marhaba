@@ -46,6 +46,7 @@ export default function LoginPage() {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
+  const [htmlError, setHtmlError] = useState("");
   const [loading, setLoading]   = useState(false);
 
   // ── Translations ────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setHtmlError("");
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -95,7 +97,12 @@ export default function LoginPage() {
         else if (role === "host") router.push("/host-dashboard");
         else router.push("/dashboard");
       } else {
-        setError(data.message || (isAr ? "فشل تسجيل الدخول" : "Login failed"));
+        // Check if we have HTML message for verification
+        if (data.requiresVerification && data.htmlMessage) {
+          setHtmlError(data.htmlMessage);
+        } else {
+          setError(data.message || (isAr ? "فشل تسجيل الدخول" : "Login failed"));
+        }
         setLoading(false);
       }
     } catch {
@@ -221,8 +228,8 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Error */}
-            {error && (
+            {/* Error - Regular Text Error */}
+            {error && !htmlError && (
               <div className="animate-fadeUp flex items-center gap-2 px-3.5 py-2.5 bg-[#FCEBEB] border border-[#a32d2d]/15 rounded-lg text-[12px] text-[#791F1F] mb-5">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
                   <circle cx="7" cy="7" r="6" stroke="#A32D2D" strokeWidth="1.2" />
@@ -230,6 +237,14 @@ export default function LoginPage() {
                 </svg>
                 {error}
               </div>
+            )}
+
+            {/* Error - HTML Message (for verification link) */}
+            {htmlError && (
+              <div 
+                className="animate-fadeUp px-3.5 py-2.5 bg-[#FCEBEB] border border-[#a32d2d]/15 rounded-lg text-[12px] text-[#791F1F] mb-5"
+                dangerouslySetInnerHTML={{ __html: htmlError }}
+              />
             )}
 
             {/* Form */}
