@@ -32,8 +32,10 @@ export async function POST(request) {
     if (!user.emailVerified) {
       return NextResponse.json(
         {
-          message:
-            "Please verify your email address before logging in. Check your inbox for the verification link.  يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد.",
+          message: "Please verify your email address before logging in. Check your inbox for the verification link. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد.",
+          requiresVerification: true,
+          email: user.email,
+          resendLink: "https://www.mar-haba.ly/resend-verification"
         },
         { status: 401 },
       );
