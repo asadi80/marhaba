@@ -29,17 +29,19 @@ export async function POST(request) {
     }
 
     // Check if email is verified
-    if (!user.emailVerified) {
-      return NextResponse.json(
-        {
-          message: "Please verify your email address before logging in. Check your inbox for the verification link. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد.",
-          requiresVerification: true,
-          email: user.email,
-          resendLink: "https://www.mar-haba.ly/resend-verification"
-        },
-        { status: 401 },
-      );
-    }
+ // Check if email is verified
+if (!user.emailVerified) {
+  return NextResponse.json(
+    {
+      message: "Please verify your email address before logging in. Check your inbox for the verification link, or click here to resend: https://www.mar-haba.ly/resend-verification. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو انقر هنا لإعادة الإرسال: https://www.mar-haba.ly/resend-verification",
+      htmlMessage: `Please verify your email address before logging in. Check your inbox for the verification link, or <a href="https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}" target="_blank" style="color: #3B82F6; text-decoration: underline;">click here to resend</a>. يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو <a href="https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}" target="_blank" style="color: #3B82F6; text-decoration: underline;">انقر هنا لإعادة الإرسال</a>`,
+      requiresVerification: true,
+      email: user.email,
+      resendLink: `https://www.mar-haba.ly/resend-verification?email=${encodeURIComponent(user.email)}`
+    },
+    { status: 401 },
+  );
+}
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
