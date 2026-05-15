@@ -132,51 +132,84 @@ export default function HostDashboard() {
     }
   };
 
-  const handleUploadID = async () => {
-    if (!idFile) return;
-    setUploading(true);
-    setUploadError("");
-    try {
-      // Upload to Cloudinary
-      const formData = new FormData();
-      formData.append("file", idFile);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-      formData.append("folder", "host_ids");
+const handleUploadID = async () => {
+  if (!idFile) return;
+  setUploading(true);
+  setUploadError("");
+  try {
+    // Upload to Cloudinary
+    const formData = new FormData();
+    formData.append("file", idFile);
+    // Note: Don't send upload_preset and folder here if you're handling it in the backend
+    // The backend already has folder: 'marhaba-hostId'
 
-      const cloudRes = await fetch(
-        `api/upload/host-id`,
-        { method: "POST", body: formData }
-      );
-      const cloudData = await cloudRes.json();
+    console.log("Uploading file:", idFile.name);
+    
+    const cloudRes = await fetch("/api/upload/host-id", {
+      method: "POST",
+      body: formData
+    });
+    
+    const cloudData = await cloudRes.json();
+    console.log("Cloudinary response:", cloudData);
 
-      if (!cloudRes.ok || cloudData.error) {
-        throw new Error(cloudData.error?.message || "Cloudinary upload failed");
-      }
-
-      // Save the URL to the user record via your API
-      const saveRes = await fetch("/api/host/upload-id", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idVerificationUrl: cloudData.secure_url,
-          publicId: cloudData.public_id,
-        }),
-      });
-
-      if (!saveRes.ok) throw new Error("Failed to save verification URL");
-
-      setUploadDone(true);
-    } catch (err) {
-      setUploadError(
-        isAr
-          ? `فشل الرفع: ${err.message}`
-          : `Upload failed: ${err.message}`
-      );
-    } finally {
-      setUploading(false);
+    if (!cloudRes.ok) {
+      throw new Error(cloudData.message || "Cloudinary upload failed");
     }
-  };
+
+    // FIX: Use 'url' not 'secure_url' (your backend returns 'url')
+    const imageUrl = cloudData.url;
+    if (!imageUrl) {
+      throw new Error("No URL returned from Cloudinary");
+    }
+
+    console.log("Saving to database with URL:", imageUrl);
+    
+    // Save the URL to the user record via your API
+    const saveRes = await fetch("/api/host/upload-id", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idVerificationUrl: imageUrl,  // FIX: Use 'url' from cloudData
+        publicId: cloudData.public_id,
+      }),
+    });
+
+    const saveData = await saveRes.json();
+    console.log("Save response:", saveData);
+
+    if (!saveRes.ok) {
+      throw new Error(saveData.message || "Failed to save verification URL");
+    }
+
+    setUploadDone(true);
+    
+    // Refresh user data to reflect the uploaded ID
+    const userRes = await fetch("/api/auth/me", { credentials: "include" });
+    const userData = await userRes.json();
+    if (userData.user) {
+      setUser(userData.user);
+    }
+    
+    // Clear the file input
+    setIdFile(null);
+    setIdPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    
+  } catch (err) {
+    console.error("Upload error:", err);
+    setUploadError(
+      isAr
+        ? `فشل الرفع: ${err.message}`
+        : `Upload failed: ${err.message}`
+    );
+  } finally {
+    setUploading(false);
+  }
+};
 
   const AVATAR_PAL = [
     { bg: "#EEEDFE", color: "#3C3489" },

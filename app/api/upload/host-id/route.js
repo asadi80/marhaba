@@ -1,4 +1,4 @@
-// app/api/upload/route.js
+// app/api/upload/host-id/route.js
 import { NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
 
