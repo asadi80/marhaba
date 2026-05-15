@@ -144,7 +144,7 @@ export default function HostDashboard() {
       formData.append("folder", "host_ids");
 
       const cloudRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+        `api/upload/host-id`,
         { method: "POST", body: formData }
       );
       const cloudData = await cloudRes.json();
