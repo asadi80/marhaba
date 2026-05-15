@@ -570,17 +570,51 @@ export default function UserDetailPage() {
                     </select>
                   </Field> */}
 
-                  <Field label="status">
-                    <select
-                      className={inputCls}
-                      value={form.status ?? ""}
-                      onChange={set("status")}
-                    >
-                      <option value="confirmed">Confirmed — starts 6-month timer</option>
-                      <option value="pending">Pending</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </Field>
+                 <Field label="status">
+  <select
+    className={inputCls}
+    value={form.status ?? ""}
+    onChange={set("status")}
+  >
+    {targetUser?.role === "host" ? (
+      // Host status options
+      <>
+        <option value="confirmed">Confirmed — starts 6-month timer</option>
+        <option value="pending">Pending</option>
+        <option value="suspended">Suspended</option>
+      </>
+    ) : (
+      // Regular user status options
+      <>
+        <option value="confirmed">Confirmed</option>
+        <option value="pending">Pending</option>
+        <option value="suspended">Suspended</option>
+      </>
+    )}
+  </select>
+  
+  {/* Helpful notes based on selection */}
+  {targetUser?.role === "host" && form.status === "confirmed" && (
+    <p className="text-[11px] text-[#27500A] mt-1">
+      ⏱️ 6-month timer starts now. Host will need to re-verify after 6 months.
+    </p>
+  )}
+  {targetUser?.role === "host" && form.status === "pending" && (
+    <p className="text-[11px] text-[#633806] mt-1">
+      ⚠️ Pending hosts need to upload ID documents for verification.
+    </p>
+  )}
+  {form.status === "suspended" && (
+    <p className="text-[11px] text-[#791F1F] mt-1">
+      ⚠️ Suspended users cannot log in or make bookings.
+    </p>
+  )}
+  {targetUser?.role !== "host" && form.status === "pending" && (
+    <p className="text-[11px] text-[#633806] mt-1">
+      ⏳ User is awaiting confirmation.
+    </p>
+  )}
+</Field>
 
                   <Field label="status reason (optional)">
                     <input
