@@ -6,6 +6,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import BookingCalendar from "@/components/BookingCalendar";
 import { useLanguage } from "@/hooks/useLanguage";
+import HostDateManager from '@/components/HostDateManager';
+
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 

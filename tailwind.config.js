@@ -7,7 +7,10 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {fontFamily: {
+      mono: ['"DM Mono"', 'monospace'],
+      serif: ['Fraunces', 'serif'],
+    }},
   },
-  plugins: [],
+  plugins: [require('tailwind-scrollbar-hide')],
 }
