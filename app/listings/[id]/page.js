@@ -655,7 +655,7 @@ export default function ListingDetail({ params }) {
     }
     return `${amount.toLocaleString()} LYD`;
   };
-
+const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
   return (
     <>
       <style jsx global>{`
@@ -1352,7 +1352,7 @@ export default function ListingDetail({ params }) {
 
             {/* RIGHT: Booking / Host panel */}
             <div className="sidebar">
-              {!isHost ? (
+              {!isHost && !isAdmin? (
                 <div
                   className="fu fu2 section-card"
                   style={{ borderTop: "3px solid #e8c547" }}
