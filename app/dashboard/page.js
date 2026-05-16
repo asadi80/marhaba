@@ -159,6 +159,8 @@ export default function UserDashboard() {
   const fetchListings = async () => {
     try {
       const d = await (await fetch("/api/listings")).json();
+      console.log(d);
+      
       setListings(d.listings);
       setFiltered(d.listings);
     } catch {}
@@ -723,7 +725,7 @@ export default function UserDashboard() {
                         (l) =>
                           l.coordinates && (
                             <Marker
-                              key={l._id}
+                              key={l.id}
                               position={[l.coordinates.lat, l.coordinates.lng]}
                               icon={icons.house}
                             >
