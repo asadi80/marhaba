@@ -45,6 +45,7 @@ export default function HostBookings() {
         credentials: "include",
       });
       const data = await response.json();
+console.log(data);
 
       if (!response.ok) {
         throw new Error(data.message);
@@ -74,6 +75,8 @@ export default function HostBookings() {
       });
 
       const data = await response.json();
+      console.log(data);
+      
 
       if (!response.ok) {
         throw new Error(data.message);
@@ -104,6 +107,8 @@ export default function HostBookings() {
       });
 
       const data = await response.json();
+      console.log(data);
+      
 
       if (!response.ok) {
         throw new Error(data.message);
