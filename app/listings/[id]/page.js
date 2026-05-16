@@ -133,7 +133,7 @@ export default function ListingDetail({ params }) {
     if (unwrappedParams?.id) fetchListing();
   }, [unwrappedParams]);
   useEffect(() => {
-    if (currentUser && listing) setIsHost(currentUser.id === listing.host?._id);
+    if (currentUser && listing) setIsHost(currentUser.id === listing.host?.id);
   }, [currentUser, listing]);
   useEffect(() => {
     if (!listing || !booking.checkIn || !booking.checkOut) return;
@@ -285,7 +285,7 @@ export default function ListingDetail({ params }) {
     startDate: b.startDate,
     endDate: b.endDate,
     reason: b.reason,
-    _id: b._id,
+    id: b.id,
   }));
   const hostAvi = avi(listing.host?.name);
   const hostInitial = listing.host?.name?.charAt(0)?.toUpperCase() || "H";
