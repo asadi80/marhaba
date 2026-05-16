@@ -138,6 +138,8 @@ export default function Home() {
     try {
       const res = await fetch("/api/listings");
       const data = await res.json();
+      console.log(data);
+
       if (data.listings) setListings(data.listings);
     } catch {}
   };
