@@ -1,8 +1,8 @@
-// app/api/admin/users/route.js
+// app/api/admin/users/route.js - POSTGRESQL VERSION
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import { verifyAdminFromCookie } from '@/lib/adminAuth'; // Import from shared location
+import pool from '@/lib/postgres';
+import { verifyAdminFromCookie } from '@/lib/adminAuth';
+import bcrypt from 'bcryptjs';
 
 export async function GET(request) {
   try {
@@ -12,26 +12,51 @@ export async function GET(request) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
     }
     
-    await connectToDatabase();
-    
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const status = searchParams.get('status');
     
-    // Build query
-    let query = {};
+    // Build WHERE clause
+    let whereConditions = [];
+    const queryParams = [];
+    let paramIndex = 1;
+    
     if (role && role !== 'all') {
-      query.role = role;
+      whereConditions.push(`role = $${paramIndex++}`);
+      queryParams.push(role);
     }
     if (status && status !== 'all') {
-      query.status = status;
+      whereConditions.push(`status = $${paramIndex++}`);
+      queryParams.push(status);
     }
     
-    // Get users
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 });
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : '';
+    
+    // Get users with pagination (exclude password_hash)
+    const result = await pool.query(
+      `SELECT id, name, email, phone_number, role, status, 
+              email_verified, created_at, updated_at, host_expiry_date
+       FROM users 
+       ${whereClause}
+       ORDER BY created_at DESC`,
+      queryParams
+    );
+    
+    const users = result.rows.map(user => ({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phone_number,
+      role: user.role,
+      status: user.status,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      hostExpiryDate: user.host_expiry_date
+    }));
     
     // Separate users by role for easier frontend display
     const usersByRole = {
@@ -59,7 +84,7 @@ export async function GET(request) {
 // Create new admin (super_admin only)
 export async function POST(request) {
   try {
-    // Verify super admin access - FIXED: use verifyAdminFromCookie
+    // Verify super admin access
     const auth = await verifyAdminFromCookie(request, 'super_admin');
     if (auth.error) {
       return NextResponse.json({ message: auth.error }, { status: auth.status });
@@ -91,11 +116,13 @@ export async function POST(request) {
       );
     }
     
-    await connectToDatabase();
-    
     // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existingUserResult = await pool.query(
+      `SELECT id FROM users WHERE email = $1`,
+      [email]
+    );
+    
+    if (existingUserResult.rows.length > 0) {
       return NextResponse.json(
         { message: 'User already exists' },
         { status: 400 }
@@ -103,21 +130,36 @@ export async function POST(request) {
     }
     
     // Hash password
-    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Create user
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      phoneNumber,
-      role,
-      status: 'confirmed', // Admins are automatically confirmed
-    });
+    const result = await pool.query(
+      `INSERT INTO users (
+        name, email, password_hash, phone_number, role, status, email_verified
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, name, email, phone_number, role, status, created_at`,
+      [
+        name,
+        email,
+        hashedPassword,
+        phoneNumber,
+        role,
+        'confirmed', // Admins are automatically confirmed
+        true // Admins are automatically email verified
+      ]
+    );
     
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const user = result.rows[0];
+    
+    const userResponse = {
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phone_number,
+      role: user.role,
+      status: user.status,
+      createdAt: user.created_at
+    };
     
     return NextResponse.json({
       success: true,

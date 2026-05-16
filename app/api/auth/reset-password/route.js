@@ -1,7 +1,6 @@
-// app/api/auth/reset-password/route.js
+// app/api/auth/reset-password/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -22,32 +21,38 @@ export async function POST(request) {
       );
     }
 
-    await connectToDatabase();
+    // Find user with valid reset token - PostgreSQL version
+    const result = await pool.query(
+      `SELECT id, email FROM users 
+       WHERE reset_password_token = $1 
+       AND reset_password_expires > NOW()`,
+      [token]
+    );
 
-    // Find user with valid reset token
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { message: "Invalid or expired reset token" },
         { status: 400 }
       );
     }
 
+    const user = result.rows[0];
+
     // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-    
-    // Clear reset token fields
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
-    
-    await user.save();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user's password and clear reset token fields
+    await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, 
+           reset_password_token = NULL, 
+           reset_password_expires = NULL
+       WHERE id = $2`,
+      [hashedPassword, user.id]
+    );
 
     return NextResponse.json({
+      success: true,
       message: "Password reset successfully",
     });
   } catch (error) {

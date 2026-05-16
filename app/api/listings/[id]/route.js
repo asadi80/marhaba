@@ -1,17 +1,19 @@
-// app/api/listings/[id]/route.js
+// app/api/listings/[id]/route.js - POSTGRESQL VERSION
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { connectToDatabase } from '@/lib/mongodb';
-import Listing from '@/models/Listing';
-import Booking from '@/models/Booking';
-import mongoose from 'mongoose';
+import pool from '@/lib/postgres';
+
+// Helper function to check if a UUID is valid
+function isValidUUID(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
 
 // GET - Fetch single listing with its booked and blocked dates (public)
 export async function GET(request, { params }) {
   try {
     console.log('=== GET Listing API Called ===');
-    const unwrappedParams = await params;
-    const { id } = unwrappedParams;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -20,63 +22,105 @@ export async function GET(request, { params }) {
       );
     }
     
-    // Validate ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    // Validate UUID format
+    if (!isValidUUID(id)) {
       return NextResponse.json(
         { message: 'Invalid listing ID format' },
         { status: 400 }
       );
     }
     
-    await connectToDatabase();
+    // Get listing with host info
+    const listingResult = await pool.query(
+      `SELECT l.*, 
+              u.name as host_name, u.email as host_email, u.host_details
+       FROM listings l
+       JOIN users u ON l.host_id = u.id
+       WHERE l.id = $1`,
+      [id]
+    );
     
-    const listing = await Listing.findById(id)
-      .populate('host', 'name email hostDetails');
-    
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
-    // Get bookings (confirmed and pending) - only for authenticated users or just public info
+    const listing = listingResult.rows[0];
+    
+    // Get blocked dates from listing
+    let blockedDates = [];
+    if (listing.blocked_dates) {
+      blockedDates = typeof listing.blocked_dates === 'string' 
+        ? JSON.parse(listing.blocked_dates) 
+        : listing.blocked_dates;
+    }
+    
+    const formattedBlockedDates = blockedDates.map(block => ({
+      checkIn: block.startdate || block.startDate,
+      checkOut: block.enddate || block.endDate,
+      status: 'blocked',
+      reason: block.reason,
+    }));
+    
+    // Get booked dates if authenticated
     const token = request.cookies.get('token')?.value;
     let bookedDates = [];
     
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // Only show booked dates if user is authenticated (for booking purposes)
-        const bookings = await Booking.find({
-          listing: id,
-          status: { $in: ['confirmed', 'pending'] }
-        }).select('checkIn checkOut status');
+        const bookingsResult = await pool.query(
+          `SELECT check_in, check_out, status 
+           FROM bookings 
+           WHERE listing_id = $1 
+           AND status IN ('confirmed', 'pending')`,
+          [id]
+        );
         
-        bookedDates = bookings.map(booking => ({
-          checkIn: booking.checkIn,
-          checkOut: booking.checkOut,
+        bookedDates = bookingsResult.rows.map(booking => ({
+          checkIn: booking.check_in,
+          checkOut: booking.check_out,
           status: booking.status,
         }));
       } catch (e) {
-        // If token is invalid, still show public info
         console.log('Invalid token for listing view');
       }
     }
     
-    // Add blocked dates from listing
-    const blockedDates = (listing.blockedDates || []).map(block => ({
-      checkIn: block.startDate,
-      checkOut: block.endDate,
-      status: 'blocked',
-      reason: block.reason,
-    }));
+    // Combine both booked and blocked dates
+    const allUnavailableDates = token 
+      ? [...bookedDates, ...formattedBlockedDates]
+      : formattedBlockedDates;
     
-    // Combine both booked and blocked dates (only if authenticated)
-    const allUnavailableDates = token ? [...bookedDates, ...blockedDates] : blockedDates;
+    // Format listing response
+    const formattedListing = {
+      id: listing.id,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      location: listing.location,
+      latitude: listing.latitude,
+      longitude: listing.longitude,
+      images: listing.images,
+      category: listing.category,
+      amenities: listing.amenities,
+      rules: listing.rules,
+      status: listing.status,
+      created_at: listing.created_at,
+      updated_at: listing.updated_at,
+      host: {
+        id: listing.host_id,
+        name: listing.host_name,
+        email: listing.host_email,
+        hostDetails: listing.host_details,
+      },
+      blocked_dates: listing.blocked_dates,
+    };
     
     return NextResponse.json({
-      listing,
+      listing: formattedListing,
       bookedDates: allUnavailableDates,
     });
   } catch (error) {
@@ -106,8 +150,7 @@ export async function PUT(request, { params }) {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const unwrappedParams = await params;
-    const { id } = unwrappedParams;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -116,47 +159,62 @@ export async function PUT(request, { params }) {
       );
     }
     
-    await connectToDatabase();
+    // Check if listing exists and belongs to host
+    const listingResult = await pool.query(
+      `SELECT id, host_id FROM listings WHERE id = $1`,
+      [id]
+    );
     
-    const listing = await Listing.findById(id);
-    
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
-    // Check if user is the host
-    if (listing.host.toString() !== decoded.userId) {
+    const listing = listingResult.rows[0];
+    
+    if (listing.host_id !== decoded.userId) {
       return NextResponse.json(
         { message: 'You can only update your own listings' },
         { status: 403 }
       );
     }
     
-    const { title, description, price, location, images, amenities, blockedDates, rules, coordinates, category } = await request.json();
+    const { 
+      title, description, price, location, images, 
+      amenities, blockedDates, rules, coordinates, category 
+    } = await request.json();
     
-    const updatedListing = await Listing.findByIdAndUpdate(
-      id,
-      { 
-        title, 
-        description, 
-        price, 
-        location, 
-        coordinates,
-        images, 
-        rules,
-        amenities,
-        category: category || listing.category,
-        blockedDates: blockedDates || listing.blockedDates || []
-      },
-      { new: true, runValidators: true }
+    // Update listing
+    const result = await pool.query(
+      `UPDATE listings 
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           price = COALESCE($3, price),
+           location = COALESCE($4, location),
+           latitude = COALESCE($5, latitude),
+           longitude = COALESCE($6, longitude),
+           images = COALESCE($7, images),
+           amenities = COALESCE($8, amenities),
+           rules = COALESCE($9, rules),
+           category = COALESCE($10, category),
+           blocked_dates = COALESCE($11, blocked_dates),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12
+       RETURNING *`,
+      [
+        title, description, price, location,
+        coordinates?.lat || null, coordinates?.lng || null,
+        images, amenities, rules, category,
+        blockedDates || listing.blocked_dates,
+        id
+      ]
     );
     
     return NextResponse.json({
       message: 'Listing updated successfully',
-      listing: updatedListing,
+      listing: result.rows[0],
     });
   } catch (error) {
     console.error('Update listing error:', error);
@@ -180,8 +238,7 @@ export async function POST(request, { params }) {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const unwrappedParams = await params;
-    const { id } = unwrappedParams;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -190,19 +247,23 @@ export async function POST(request, { params }) {
       );
     }
     
-    await connectToDatabase();
+    // Get listing
+    const listingResult = await pool.query(
+      `SELECT id, host_id, blocked_dates FROM listings WHERE id = $1`,
+      [id]
+    );
     
-    const listing = await Listing.findById(id);
-    
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
+    const listing = listingResult.rows[0];
+    
     // Check if user is the host
-    if (listing.host.toString() !== decoded.userId) {
+    if (listing.host_id !== decoded.userId) {
       return NextResponse.json(
         { message: 'Only the host can block dates' },
         { status: 403 }
@@ -238,13 +299,14 @@ export async function POST(request, { params }) {
       );
     }
     
-    // Ensure blockedDates is an array
-    if (!listing.blockedDates) {
-      listing.blockedDates = [];
+    // Parse existing blocked dates
+    let blockedDates = listing.blocked_dates || [];
+    if (typeof blockedDates === 'string') {
+      blockedDates = JSON.parse(blockedDates);
     }
     
     // Check if dates are already blocked
-    const isDateBlocked = listing.blockedDates.some(block => {
+    const isDateBlocked = blockedDates.some(block => {
       const blockStart = new Date(block.startDate);
       const blockEnd = new Date(block.endDate);
       return (start < blockEnd && end > blockStart);
@@ -258,34 +320,43 @@ export async function POST(request, { params }) {
     }
     
     // Check if dates are already booked
-    const bookings = await Booking.find({
-      listing: id,
-      status: { $in: ['confirmed', 'pending'] },
-      $or: [
-        { checkIn: { $lt: end }, checkOut: { $gt: start } }
-      ],
-    });
+    const bookingsResult = await pool.query(
+      `SELECT id FROM bookings 
+       WHERE listing_id = $1 
+       AND status IN ('confirmed', 'pending')
+       AND check_in < $2 
+       AND check_out > $3`,
+      [id, end, start]
+    );
     
-    if (bookings.length > 0) {
+    if (bookingsResult.rows.length > 0) {
       return NextResponse.json(
         { message: 'Cannot block dates that have existing bookings' },
         { status: 400 }
       );
     }
     
-    // Add the blocked dates
-    listing.blockedDates.push({
+    // Add new blocked date
+    const newBlock = {
       startDate: start,
       endDate: end,
       reason: reason || 'Blocked by host',
       createdAt: new Date(),
-    });
+    };
     
-    await listing.save();
+    blockedDates.push(newBlock);
+    
+    // Update listing
+    await pool.query(
+      `UPDATE listings 
+       SET blocked_dates = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [JSON.stringify(blockedDates), id]
+    );
     
     return NextResponse.json({
       message: 'Dates blocked successfully',
-      blockedDates: listing.blockedDates,
+      blockedDates: blockedDates,
     });
   } catch (error) {
     console.error('Block dates error:', error);
@@ -309,8 +380,7 @@ export async function DELETE(request, { params }) {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const unwrappedParams = await params;
-    const { id } = unwrappedParams;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -319,19 +389,23 @@ export async function DELETE(request, { params }) {
       );
     }
     
-    await connectToDatabase();
+    // Get listing
+    const listingResult = await pool.query(
+      `SELECT id, host_id, blocked_dates FROM listings WHERE id = $1`,
+      [id]
+    );
     
-    const listing = await Listing.findById(id);
-    
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
+    const listing = listingResult.rows[0];
+    
     // Check if user is the host
-    if (listing.host.toString() !== decoded.userId) {
+    if (listing.host_id !== decoded.userId) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 403 }
@@ -344,51 +418,62 @@ export async function DELETE(request, { params }) {
     
     // If deleteListing=true, delete the entire listing
     if (deleteListing === 'true') {
+      // Delete all associated bookings first
+      await pool.query(`DELETE FROM bookings WHERE listing_id = $1`, [id]);
       // Delete the listing
-      await Listing.findByIdAndDelete(id);
-      // Delete all associated bookings
-      await Booking.deleteMany({ listing: id });
+      await pool.query(`DELETE FROM listings WHERE id = $1`, [id]);
       
       return NextResponse.json({
         message: 'Listing deleted successfully',
       });
     }
     
-    // Otherwise, try to parse body for blockId (remove blocked date)
-    let blockId;
+    // Otherwise, try to parse body for blockIndex (remove blocked date)
+    let blockIndex;
     try {
       const body = await request.json();
-      blockId = body.blockId;
+      blockIndex = body.blockIndex;
     } catch (e) {
-      // If no body and not deleteListing, return error
       return NextResponse.json(
-        { message: 'Missing blockId or deleteListing parameter' },
+        { message: 'Missing blockIndex or deleteListing parameter' },
         { status: 400 }
       );
     }
     
-    if (!blockId) {
+    if (blockIndex === undefined) {
       return NextResponse.json(
-        { message: 'Block ID is required' },
+        { message: 'Block index is required' },
         { status: 400 }
       );
     }
     
-    // Ensure blockedDates is an array
-    if (!listing.blockedDates) {
-      listing.blockedDates = [];
+    // Parse existing blocked dates
+    let blockedDates = listing.blocked_dates || [];
+    if (typeof blockedDates === 'string') {
+      blockedDates = JSON.parse(blockedDates);
     }
     
-    // Remove the blocked date range
-    listing.blockedDates = listing.blockedDates.filter(
-      block => block._id.toString() !== blockId
+    // Remove the blocked date by index
+    if (blockIndex >= 0 && blockIndex < blockedDates.length) {
+      blockedDates.splice(blockIndex, 1);
+    } else {
+      return NextResponse.json(
+        { message: 'Invalid block index' },
+        { status: 400 }
+      );
+    }
+    
+    // Update listing
+    await pool.query(
+      `UPDATE listings 
+       SET blocked_dates = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [JSON.stringify(blockedDates), id]
     );
-    
-    await listing.save();
     
     return NextResponse.json({
       message: 'Blocked dates removed successfully',
-      blockedDates: listing.blockedDates,
+      blockedDates: blockedDates,
     });
   } catch (error) {
     console.error('Delete error:', error);

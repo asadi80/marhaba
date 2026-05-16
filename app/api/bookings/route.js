@@ -1,10 +1,7 @@
-// app/api/bookings/route.js
+// app/api/bookings/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { connectToDatabase } from "@/lib/mongodb";
-import Booking from "@/models/Booking";
-import Listing from "@/models/Listing";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import { sendEmail } from "@/lib/sendEmail";
 
 // Helper function to get user from cookie
@@ -17,9 +14,11 @@ async function getUserFromCookie(request) {
   
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    await connectToDatabase();
-    const user = await User.findById(decoded.userId);
-    return user;
+    const result = await pool.query(
+      `SELECT id, name, email, phone_number, role, status FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
+    return result.rows[0] || null;
   } catch (error) {
     console.error("Token verification error:", error);
     return null;
@@ -28,13 +27,31 @@ async function getUserFromCookie(request) {
 
 // Helper function to format date for email (English format only)
 const formatDateForEmail = (date) => {
-  return date.toLocaleDateString('en-US', { 
+  return new Date(date).toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric',
     timeZone: 'UTC'
   });
 };
+
+// Helper function to check if user is host of a listing
+async function isUserHostOfListing(userId, listingId) {
+  const result = await pool.query(
+    `SELECT id FROM listings WHERE id = $1 AND host_id = $2`,
+    [listingId, userId]
+  );
+  return result.rows.length > 0;
+}
+
+// Helper function to get host listings
+async function getHostListings(hostId) {
+  const result = await pool.query(
+    `SELECT id FROM listings WHERE host_id = $1`,
+    [hostId]
+  );
+  return result.rows.map(row => row.id);
+}
 
 // Bilingual email template for new booking request to host
 function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC, nights, totalPrice, guests) {
@@ -70,7 +87,7 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
     <div style="margin: 20px 0; background: #e0e7ff; padding: 15px; border-radius: 8px;">
       <p><strong>👤 Guest Contact Information:</strong></p>
       <p>📧 Email: ${guest.email}</p>
-      <p>📞 Phone: ${guest.phoneNumber || 'Not provided'}</p>
+      <p>📞 Phone: ${guest.phone_number || 'Not provided'}</p>
     </div>
     
     <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/bookings" 
@@ -108,7 +125,7 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
     <div style="margin: 20px 0; background: #e0e7ff; padding: 15px; border-radius: 8px;">
       <p><strong>👤 معلومات الاتصال بالضيف:</strong></p>
       <p>📧 البريد الإلكتروني: ${guest.email}</p>
-      <p>📞 رقم الهاتف: ${guest.phoneNumber || 'غير متوفر'}</p>
+      <p>📞 رقم الهاتف: ${guest.phone_number || 'غير متوفر'}</p>
     </div>
     
     <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/bookings" 
@@ -132,8 +149,8 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
 
 // Bilingual email template for booking status update to guest
 function getStatusUpdateEmailContent(guest, listing, booking, status) {
-  const formattedCheckIn = formatDateForEmail(booking.checkIn);
-  const formattedCheckOut = formatDateForEmail(booking.checkOut);
+  const formattedCheckIn = formatDateForEmail(booking.check_in);
+  const formattedCheckOut = formatDateForEmail(booking.check_out);
   const isConfirmed = status === 'confirmed';
   const statusColor = isConfirmed ? '#22c55e' : '#ef4444';
   const statusText = isConfirmed ? 'Confirmed' : 'Updated';
@@ -141,7 +158,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
   
   return {
     subject: `Booking ${statusText} / الحجز ${statusTextAr} - ${listing.title}`,
-    text: `English: Your booking for ${listing.title} has been ${status}. Check-in: ${formattedCheckIn}, Check-out: ${formattedCheckOut}, Total: ${booking.totalPrice} LYD\n\nالعربية: تم ${statusTextAr} حجزك لـ ${listing.title}. تسجيل الوصول: ${formattedCheckIn}، تسجيل المغادرة: ${formattedCheckOut}، السعر الإجمالي: ${booking.totalPrice} دينار`,
+    text: `English: Your booking for ${listing.title} has been ${status}. Check-in: ${formattedCheckIn}, Check-out: ${formattedCheckOut}, Total: ${booking.total_price} LYD\n\nالعربية: تم ${statusTextAr} حجزك لـ ${listing.title}. تسجيل الوصول: ${formattedCheckIn}، تسجيل المغادرة: ${formattedCheckOut}، السعر الإجمالي: ${booking.total_price} دينار`,
     html: `
 <div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px;">
   
@@ -159,7 +176,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
       <p><strong>📍 Location:</strong> ${listing.location}</p>
       <p><strong>📅 Check-in:</strong> ${formattedCheckIn}</p>
       <p><strong>📅 Check-out:</strong> ${formattedCheckOut}</p>
-      <p><strong>💰 Total Price:</strong> ${booking.totalPrice} LYD</p>
+      <p><strong>💰 Total Price:</strong> ${booking.total_price} LYD</p>
       <p><strong>📊 Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${status.toUpperCase()}</span></p>
     </div>
     
@@ -185,7 +202,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
       <p><strong>📍 الموقع:</strong> ${listing.location}</p>
       <p><strong>📅 تسجيل الوصول:</strong> ${formattedCheckIn}</p>
       <p><strong>📅 تسجيل المغادرة:</strong> ${formattedCheckOut}</p>
-      <p><strong>💰 السعر الإجمالي:</strong> ${booking.totalPrice} دينار</p>
+      <p><strong>💰 السعر الإجمالي:</strong> ${booking.total_price} دينار</p>
       <p><strong>📊 الحالة:</strong> <span style="color: ${statusColor}; font-weight: bold;">${status === 'confirmed' ? 'مؤكد' : 'محدث'}</span></p>
     </div>
     
@@ -217,22 +234,72 @@ export async function GET(request) {
 
     if (user.role === "host") {
       // Host sees bookings for their listings
-      const listings = await Listing.find({ host: user._id }).select("_id");
-      const listingIds = listings.map((l) => l._id);
-
-      bookings = await Booking.find({ listing: { $in: listingIds } })
-        .populate("listing", "title location price images")
-        .populate("user", "name email phoneNumber")
-        .sort({ createdAt: -1 });
+      const hostListings = await getHostListings(user.id);
+      
+      if (hostListings.length === 0) {
+        return NextResponse.json({ bookings: [] });
+      }
+      
+      const result = await pool.query(
+        `SELECT b.*, 
+                l.title as listing_title, l.location as listing_location, l.price as listing_price, l.images as listing_images,
+                u.name as user_name, u.email as user_email, u.phone_number as user_phone
+         FROM bookings b
+         JOIN listings l ON b.listing_id = l.id
+         JOIN users u ON b.user_id = u.id
+         WHERE l.id = ANY($1::UUID[])
+         ORDER BY b.created_at DESC`,
+        [hostListings]
+      );
+      bookings = result.rows;
     } else {
       // User sees their own bookings
-      bookings = await Booking.find({ user: user._id })
-        .populate("listing", "title location price images host")
-        .populate("listing.host", "name email phoneNumber")
-        .sort({ createdAt: -1 });
+      const result = await pool.query(
+        `SELECT b.*, 
+                l.title as listing_title, l.location as listing_location, l.price as listing_price, l.images as listing_images,
+                l.host_id,
+                h.name as host_name, h.email as host_email, h.phone_number as host_phone
+         FROM bookings b
+         JOIN listings l ON b.listing_id = l.id
+         JOIN users h ON l.host_id = h.id
+         WHERE b.user_id = $1
+         ORDER BY b.created_at DESC`,
+        [user.id]
+      );
+      bookings = result.rows;
     }
 
-    return NextResponse.json({ bookings });
+    // Format response
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id,
+      listing_id: booking.listing_id,
+      user_id: booking.user_id,
+      check_in: booking.check_in,
+      check_out: booking.check_out,
+      total_price: booking.total_price,
+      guests: booking.guests,
+      status: booking.status,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      listing: {
+        title: booking.listing_title,
+        location: booking.listing_location,
+        price: booking.listing_price,
+        images: booking.listing_images,
+        host: user.role !== "host" ? {
+          name: booking.host_name,
+          email: booking.host_email,
+          phoneNumber: booking.host_phone
+        } : undefined
+      },
+      user: user.role === "host" ? {
+        name: booking.user_name,
+        email: booking.user_email,
+        phoneNumber: booking.user_phone
+      } : undefined
+    }));
+
+    return NextResponse.json({ bookings: formattedBookings });
   } catch (error) {
     console.error("Fetch bookings error:", error);
     return NextResponse.json(
@@ -261,34 +328,37 @@ export async function POST(request) {
       );
     }
 
-    // Check if listing exists
-    const listing = await Listing.findById(listingId);
-    if (!listing) {
+    // Check if listing exists and get details
+    const listingResult = await pool.query(
+      `SELECT l.*, u.name as host_name, u.email as host_email, u.phone_number as host_phone
+       FROM listings l
+       JOIN users u ON l.host_id = u.id
+       WHERE l.id = $1`,
+      [listingId]
+    );
+
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: "Listing not found" },
         { status: 404 },
       );
     }
 
+    const listing = listingResult.rows[0];
+
     // Check if user is trying to book their own listing
-    if (listing.host.toString() === user._id.toString()) {
+    if (listing.host_id === user.id) {
       return NextResponse.json(
         { message: "You cannot book your own listing" },
         { status: 400 },
       );
     }
 
-    // Parse the date strings (they come as YYYY-MM-DD from frontend)
-    const [checkInYear, checkInMonth, checkInDay] = checkIn.split('-').map(Number);
-    const [checkOutYear, checkOutMonth, checkOutDay] = checkOut.split('-').map(Number);
-    
-    // Create dates at UTC midnight for storage
-    const checkInUTC = new Date(Date.UTC(checkInYear, checkInMonth - 1, checkInDay, 0, 0, 0));
-    const checkOutUTC = new Date(Date.UTC(checkOutYear, checkOutMonth - 1, checkOutDay, 0, 0, 0));
-    
-    // Get today's date in UTC for comparison
-    const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0));
+    // Parse dates
+    const checkInUTC = new Date(checkIn);
+    const checkOutUTC = new Date(checkOut);
+    const todayUTC = new Date();
+    todayUTC.setUTCHours(0, 0, 0, 0);
     
     // Validate dates
     if (checkInUTC >= checkOutUTC) {
@@ -306,15 +376,16 @@ export async function POST(request) {
     }
 
     // Check for date conflicts
-    const existingBookings = await Booking.find({
-      listing: listingId,
-      status: { $in: ["confirmed", "pending"] },
-      $or: [
-        { checkIn: { $lt: checkOutUTC }, checkOut: { $gt: checkInUTC } }
-      ],
-    });
+    const conflictResult = await pool.query(
+      `SELECT id FROM bookings 
+       WHERE listing_id = $1 
+       AND status IN ('pending', 'confirmed')
+       AND check_in < $2 
+       AND check_out > $3`,
+      [listingId, checkOutUTC, checkInUTC]
+    );
 
-    if (existingBookings.length > 0) {
+    if (conflictResult.rows.length > 0) {
       return NextResponse.json(
         { message: "Selected dates are not available" },
         { status: 400 },
@@ -322,26 +393,27 @@ export async function POST(request) {
     }
 
     // Calculate total price
-    const nights = Math.ceil(
-      (checkOutUTC - checkInUTC) / (1000 * 60 * 60 * 24),
-    );
-    const totalPrice = listing.price * nights;
+    const nights = Math.ceil((checkOutUTC - checkInUTC) / (1000 * 60 * 60 * 24));
+    const totalPrice = parseFloat(listing.price) * nights;
 
-    // Create booking with UTC dates
-    const booking = await Booking.create({
-      listing: listingId,
-      user: user._id,
-      checkIn: checkInUTC,
-      checkOut: checkOutUTC,
-      totalPrice,
-      guests: guests || 1,
-      status: "pending",
-    });
+    // Create booking
+    const bookingResult = await pool.query(
+      `INSERT INTO bookings (listing_id, user_id, check_in, check_out, total_price, guests, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+       RETURNING *`,
+      [listingId, user.id, checkInUTC, checkOutUTC, totalPrice, guests || 1]
+    );
+
+    const booking = bookingResult.rows[0];
 
     // Get host details
-    const host = await User.findById(listing.host);
+    const host = {
+      name: listing.host_name,
+      email: listing.host_email,
+      phone_number: listing.host_phone
+    };
 
-    // Get bilingual email content for host
+    // Send email to host
     const emailContent = getNewBookingEmailContent(
       host, 
       user, 
@@ -353,7 +425,6 @@ export async function POST(request) {
       guests
     );
 
-    // Send email to host
     try {
       await sendEmail({
         to: host.email,
@@ -366,15 +437,30 @@ export async function POST(request) {
       console.error('Failed to send email notification:', emailError);
     }
 
-    // Populate booking details for response
-    const populatedBooking = await Booking.findById(booking._id)
-      .populate("listing", "title location price images")
-      .populate("user", "name email");
+    // Format response
+    const formattedBooking = {
+      id: booking.id,
+      listing_id: booking.listing_id,
+      user_id: booking.user_id,
+      check_in: booking.check_in,
+      check_out: booking.check_out,
+      total_price: booking.total_price,
+      guests: booking.guests,
+      status: booking.status,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      listing: {
+        title: listing.title,
+        location: listing.location,
+        price: listing.price,
+        images: listing.images,
+      }
+    };
 
     return NextResponse.json(
       {
         message: "Booking created successfully",
-        booking: populatedBooking,
+        booking: formattedBooking,
       },
       { status: 201 },
     );
@@ -405,20 +491,36 @@ export async function PATCH(request) {
       );
     }
 
-    // Find booking
-    const booking = await Booking.findById(bookingId)
-      .populate("listing", "host title location")
-      .populate("user", "name email");
+    if (!['confirmed', 'cancelled'].includes(status)) {
+      return NextResponse.json(
+        { message: "Invalid status. Use 'confirmed' or 'cancelled'" },
+        { status: 400 },
+      );
+    }
 
-    if (!booking) {
+    // Find booking with listing and user info
+    const bookingResult = await pool.query(
+      `SELECT b.*, 
+              l.title as listing_title, l.location as listing_location, l.host_id,
+              u.name as guest_name, u.email as guest_email
+       FROM bookings b
+       JOIN listings l ON b.listing_id = l.id
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = $1`,
+      [bookingId]
+    );
+
+    if (bookingResult.rows.length === 0) {
       return NextResponse.json(
         { message: "Booking not found" },
         { status: 404 },
       );
     }
 
+    const booking = bookingResult.rows[0];
+
     // Check if user is the host of the listing
-    if (booking.listing.host.toString() !== user._id.toString()) {
+    if (booking.host_id !== user.id) {
       return NextResponse.json(
         { message: "Unauthorized to update this booking" },
         { status: 403 },
@@ -426,33 +528,47 @@ export async function PATCH(request) {
     }
 
     // Update status
-    booking.status = status;
-    await booking.save();
+    await pool.query(
+      `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [status, bookingId]
+    );
 
-    // Get bilingual email content for guest
+    // Get updated booking
+    const updatedBooking = { ...booking, status };
+
+    // Send email notification to guest
     const emailContent = getStatusUpdateEmailContent(
-      booking.user,
-      booking.listing,
-      booking,
+      { name: booking.guest_name, email: booking.guest_email },
+      { title: booking.listing_title, location: booking.listing_location },
+      updatedBooking,
       status
     );
 
-    // Send email notification to user
     try {
       await sendEmail({
-        to: booking.user.email,
+        to: booking.guest_email,
         subject: emailContent.subject,
         text: emailContent.text,
         html: emailContent.html,
       });
-      console.log('Email sent to guest:', booking.user.email);
+      console.log('Email sent to guest:', booking.guest_email);
     } catch (emailError) {
       console.error('Failed to send email notification:', emailError);
     }
 
     return NextResponse.json({
       message: `Booking ${status} successfully`,
-      booking,
+      booking: {
+        id: booking.id,
+        status: status,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        total_price: booking.total_price,
+        listing: {
+          title: booking.listing_title,
+          location: booking.listing_location
+        }
+      },
     });
   } catch (error) {
     console.error("Update booking error:", error);

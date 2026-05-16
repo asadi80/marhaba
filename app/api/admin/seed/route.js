@@ -1,7 +1,6 @@
-// app/api/admin/seed/route.js
+// app/api/admin/seed/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -11,6 +10,7 @@ export async function POST(request) {
     
     // Check if secret key matches
     const expectedSecret = process.env.ADMIN_SEED_SECRET;
+    const adminPassword = process.env.ADMIN_SEED_PASS
     
     if (!expectedSecret) {
       console.error("ADMIN_SEED_SECRET not set in environment variables");
@@ -27,21 +27,21 @@ export async function POST(request) {
       );
     }
 
-    await connectToDatabase();
-
     // Check if super admin already exists
-    const existingAdmin = await User.findOne({ 
-      role: "super_admin" 
-    });
+    const existingAdminResult = await pool.query(
+      `SELECT id, name, email, role, status FROM users WHERE role = 'super_admin' LIMIT 1`
+    );
 
-    if (existingAdmin) {
+    if (existingAdminResult.rows.length > 0) {
+      const existingAdmin = existingAdminResult.rows[0];
       return NextResponse.json(
         { 
           message: "Super admin already exists",
           admin: {
             name: existingAdmin.name,
             email: existingAdmin.email,
-            role: existingAdmin.role
+            role: existingAdmin.role,
+            status: existingAdmin.status
           }
         },
         { status: 400 }
@@ -49,38 +49,46 @@ export async function POST(request) {
     }
 
     // Create super admin
-    const hashedPassword = await bcrypt.hash("Abdo172*)", 10);
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
     
-    const admin = await User.create({
-      name: "Abdurraouf Sadi",
-      email: "abdurraouf@mar-haba.ly",
-      password: hashedPassword,
-      phoneNumber: "+19714924946",
-      role: "super_admin",
-      status: "confirmed",
-      emailVerified: true,
-      emailVerificationToken: null,
-      emailVerificationExpires: null,
-      userDetails: {
-        bookings: [],
-        preferences: {},
-        memberSince: new Date(),
-      },
-    });
+    // Create user details object
+    const userDetails = {
+      bookings: [],
+      preferences: {},
+      memberSince: new Date()
+    };
+    
+    const result = await pool.query(
+      `INSERT INTO users (
+        name, email, password_hash, phone_number, role, status, 
+        email_verified, user_details, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      RETURNING id, name, email, role, status, created_at`,
+      [
+        "Abdurraouf Sadi",
+        "abdurraouf@mar-haba.ly",
+        hashedPassword,
+        "+19714924946",
+        "super_admin",
+        "confirmed",
+        true,
+        userDetails
+      ]
+    );
+    
+    const admin = result.rows[0];
 
     // Return success response WITHOUT exposing the password
     return NextResponse.json({
       success: true,
       message: "Super admin created successfully",
       admin: {
-        id: admin._id,
+        id: admin.id,
         name: admin.name,
         email: admin.email,
         role: admin.role,
         status: admin.status,
       },
-      // REMOVED: credentials object that exposed the password
-      // Admin should use a secure method to set/reset password if needed
     }, { status: 201 });
 
   } catch (error) {
@@ -106,13 +114,12 @@ export async function GET(request) {
       );
     }
     
-    await connectToDatabase();
+    const result = await pool.query(
+      `SELECT name, email, role, status FROM users WHERE role = 'super_admin' LIMIT 1`
+    );
     
-    const admin = await User.findOne({ 
-      role: "super_admin" 
-    }).select("-password");
-    
-    if (admin) {
+    if (result.rows.length > 0) {
+      const admin = result.rows[0];
       return NextResponse.json({
         exists: true,
         admin: {
@@ -129,8 +136,9 @@ export async function GET(request) {
       });
     }
   } catch (error) {
+    console.error("Check admin error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Internal server error", error: error.message },
       { status: 500 }
     );
   }

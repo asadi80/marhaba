@@ -149,7 +149,7 @@ function BookingCard({ booking, type }) {
         <div>
           <span className="text-[10px] uppercase tracking-wider">Total</span>
           <p className="text-[#111118] mt-0.5 font-medium">
-            ${booking.totalPrice}
+            LYD{booking.totalPrice}
           </p>
         </div>
       </div>
@@ -182,7 +182,7 @@ function ListingCard({ listing }) {
         </p>
         <div className="flex justify-between items-center text-xs">
           <span className="text-[#185FA5] font-medium">
-            ${listing.price}/night
+            LYD{listing.price}/night
           </span>
           <span className="text-[#999]">{listing.location}</span>
         </div>

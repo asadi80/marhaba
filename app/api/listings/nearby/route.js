@@ -1,11 +1,10 @@
-// app/api/listings/nearby/route.js
+// app/api/listings/nearby/route.js - FIXED VERSION
 import { NextResponse } from "next/server";
-import { connectToDatabase } from '@/lib/mongodb';
-import Listing from "@/models/Listing";
+import pool from '@/lib/postgres';
 
 // Haversine formula to calculate distance between two coordinates (in km)
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Radius of the earth in km
+  const R = 6371;
   const dLat = deg2rad(lat2 - lat1);
   const dLon = deg2rad(lon2 - lon1);
   const a =
@@ -13,8 +12,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in km
-  return distance;
+  return R * c;
 }
 
 function deg2rad(deg) {
@@ -23,108 +21,117 @@ function deg2rad(deg) {
 
 export async function GET(request) {
   try {
-    await connectToDatabase();
-    
     const { searchParams } = new URL(request.url);
     const lat = parseFloat(searchParams.get('lat'));
     const lng = parseFloat(searchParams.get('lng'));
-    const radius = parseFloat(searchParams.get('radius')) || 50; // Default 50km radius
+    const radius = parseFloat(searchParams.get('radius')) || 50;
     const limit = parseInt(searchParams.get('limit')) || 20;
-    const category = searchParams.get('category'); // Optional category filter
+    const category = searchParams.get('category');
     
-    // Validate coordinates
     if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
       return NextResponse.json(
-        { 
-          success: false,
-          error: "Invalid coordinates. Please provide valid lat and lng parameters." 
-        },
+        { success: false, error: "Invalid coordinates" },
         { status: 400 }
       );
     }
     
-    // Build query - Only show listings that are:
-    // 1. Have valid coordinates
-    // 2. Are confirmed (host status)
-    // 3. Are active (not suspended or deleted)
-    let query = {
-      coordinates: { $exists: true, $ne: null },
-      status: { $in: ['active', 'confirmed'] }, // Include both 'active' and 'confirmed' for backward compatibility
-      $or: [
-        { status: 'active' },
-        { status: 'confirmed' } // For older listings that might still use 'confirmed'
-      ]
-    };
+    // Build WHERE clause
+    let whereConditions = `
+      l.status = 'active'
+      AND l.latitude IS NOT NULL 
+      AND l.longitude IS NOT NULL
+      AND u.status = 'confirmed'
+      AND u.role = 'host'
+    `;
     
-    // Also need to join with User model to check host status
-    // Since listing doesn't have direct status field, we need to populate host and check their status
-    // Alternative approach: Add status field to listing model
+    const queryParams = [];
+    let paramIndex = 1;
     
-    // Add category filter if provided
     if (category && category !== 'all') {
-      query.category = category;
+      whereConditions += ` AND l.category = $${paramIndex}`;
+      queryParams.push(category);
+      paramIndex++;
     }
     
-    // Fetch listings and populate host to check host status
-    const allListings = await Listing.find(query)
-      .select('title description price location coordinates images category host createdAt')
-      .populate('host', 'status role name') // Populate host to check their status
-      .lean(); // Use lean() for better performance
+    // Simple Haversine-based query (works without PostGIS)
+    // Calculate bounding box for performance
+    const degreesPerKm = 0.009;
+    const latDelta = radius * degreesPerKm;
+    const lngDelta = radius * degreesPerKm / Math.cos(lat * Math.PI / 180);
     
-    if (!allListings || allListings.length === 0) {
-      return NextResponse.json({
-        success: true,
-        center: { lat, lng },
-        radius,
-        count: 0,
-        listings: [],
-        message: "No listings found in the specified area"
-      });
-    }
+    const bboxQuery = `
+      SELECT 
+        l.id,
+        l.title,
+        l.description,
+        l.price,
+        l.location,
+        l.latitude,
+        l.longitude,
+        l.images,
+        l.category,
+        l.amenities,
+        l.created_at,
+        u.name as host_name,
+        u.status as host_status
+      FROM listings l
+      JOIN users u ON l.host_id = u.id
+      WHERE ${whereConditions}
+        AND l.latitude BETWEEN $${paramIndex}::float - $${paramIndex + 2}::float 
+                          AND $${paramIndex}::float + $${paramIndex + 2}::float
+        AND l.longitude BETWEEN $${paramIndex + 1}::float - $${paramIndex + 3}::float 
+                           AND $${paramIndex + 1}::float + $${paramIndex + 3}::float
+    `;
     
-    // Filter listings by distance AND host status
-    const nearbyListings = allListings
+    const bboxParams = [lat, lng, latDelta, lngDelta];
+    queryParams.push(...bboxParams);
+    
+    const result = await pool.query(bboxQuery, queryParams);
+    
+    // Calculate exact distances using Haversine and filter
+    let listings = result.rows
       .map(listing => {
-        // Skip listings without valid coordinates
-        if (!listing.coordinates || 
-            !listing.coordinates.lat || 
-            !listing.coordinates.lng) {
-          return null;
-        }
-        
-        // Skip listings whose host is suspended
-        if (listing.host && listing.host.status === 'suspended') {
-          return null;
-        }
-        
-        // Skip if host is not a host role (shouldn't happen but safe check)
-        if (listing.host && listing.host.role !== 'host') {
-          return null;
-        }
-        
         const distance = getDistanceFromLatLonInKm(
           lat, lng,
-          listing.coordinates.lat,
-          listing.coordinates.lng
+          parseFloat(listing.latitude),
+          parseFloat(listing.longitude)
         );
         
         return {
           ...listing,
-          distance: Math.round(distance * 10) / 10, // Round to 1 decimal
-          hostName: listing.host?.name || 'Unknown Host',
-          hostStatus: listing.host?.status
+          distance_km: Math.round(distance * 10) / 10
         };
       })
-      .filter(listing => listing && listing.distance <= radius)
-      .sort((a, b) => a.distance - b.distance)
+      .filter(listing => listing.distance_km <= radius)
+      .sort((a, b) => a.distance_km - b.distance_km)
       .slice(0, limit);
+    
+    // Format response
+    const formattedListings = listings.map(listing => ({
+      id: listing.id,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      location: listing.location,
+      coordinates: {
+        lat: parseFloat(listing.latitude),
+        lng: parseFloat(listing.longitude)
+      },
+      images: listing.images || [],
+      category: listing.category,
+      amenities: listing.amenities || [],
+      createdAt: listing.created_at,
+      hostName: listing.host_name,
+      hostStatus: listing.host_status,
+      distance: listing.distance_km
+    }));
     
     return NextResponse.json({
       success: true,
       center: { lat, lng },
       radius,
-      count: nearbyListings.length,
-      listings: nearbyListings,
+      count: formattedListings.length,
+      listings: formattedListings,
       filters: {
         category: category || 'all',
         limit
@@ -134,11 +141,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Nearby listings error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: 'Internal server error',
-        message: error.message 
-      },
+      { success: false, error: 'Internal server error', message: error.message },
       { status: 500 }
     );
   }

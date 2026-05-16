@@ -1,64 +1,105 @@
+// app/api/listings/route.js - POSTGRESQL VERSION
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { connectToDatabase } from '@/lib/mongodb';
-import Listing from '@/models/Listing';
-import User from '@/models/User';
+import pool from '@/lib/postgres';
 
 // GET - Fetch all listings (for users)
 export async function GET(request) {
   try {
-    await connectToDatabase();
-    
     const { searchParams } = new URL(request.url);
     const location = searchParams.get('location');
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     
-    // Build query - Only show active listings
-    let query = {
-      $or: [
-        { status: 'active' },
-        { status: { $exists: false } } // For backward compatibility with old listings
-      ]
-    };
+    // Build WHERE clause
+    let whereConditions = `
+      l.status = 'active'
+      AND u.status = 'confirmed'
+      AND u.role = 'host'
+    `;
+    
+    const queryParams = [];
+    let paramIndex = 1;
     
     if (location) {
-      query.location = { $regex: location, $options: 'i' };
+      whereConditions += ` AND l.location ILIKE $${paramIndex}`;
+      queryParams.push(`%${location}%`);
+      paramIndex++;
     }
     
     if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = parseInt(minPrice);
-      if (maxPrice) query.price.$lte = parseInt(maxPrice);
+      if (minPrice && maxPrice) {
+        whereConditions += ` AND l.price BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+        queryParams.push(parseInt(minPrice), parseInt(maxPrice));
+        paramIndex += 2;
+      } else if (minPrice) {
+        whereConditions += ` AND l.price >= $${paramIndex}`;
+        queryParams.push(parseInt(minPrice));
+        paramIndex++;
+      } else if (maxPrice) {
+        whereConditions += ` AND l.price <= $${paramIndex}`;
+        queryParams.push(parseInt(maxPrice));
+        paramIndex++;
+      }
     }
     
-    // Fetch listings and populate host to check their status
-    const listings = await Listing.find(query)
-      .populate('host', 'name email status role') // Include host status
-      .sort({ createdAt: -1 })
-      .lean();
+    // Query listings with host info
+    const result = await pool.query(
+      `SELECT 
+        l.id,
+        l.title,
+        l.description,
+        l.price,
+        l.location,
+        l.latitude,
+        l.longitude,
+        l.images,
+        l.category,
+        l.amenities,
+        l.rules,
+        l.created_at,
+        l.updated_at,
+        u.id as host_id,
+        u.name as host_name,
+        u.email as host_email,
+        u.status as host_status
+       FROM listings l
+       JOIN users u ON l.host_id = u.id
+       WHERE ${whereConditions}
+       ORDER BY l.created_at DESC`,
+      queryParams
+    );
     
-    // Filter out listings where:
-    // 1. Host is suspended
-    // 2. Host doesn't exist
-    // 3. Host is not a host role
-    const activeListings = listings.filter(listing => {
-      // Check if host exists and is not suspended
-      if (!listing.host) return false;
-      if (listing.host.status === 'suspended') return false;
-      if (listing.host.role !== 'host') return false;
-      
-      // Check if listing is not deleted/suspended (if status field exists)
-      if (listing.status === 'suspended' || listing.status === 'deleted') return false;
-      
-      return true;
-    });
+    // Format listings
+    const listings = result.rows.map(listing => ({
+      id: listing.id,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      location: listing.location,
+      coordinates: {
+        lat: listing.latitude,
+        lng: listing.longitude
+      },
+      images: listing.images || [],
+      category: listing.category,
+      amenities: listing.amenities || [],
+      rules: listing.rules || [],
+      createdAt: listing.created_at,
+      updatedAt: listing.updated_at,
+      host: {
+        id: listing.host_id,
+        name: listing.host_name,
+        email: listing.host_email,
+        status: listing.host_status
+      }
+    }));
     
-    return NextResponse.json({ listings: activeListings });
+    return NextResponse.json({ listings });
   } catch (error) {
     console.error('Fetch listings error:', error);
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: 'Internal server error', error: error.message },
       { status: 500 }
     );
   }
@@ -78,11 +119,22 @@ export async function POST(request) {
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Check if user is a host
-    await connectToDatabase();
-    const user = await User.findById(decoded.userId);
+    // Check if user is a host and confirmed
+    const userResult = await pool.query(
+      `SELECT id, role, status, host_details FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
     
-    if (!user || user.role !== 'host') {
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    const user = userResult.rows[0];
+    
+    if (user.role !== 'host') {
       return NextResponse.json(
         { message: 'Only hosts can create listings' },
         { status: 403 }
@@ -97,8 +149,8 @@ export async function POST(request) {
       );
     }
     
-    // Check if host is confirmed (for host role)
-    if (user.role === 'host' && user.status !== 'confirmed') {
+    // Check if host is confirmed
+    if (user.status !== 'confirmed') {
       return NextResponse.json(
         { message: 'Your host account is not confirmed yet. Please wait for admin approval.' },
         { status: 403 }
@@ -106,7 +158,10 @@ export async function POST(request) {
     }
     
     // Extract data from request body
-    const { title, description, price, location, coordinates, images, amenities, rules, category } = await request.json();
+    const { 
+      title, description, price, location, coordinates, 
+      images, amenities, rules, category 
+    } = await request.json();
     
     console.log('Received listing data:', { title, description, price, location, coordinates, images, amenities, rules, category });
     
@@ -134,33 +189,66 @@ export async function POST(request) {
       );
     }
     
-    // Create listing with active status by default
-    const listing = await Listing.create({
-      title,
-      description,
-      price: parseFloat(price),
-      location,
-      coordinates: {
-        lat: parseFloat(coordinates.lat),
-        lng: parseFloat(coordinates.lng),
-      },
-      images: images.filter(img => img && img.trim() !== ''),
-      amenities: amenities || [],
-      host: user._id,
-      rules: rules || [],
-      category: category || 'city',
-      status: 'active' // Set initial status to active
-    });
+    // Filter out empty images
+    const filteredImages = images.filter(img => img && img.trim() !== '');
     
-    // Update host's total listings count
-    if (user.hostDetails) {
-      user.hostDetails.totalListings += 1;
-      await user.save();
+    // Create listing
+    const result = await pool.query(
+      `INSERT INTO listings (
+        title, description, price, location, 
+        latitude, longitude, images, amenities, 
+        rules, category, host_id, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
+      RETURNING *`,
+      [
+        title,
+        description,
+        parseFloat(price),
+        location,
+        parseFloat(coordinates.lat),
+        parseFloat(coordinates.lng),
+        filteredImages,
+        amenities || [],
+        rules || [],
+        category || 'city',
+        user.id
+      ]
+    );
+    
+    const newListing = result.rows[0];
+    
+    // Update host's total listings count in host_details
+    let hostDetails = user.host_details || {};
+    if (typeof hostDetails === 'string') {
+      hostDetails = JSON.parse(hostDetails);
     }
+    
+    hostDetails.totalListings = (hostDetails.totalListings || 0) + 1;
+    
+    await pool.query(
+      `UPDATE users SET host_details = $1 WHERE id = $2`,
+      [hostDetails, user.id]
+    );
     
     return NextResponse.json({
       message: 'Listing created successfully',
-      listing,
+      listing: {
+        id: newListing.id,
+        title: newListing.title,
+        description: newListing.description,
+        price: newListing.price,
+        location: newListing.location,
+        coordinates: {
+          lat: newListing.latitude,
+          lng: newListing.longitude
+        },
+        images: newListing.images,
+        category: newListing.category,
+        amenities: newListing.amenities,
+        rules: newListing.rules,
+        status: newListing.status,
+        createdAt: newListing.created_at
+      },
     }, { status: 201 });
   } catch (error) {
     console.error('Create listing error:', error);
@@ -185,10 +273,22 @@ export async function PUT(request) {
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    await connectToDatabase();
-    const user = await User.findById(decoded.userId);
+    // Check if user is a host
+    const userResult = await pool.query(
+      `SELECT id, role, status FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
     
-    if (!user || user.role !== 'host') {
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    const user = userResult.rows[0];
+    
+    if (user.role !== 'host') {
       return NextResponse.json(
         { message: 'Only hosts can update listings' },
         { status: 403 }
@@ -213,16 +313,21 @@ export async function PUT(request) {
     }
     
     // Find the listing and check ownership
-    const listing = await Listing.findById(listingId);
+    const listingResult = await pool.query(
+      `SELECT id, host_id, status FROM listings WHERE id = $1`,
+      [listingId]
+    );
     
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
-    if (listing.host.toString() !== user._id.toString()) {
+    const listing = listingResult.rows[0];
+    
+    if (listing.host_id !== user.id) {
       return NextResponse.json(
         { message: 'You can only update your own listings' },
         { status: 403 }
@@ -237,13 +342,70 @@ export async function PUT(request) {
       );
     }
     
-    // Update the listing
-    Object.assign(listing, updateData);
-    await listing.save();
+    // Build dynamic update query
+    const updateFields = [];
+    const updateParams = [];
+    let paramIndex = 1;
+    
+    if (updateData.title !== undefined) {
+      updateFields.push(`title = $${paramIndex++}`);
+      updateParams.push(updateData.title);
+    }
+    if (updateData.description !== undefined) {
+      updateFields.push(`description = $${paramIndex++}`);
+      updateParams.push(updateData.description);
+    }
+    if (updateData.price !== undefined) {
+      updateFields.push(`price = $${paramIndex++}`);
+      updateParams.push(parseFloat(updateData.price));
+    }
+    if (updateData.location !== undefined) {
+      updateFields.push(`location = $${paramIndex++}`);
+      updateParams.push(updateData.location);
+    }
+    if (updateData.coordinates) {
+      if (updateData.coordinates.lat !== undefined) {
+        updateFields.push(`latitude = $${paramIndex++}`);
+        updateParams.push(updateData.coordinates.lat);
+      }
+      if (updateData.coordinates.lng !== undefined) {
+        updateFields.push(`longitude = $${paramIndex++}`);
+        updateParams.push(updateData.coordinates.lng);
+      }
+    }
+    if (updateData.images !== undefined) {
+      updateFields.push(`images = $${paramIndex++}`);
+      updateParams.push(updateData.images);
+    }
+    if (updateData.amenities !== undefined) {
+      updateFields.push(`amenities = $${paramIndex++}`);
+      updateParams.push(updateData.amenities);
+    }
+    if (updateData.rules !== undefined) {
+      updateFields.push(`rules = $${paramIndex++}`);
+      updateParams.push(updateData.rules);
+    }
+    if (updateData.category !== undefined) {
+      updateFields.push(`category = $${paramIndex++}`);
+      updateParams.push(updateData.category);
+    }
+    
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateParams.push(listingId);
+    
+    const updateQuery = `
+      UPDATE listings 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(updateQuery, updateParams);
+    const updatedListing = result.rows[0];
     
     return NextResponse.json({
       message: 'Listing updated successfully',
-      listing,
+      listing: updatedListing,
     });
   } catch (error) {
     console.error('Update listing error:', error);
@@ -268,10 +430,22 @@ export async function DELETE(request) {
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    await connectToDatabase();
-    const user = await User.findById(decoded.userId);
+    // Check if user is a host
+    const userResult = await pool.query(
+      `SELECT id, role, status, host_details FROM users WHERE id = $1`,
+      [decoded.userId]
+    );
     
-    if (!user || user.role !== 'host') {
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    const user = userResult.rows[0];
+    
+    if (user.role !== 'host') {
       return NextResponse.json(
         { message: 'Only hosts can delete listings' },
         { status: 403 }
@@ -289,16 +463,21 @@ export async function DELETE(request) {
     }
     
     // Find the listing and check ownership
-    const listing = await Listing.findById(listingId);
+    const listingResult = await pool.query(
+      `SELECT id, host_id FROM listings WHERE id = $1`,
+      [listingId]
+    );
     
-    if (!listing) {
+    if (listingResult.rows.length === 0) {
       return NextResponse.json(
         { message: 'Listing not found' },
         { status: 404 }
       );
     }
     
-    if (listing.host.toString() !== user._id.toString()) {
+    const listing = listingResult.rows[0];
+    
+    if (listing.host_id !== user.id) {
       return NextResponse.json(
         { message: 'You can only delete your own listings' },
         { status: 403 }
@@ -306,13 +485,23 @@ export async function DELETE(request) {
     }
     
     // Soft delete by setting status to 'deleted'
-    listing.status = 'deleted';
-    await listing.save();
+    await pool.query(
+      `UPDATE listings SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [listingId]
+    );
     
     // Update host's total listings count
-    if (user.hostDetails && user.hostDetails.totalListings > 0) {
-      user.hostDetails.totalListings -= 1;
-      await user.save();
+    let hostDetails = user.host_details || {};
+    if (typeof hostDetails === 'string') {
+      hostDetails = JSON.parse(hostDetails);
+    }
+    
+    if (hostDetails.totalListings && hostDetails.totalListings > 0) {
+      hostDetails.totalListings -= 1;
+      await pool.query(
+        `UPDATE users SET host_details = $1 WHERE id = $2`,
+        [hostDetails, user.id]
+      );
     }
     
     return NextResponse.json({

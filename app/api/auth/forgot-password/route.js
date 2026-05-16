@@ -1,8 +1,8 @@
-// app/api/auth/forgot-password/route.js
+// app/api/auth/forgot-password/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import { sendEmail } from "@/lib/sendEmail";
+import crypto from "crypto";
 
 export async function POST(request) {
   try {
@@ -15,20 +15,32 @@ export async function POST(request) {
       );
     }
 
-    await connectToDatabase();
-
-    const user = await User.findOne({ email });
+    // Find user - PostgreSQL version
+    const result = await pool.query(
+      `SELECT id, name, email FROM users WHERE email = $1`,
+      [email]
+    );
 
     // For security, don't reveal if user exists or not
-    if (!user) {
+    if (result.rows.length === 0) {
       return NextResponse.json({
         message: "If your email is registered, you will receive a password reset link",
       });
     }
 
-    // Generate reset token
-    const resetToken = user.generatePasswordResetToken();
-    await user.save();
+    const user = result.rows[0];
+
+    // Generate reset token (using crypto like MongoDB version)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save token to database
+    await pool.query(
+      `UPDATE users 
+       SET reset_password_token = $1, reset_password_expires = $2
+       WHERE id = $3`,
+      [resetToken, resetExpires, user.id]
+    );
 
     // Create reset URL
     const resetUrl = `${process.env.NEXTAUTH_URL || 'https://marhaba-three.vercel.app'}/reset-password?token=${resetToken}`;

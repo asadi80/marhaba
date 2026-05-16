@@ -1,18 +1,14 @@
-// app/api/bookings/[id]/route.js
+// app/api/bookings/[id]/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { connectToDatabase } from "@/lib/mongodb";
-import Booking from "@/models/Booking";
-import Listing from "@/models/Listing";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import { sendEmail } from "@/lib/sendEmail";
-import mongoose from "mongoose";
 
 // Bilingual email template with both languages together
 function getBilingualEmailContent(userName, listingTitle, booking, action) {
-  const checkInDate = new Date(booking.checkIn).toDateString();
-  const checkOutDate = new Date(booking.checkOut).toDateString();
-  const totalPrice = booking.totalPrice;
+  const checkInDate = new Date(booking.check_in).toDateString();
+  const checkOutDate = new Date(booking.check_out).toDateString();
+  const totalPrice = booking.total_price;
   
   if (action === 'confirm') {
     return {
@@ -129,9 +125,7 @@ export async function PUT(request, { params }) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log("Decoded userId:", decoded.userId);
 
-    // Unwrap params Promise
-    const unwrappedParams = await params;
-    const bookingId = unwrappedParams.id;
+    const { id: bookingId } = await params;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -140,27 +134,31 @@ export async function PUT(request, { params }) {
       );
     }
 
-    await connectToDatabase();
+    // Get booking with listing info
+    const bookingResult = await pool.query(
+      `SELECT b.*, l.host_id, l.title as listing_title, 
+              u.name as user_name, u.email as user_email, u.phone_number as user_phone
+       FROM bookings b
+       JOIN listings l ON b.listing_id = l.id
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = $1`,
+      [bookingId]
+    );
 
-    const booking = await Booking.findById(bookingId);
-
-    if (!booking) {
+    if (bookingResult.rows.length === 0) {
       return NextResponse.json(
         { message: "Booking not found" },
         { status: 404 },
       );
     }
 
-    await booking.populate("listing", "title");
-    await booking.populate("user", "name email phoneNumber");
-
+    const booking = bookingResult.rows[0];
     const { action } = await request.json();
 
     // Handle confirm action (host only)
     if (action === "confirm") {
       // Check if user is the host of the listing
-      const listingDoc = await Listing.findById(booking.listing);
-      if (!listingDoc || listingDoc.host.toString() !== decoded.userId) {
+      if (booking.host_id !== decoded.userId) {
         return NextResponse.json(
           { message: "Only the host can confirm bookings" },
           { status: 403 },
@@ -183,23 +181,26 @@ export async function PUT(request, { params }) {
         );
       }
 
-      booking.status = "confirmed";
-      await booking.save();
+      // Update booking status
+      await pool.query(
+        `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        ["confirmed", bookingId]
+      );
 
-      const user = booking.user;
-      const listingData = booking.listing;
+      // Get updated booking
+      const updatedBooking = { ...booking, status: "confirmed" };
 
-      // Get bilingual email content
+      // Send confirmation email
       const emailContent = getBilingualEmailContent(
-        user.name, 
-        listingData.title, 
-        booking, 
+        booking.user_name,
+        booking.listing_title,
+        updatedBooking,
         'confirm'
       );
 
       try {
         const emailResult = await sendEmail({
-          to: user.email,
+          to: booking.user_email,
           subject: emailContent.subject,
           text: emailContent.text,
           html: emailContent.html,
@@ -210,10 +211,7 @@ export async function PUT(request, { params }) {
         if (!emailResult.success) {
           console.error("Email failed to send:", emailResult.error);
         } else {
-          console.log(
-            "Email sent successfully with ID:",
-            emailResult.messageId,
-          );
+          console.log("Email sent successfully with ID:", emailResult.messageId);
         }
       } catch (err) {
         console.error("Email sending error:", err);
@@ -221,29 +219,22 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json({
         message: "Booking confirmed successfully",
-        booking,
+        booking: updatedBooking,
       });
     }
 
     // Handle cancel action (both host and user can cancel)
     if (action === "cancel") {
-      // Convert both IDs to strings for comparison
-      const bookingUserId = booking.user._id.toString();
-      const authenticatedUserId = decoded.userId.toString();
+      // Check if user is the booking owner or host
+      const isOwner = booking.user_id === decoded.userId;
+      const isHost = booking.host_id === decoded.userId;
 
-      console.log("Comparing:", { bookingUserId, authenticatedUserId });
-
-      // Check if user is the booking owner
-      if (bookingUserId !== authenticatedUserId) {
-        // If not the user, check if user is the host of the listing
-        const listingDoc = await Listing.findById(booking.listing);
-        if (!listingDoc || listingDoc.host.toString() !== authenticatedUserId) {
-          console.log("Authorization failed - not owner and not host");
-          return NextResponse.json(
-            { message: "You are not authorized to cancel this booking" },
-            { status: 403 },
-          );
-        }
+      if (!isOwner && !isHost) {
+        console.log("Authorization failed - not owner and not host");
+        return NextResponse.json(
+          { message: "You are not authorized to cancel this booking" },
+          { status: 403 },
+        );
       }
 
       // Check if booking is already cancelled
@@ -254,23 +245,25 @@ export async function PUT(request, { params }) {
         );
       }
 
-      booking.status = "cancelled";
-      await booking.save();
+      // Update booking status
+      await pool.query(
+        `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        ["cancelled", bookingId]
+      );
 
-      const user = booking.user;
-      const listingData = booking.listing;
+      const updatedBooking = { ...booking, status: "cancelled" };
 
-      // Get bilingual email content
+      // Send cancellation email
       const emailContent = getBilingualEmailContent(
-        user.name, 
-        listingData.title, 
-        booking, 
+        booking.user_name,
+        booking.listing_title,
+        updatedBooking,
         'cancel'
       );
 
       try {
         const emailResult = await sendEmail({
-          to: user.email,
+          to: booking.user_email,
           subject: emailContent.subject,
           text: emailContent.text,
           html: emailContent.html,
@@ -289,7 +282,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json({
         message: "Booking cancelled successfully",
-        booking,
+        booking: updatedBooking,
       });
     }
 
@@ -316,10 +309,7 @@ export async function GET(request, { params }) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Unwrap params Promise
-    const unwrappedParams = await params;
-    const bookingId = unwrappedParams.id;
+    const { id: bookingId } = await params;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -328,31 +318,64 @@ export async function GET(request, { params }) {
       );
     }
 
-    await connectToDatabase();
+    // Get booking with listing and user info
+    const bookingResult = await pool.query(
+      `SELECT b.*, 
+              l.title as listing_title, l.location as listing_location, l.price as listing_price, l.images as listing_images,
+              u.name as user_name, u.email as user_email, u.phone_number as user_phone
+       FROM bookings b
+       JOIN listings l ON b.listing_id = l.id
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = $1`,
+      [bookingId]
+    );
 
-    const booking = await Booking.findById(bookingId)
-      .populate("listing", "title location price images")
-      .populate("user", "name email phoneNumber");
-
-    if (!booking) {
+    if (bookingResult.rows.length === 0) {
       return NextResponse.json(
         { message: "Booking not found" },
         { status: 404 },
       );
     }
 
+    const booking = bookingResult.rows[0];
+
     // Check if user is authorized to view this booking
-    if (booking.user._id.toString() !== decoded.userId) {
-      const listingDoc = await Listing.findById(booking.listing);
-      if (!listingDoc || listingDoc.host.toString() !== decoded.userId) {
-        return NextResponse.json(
-          { message: "Unauthorized to view this booking" },
-          { status: 403 },
-        );
-      }
+    const isOwner = booking.user_id === decoded.userId;
+    const isHost = await checkIfUserIsHost(decoded.userId, booking.listing_id);
+
+    if (!isOwner && !isHost) {
+      return NextResponse.json(
+        { message: "Unauthorized to view this booking" },
+        { status: 403 },
+      );
     }
 
-    return NextResponse.json({ booking });
+    // Format response
+    const formattedBooking = {
+      id: booking.id,
+      listing_id: booking.listing_id,
+      user_id: booking.user_id,
+      check_in: booking.check_in,
+      check_out: booking.check_out,
+      total_price: booking.total_price,
+      guests: booking.guests,
+      status: booking.status,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      listing: {
+        title: booking.listing_title,
+        location: booking.listing_location,
+        price: booking.listing_price,
+        images: booking.listing_images,
+      },
+      user: {
+        name: booking.user_name,
+        email: booking.user_email,
+        phoneNumber: booking.user_phone,
+      },
+    };
+
+    return NextResponse.json({ booking: formattedBooking });
   } catch (error) {
     console.error("Fetch booking error:", error);
     return NextResponse.json(
@@ -360,6 +383,15 @@ export async function GET(request, { params }) {
       { status: 500 },
     );
   }
+}
+
+// Helper function to check if user is host of a listing
+async function checkIfUserIsHost(userId, listingId) {
+  const result = await pool.query(
+    `SELECT host_id FROM listings WHERE id = $1 AND host_id = $2`,
+    [listingId, userId]
+  );
+  return result.rows.length > 0;
 }
 
 // DELETE - Delete booking (admin or host only)
@@ -372,10 +404,7 @@ export async function DELETE(request, { params }) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Unwrap params Promise
-    const unwrappedParams = await params;
-    const bookingId = unwrappedParams.id;
+    const { id: bookingId } = await params;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -384,21 +413,22 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await connectToDatabase();
+    // Get booking with listing info
+    const bookingResult = await pool.query(
+      `SELECT b.*, l.host_id FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = $1`,
+      [bookingId]
+    );
 
-    const booking = await Booking.findById(bookingId);
-
-    if (!booking) {
+    if (bookingResult.rows.length === 0) {
       return NextResponse.json(
         { message: "Booking not found" },
         { status: 404 },
       );
     }
 
-    // Check if user is the host or booking owner
-    const listingDoc = await Listing.findById(booking.listing);
-    const isHost = listingDoc && listingDoc.host.toString() === decoded.userId;
-    const isOwner = booking.user.toString() === decoded.userId;
+    const booking = bookingResult.rows[0];
+    const isHost = booking.host_id === decoded.userId;
+    const isOwner = booking.user_id === decoded.userId;
 
     if (!isHost && !isOwner) {
       return NextResponse.json(
@@ -407,7 +437,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await Booking.findByIdAndDelete(bookingId);
+    await pool.query(`DELETE FROM bookings WHERE id = $1`, [bookingId]);
 
     return NextResponse.json({
       message: "Booking deleted successfully",

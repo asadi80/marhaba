@@ -1,8 +1,8 @@
-// app/api/auth/resend-verification/route.js
+// app/api/auth/resend-verification/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import { sendEmail } from "@/lib/sendEmail";
+import crypto from "crypto";
 
 export async function POST(request) {
   try {
@@ -15,27 +15,39 @@ export async function POST(request) {
       );
     }
 
-    await connectToDatabase();
+    // Find user - PostgreSQL version
+    const result = await pool.query(
+      `SELECT id, name, email, email_verified FROM users WHERE email = $1`,
+      [email]
+    );
 
-    const user = await User.findOne({ email });
-
-    if (!user) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { message: "User not found" },
         { status: 404 }
       );
     }
 
-    if (user.emailVerified) {
+    const user = result.rows[0];
+
+    if (user.email_verified) {
       return NextResponse.json(
         { message: "Email already verified" },
         { status: 400 }
       );
     }
 
-    // Generate new verification token
-    const verificationToken = user.generateEmailVerificationToken();
-    await user.save();
+    // Generate new verification token (using crypto like MongoDB version)
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Save token to database
+    await pool.query(
+      `UPDATE users 
+       SET email_verification_token = $1, email_verification_expires = $2
+       WHERE id = $3`,
+      [verificationToken, verificationExpires, user.id]
+    );
 
     // Create verification URL
     const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${verificationToken}`;

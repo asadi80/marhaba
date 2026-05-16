@@ -1,8 +1,6 @@
-// app/api/cron/check-expired-users/route.js
+// app/api/cron/check-expired-users/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import {connectToDatabase} from "@/lib/mongodb";
-import User from "@/models/User";
-import Listing from "@/models/Listing";
+import pool from "@/lib/postgres";
 
 export async function GET(request) {
   // Verify cron secret to prevent unauthorized access
@@ -14,8 +12,6 @@ export async function GET(request) {
   }
   
   try {
-    await connectToDatabase();
-    
     const today = new Date();
     const results = {
       expiredHosts: [],
@@ -24,73 +20,115 @@ export async function GET(request) {
       suspendedUsers: [],
     };
     
-    // 1. Check ALL hosts (confirmed and pending)
-    const hosts = await User.find({
-      role: "host",
-    });
+    // 1. Get all hosts
+    const hostsResult = await pool.query(
+      `SELECT id, email, name, status, host_expiry_date, host_details, status_reason 
+       FROM users 
+       WHERE role = 'host'`
+    );
+    
+    const hosts = hostsResult.rows;
     
     for (const host of hosts) {
       // Handle expired subscriptions
-      if (host.status === "confirmed" && host.hostExpiryDate) {
-        const expiryDate = new Date(host.hostExpiryDate);
+      if (host.status === "confirmed" && host.host_expiry_date) {
+        const expiryDate = new Date(host.host_expiry_date);
         const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        // Parse host_details JSONB
+        let hostDetails = host.host_details || {};
+        if (typeof hostDetails === 'string') {
+          hostDetails = JSON.parse(hostDetails);
+        }
         
         // Expired - change to pending
         if (expiryDate <= today) {
-          host.status = "pending";
-          host.statusReason = "expired";
+          // Update user status
+          await pool.query(
+            `UPDATE users 
+             SET status = 'pending', 
+                 status_reason = 'expired',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [host.id]
+          );
           
           // Deactivate all listings
-          await Listing.updateMany(
-            { host: host._id },
-            { isActive: false, status: "inactive" }
+          await pool.query(
+            `UPDATE listings 
+             SET status = 'inactive', 
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE host_id = $1`,
+            [host.id]
           );
           
           results.expiredHosts.push({
-            id: host._id,
+            id: host.id,
             email: host.email,
             name: host.name,
-            expiryDate: host.hostExpiryDate,
+            expiryDate: host.host_expiry_date,
           });
-          
-          await host.save();
         }
         // 2 days warning
         else if (daysUntilExpiry <= 2 && daysUntilExpiry > 0) {
-          if (!host.hostDetails?.notificationSent?.twoDays) {
+          const notificationSent = hostDetails.notificationSent || {};
+          
+          if (!notificationSent.twoDays) {
             results.expiringHosts2Days.push({
-              id: host._id,
+              id: host.id,
               email: host.email,
               name: host.name,
               daysLeft: daysUntilExpiry,
-              expiryDate: host.hostExpiryDate,
+              expiryDate: host.host_expiry_date,
             });
             
-            if (!host.hostDetails) host.hostDetails = {};
-            host.hostDetails.notificationSent = {
-              ...host.hostDetails.notificationSent,
-              twoDays: true,
+            // Update notification flag
+            const updatedDetails = {
+              ...hostDetails,
+              notificationSent: {
+                ...notificationSent,
+                twoDays: true,
+              }
             };
-            await host.save();
+            
+            await pool.query(
+              `UPDATE users 
+               SET host_details = $1, 
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $2`,
+              [updatedDetails, host.id]
+            );
           }
         }
         // 7 days warning
         else if (daysUntilExpiry <= 7 && daysUntilExpiry > 2) {
-          if (!host.hostDetails?.notificationSent?.oneWeek) {
+          const notificationSent = hostDetails.notificationSent || {};
+          
+          if (!notificationSent.oneWeek) {
             results.expiringHosts7Days.push({
-              id: host._id,
+              id: host.id,
               email: host.email,
               name: host.name,
               daysLeft: daysUntilExpiry,
-              expiryDate: host.hostExpiryDate,
+              expiryDate: host.host_expiry_date,
             });
             
-            if (!host.hostDetails) host.hostDetails = {};
-            host.hostDetails.notificationSent = {
-              ...host.hostDetails.notificationSent,
-              oneWeek: true,
+            // Update notification flag
+            const updatedDetails = {
+              ...hostDetails,
+              notificationSent: {
+                ...notificationSent,
+                oneWeek: true,
+              }
             };
-            await host.save();
+            
+            await pool.query(
+              `UPDATE users 
+               SET host_details = $1, 
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $2`,
+              [updatedDetails, host.id]
+            );
           }
         }
       }
@@ -100,22 +138,33 @@ export async function GET(request) {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     
-    const inactiveUsers = await User.find({
-      role: "user",
-      status: "confirmed",
-      lastActive: { $lt: oneYearAgo }
-    });
+    const inactiveUsersResult = await pool.query(
+      `SELECT id, email, name, last_active 
+       FROM users 
+       WHERE role = 'user' 
+         AND status = 'confirmed' 
+         AND last_active < $1`,
+      [oneYearAgo]
+    );
+    
+    const inactiveUsers = inactiveUsersResult.rows;
     
     for (const user of inactiveUsers) {
-      user.status = "suspended";
-      user.statusReason = "inactive";
+      await pool.query(
+        `UPDATE users 
+         SET status = 'suspended', 
+             status_reason = 'inactive',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [user.id]
+      );
+      
       results.suspendedUsers.push({
-        id: user._id,
+        id: user.id,
         email: user.email,
         name: user.name,
-        lastActive: user.lastActive,
+        lastActive: user.last_active,
       });
-      await user.save();
     }
     
     // Log results for monitoring
@@ -136,7 +185,7 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error checking expired users:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
     );
   }

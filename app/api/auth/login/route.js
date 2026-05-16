@@ -1,8 +1,7 @@
-// app/api/auth/login/route.js
+// app/api/auth/login/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -17,35 +16,42 @@ export async function POST(request) {
       );
     }
 
-    await connectToDatabase();
+    // Find user - PostgreSQL version
+    const result = await pool.query(
+      `SELECT id, name, email, password_hash, phone_number, role, status, 
+              email_verified, created_at, id_images, host_expiry_date
+       FROM users 
+       WHERE email = $1`,
+      [email]
+    );
 
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { message: "Invalid credentials" },
         { status: 401 },
       );
     }
 
-// Check if email is verified
-if (!user.emailVerified) {
-  const resendUrl = "https://www.mar-haba.ly/resend-verification";
-  
-  return NextResponse.json(
-    {
-      message: "Please verify your email address before logging in.",
-      htmlMessage: `Please verify your email address before logging in. Check your inbox for the verification link, or <a href="${resendUrl}" target="_blank" style="color: #3B82F6; text-decoration: underline;">click here to resend</a>. <br/><br/> يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو <a href="${resendUrl}" target="_blank" style="color: #3B82F6; text-decoration: underline;">انقر هنا لإعادة الإرسال</a>`,
-      requiresVerification: true,
-      email: user.email,
-      resendLink: resendUrl
-    },
-    { status: 401 },
-  );
-}
+    const user = result.rows[0];
+
+    // Check if email is verified
+    if (!user.email_verified) {
+      const resendUrl = "https://www.mar-haba.ly/resend-verification";
+      
+      return NextResponse.json(
+        {
+          message: "Please verify your email address before logging in.",
+          htmlMessage: `Please verify your email address before logging in. Check your inbox for the verification link, or <a href="${resendUrl}" target="_blank" style="color: #3B82F6; text-decoration: underline;">click here to resend</a>. <br/><br/> يرجى تأكيد عنوان بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد الخاص بك للحصول على رابط التأكيد، أو <a href="${resendUrl}" target="_blank" style="color: #3B82F6; text-decoration: underline;">انقر هنا لإعادة الإرسال</a>`,
+          requiresVerification: true,
+          email: user.email,
+          resendLink: resendUrl
+        },
+        { status: 401 },
+      );
+    }
 
     // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return NextResponse.json(
         { message: "Invalid credentials" },
@@ -59,8 +65,8 @@ if (!user.emailVerified) {
     let isHostApproved = true;
 
     if (user.role === "host") {
-      // Check if host has uploaded ID images
-      const hasIdImages = user.idImages && user.idImages.length > 0;
+      // Check if host has uploaded ID images (id_images is an array in PostgreSQL)
+      const hasIdImages = user.id_images && user.id_images.length > 0;
 
       if (user.status === "pending") {
         if (!hasIdImages) {
@@ -87,7 +93,7 @@ if (!user.emailVerified) {
     // Create token
     const token = jwt.sign(
       {
-        userId: user._id,
+        userId: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -100,17 +106,18 @@ if (!user.emailVerified) {
 
     // Prepare user response
     const userResponse = {
-      id: user._id,
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      phoneNumber: user.phoneNumber,
+      phoneNumber: user.phone_number,
       status: user.status,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
       requiresIdUpload: requiresIdUpload,
-      hasIdImages: user.idImages && user.idImages.length > 0,
+      hasIdImages: user.id_images && user.id_images.length > 0,
       isHostApproved: isHostApproved,
+      hostExpiryDate: user.host_expiry_date,
     };
 
     const response = NextResponse.json({

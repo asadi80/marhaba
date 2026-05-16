@@ -1,8 +1,6 @@
-// app/api/auth/signup/route.js
+// app/api/auth/signup/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import pool from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/sendEmail";
 import crypto from "crypto";
@@ -39,12 +37,13 @@ export async function POST(request) {
       );
     }
 
-    // Connect to database
-    await connectToDatabase();
+    // Check if user already exists - PostgreSQL version
+    const existingUser = await pool.query(
+      `SELECT id FROM users WHERE email = $1`,
+      [email]
+    );
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (existingUser.rows.length > 0) {
       return NextResponse.json(
         { message: "User already exists" },
         { status: 400 },
@@ -58,37 +57,53 @@ export async function POST(request) {
     const emailVerificationToken = crypto.randomBytes(32).toString("hex");
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Create user with role - FIXED STATUS VALUES
-    const userData = {
-      name,
-      email,
-      password: hashedPassword,
-      phoneNumber,
-      role: userType,
-      status: "pending", // Valid value from enum: "pending", "confirmed", "suspended"
-      emailVerified: false,
-      emailVerificationToken,
-      emailVerificationExpires,
-    };
+    // Prepare user data based on role
+    let hostDetails = null;
+    let userDetails = null;
 
-    // Add role-specific data
     if (userType === "host") {
-      userData.hostDetails = {
+      hostDetails = {
         rating: 0,
         totalListings: 0,
         verified: false,
         joinedDate: new Date(),
+        notificationSent: {
+          oneWeek: false,
+          twoDays: false,
+        },
       };
     } else {
-      userData.userDetails = {
+      userDetails = {
         bookings: [],
         preferences: {},
         memberSince: new Date(),
       };
     }
 
-    // Create user
-    const user = await User.create(userData);
+    // Create user - PostgreSQL version
+    const result = await pool.query(
+      `INSERT INTO users (
+        name, email, password_hash, phone_number, role, status, 
+        email_verified, email_verification_token, email_verification_expires,
+        host_details, user_details
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING id, name, email, phone_number, role, status, email_verified, created_at`,
+      [
+        name,
+        email,
+        hashedPassword,
+        phoneNumber,
+        userType,
+        "pending", // status
+        false, // email_verified
+        emailVerificationToken,
+        emailVerificationExpires,
+        hostDetails,
+        userDetails,
+      ]
+    );
+
+    const user = result.rows[0];
 
     // Create verification URL
     const verificationUrl = `${process.env.NEXTAUTH_URL || "https://marhaba-three.vercel.app"}/api/auth/verify-email?token=${emailVerificationToken}`;
@@ -187,26 +202,23 @@ export async function POST(request) {
       // Don't fail the registration if email fails, but log it
     }
 
-    // Don't create token until email is verified
-    // User cannot login until email is verified
-
     // Prepare user response (without password)
     const userResponse = {
-      id: user._id,
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      phoneNumber: user.phoneNumber,
+      phoneNumber: user.phone_number,
       status: user.status,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
     };
 
     return NextResponse.json(
       {
         success: true,
         message: "Account created successfully. Please verify your email.",
-        email: user.email,
+        user: userResponse,
       },
       { status: 201 },
     );

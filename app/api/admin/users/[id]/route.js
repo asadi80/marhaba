@@ -1,15 +1,34 @@
+// app/api/admin/users/[id]/route.js - POSTGRESQL VERSION
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
-import Listing from "@/models/Listing";
-import Booking from "@/models/Booking";
+import pool from "@/lib/postgres";
 import { verifyAdminFromCookie } from "@/lib/adminAuth";
+import { sendEmail } from "@/lib/sendEmail";
+
+// Helper function to format date for email
+function formatDateForEmail(date) {
+  return new Date(date).toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric'
+  });
+}
+
+// Helper function to get user by ID
+async function getUserById(userId) {
+  const result = await pool.query(
+    `SELECT id, name, email, phone_number, role, status, status_reason, 
+            host_expiry_date, email_verified, created_at, host_details, user_details, id_images
+     FROM users 
+     WHERE id = $1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
 
 // Get single user
 export async function GET(request, { params }) {
   try {
-    const resolvedParams = await params;
+    const { id } = await params;
     
     // Verify admin using cookie
     const auth = await verifyAdminFromCookie(request, "admin");
@@ -20,14 +39,29 @@ export async function GET(request, { params }) {
       );
     }
 
-    await connectToDatabase();
-
-    const user = await User.findById(resolvedParams.id).select("-password");
+    const user = await getUserById(id);
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, user });
+    // Format response
+    const formattedUser = {
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phone_number,
+      role: user.role,
+      status: user.status,
+      statusReason: user.status_reason,
+      hostExpiryDate: user.host_expiry_date,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      hostDetails: user.host_details,
+      userDetails: user.user_details,
+      idImages: user.id_images || []
+    };
+
+    return NextResponse.json({ success: true, user: formattedUser });
   } catch (error) {
     console.error("GET user error:", error);
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -37,7 +71,7 @@ export async function GET(request, { params }) {
 // Update user
 export async function PUT(request, { params }) {
   try {
-    const resolvedParams = await params;
+    const { id } = await params;
     
     // Verify admin using cookie
     const auth = await verifyAdminFromCookie(request, "admin");
@@ -49,11 +83,9 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { name, email, phoneNumber, role, status } = body;
+    const { name, email, phoneNumber, role, status, statusReason } = body;
 
-    await connectToDatabase();
-
-    const user = await User.findById(resolvedParams.id);
+    const user = await getUserById(id);
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
@@ -76,99 +108,127 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // Update fields
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (phoneNumber) user.phoneNumber = phoneNumber;
+    // Build update query dynamically
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramIndex++}`);
+      updateValues.push(name);
+    }
+    if (email !== undefined) {
+      updateFields.push(`email = $${paramIndex++}`);
+      updateValues.push(email);
+    }
+    if (phoneNumber !== undefined) {
+      updateFields.push(`phone_number = $${paramIndex++}`);
+      updateValues.push(phoneNumber);
+    }
+
+    // Track changes for notifications
+    let wasHostJustConfirmed = false;
+    let wasHostJustSuspended = false;
+    let newExpiryDate = null;
+    let previousStatus = user.status;
+    let previousRole = user.role;
 
     // Update role (only super_admin)
     if (role && auth.user.role === "super_admin") {
-      user.role = role;
+      updateFields.push(`role = $${paramIndex++}`);
+      updateValues.push(role);
     }
 
-    // Track if host is being confirmed or suspended
-    let wasHostJustConfirmed = false;
-    let wasHostJustSuspended = false;
-    let wasPreviouslyHost = user.role === "host";
-    
-    // Safe status handling
+    // Handle status update
     if (status && auth.user.role === 'super_admin') {
-      const previousStatus = user.status;
-      user.status = status;
+      updateFields.push(`status = $${paramIndex++}`);
+      updateValues.push(status);
+      updateFields.push(`status_reason = $${paramIndex++}`);
+      updateValues.push(statusReason || null);
 
-      // Host confirmed
-      if (status === 'confirmed' && user.role === 'host') {
-        const expiry = new Date();
-        expiry.setMonth(expiry.getMonth() + 6);
-        user.hostExpiryDate = expiry;
-        user.statusReason = null;
+      // Host confirmed - set expiry date
+      if (status === 'confirmed' && (user.role === 'host' || role === 'host')) {
+        newExpiryDate = new Date();
+        newExpiryDate.setMonth(newExpiryDate.getMonth() + 6);
+        updateFields.push(`host_expiry_date = $${paramIndex++}`);
+        updateValues.push(newExpiryDate);
         wasHostJustConfirmed = true;
       }
 
       // Manual pending
       if (status === 'pending') {
-        user.statusReason = 'manual_pending';
+        updateFields.push(`status_reason = $${paramIndex - 1}`); // Use existing statusReason
       }
 
-      // Suspended - suspend all listings and bookings
+      // Suspended - clear expiry date
       if (status === 'suspended') {
-        user.hostExpiryDate = null;
-        user.statusReason = 'admin_suspended';
+        updateFields.push(`host_expiry_date = $${paramIndex++}`);
+        updateValues.push(null);
         wasHostJustSuspended = true;
         
         // Suspend all user's listings
-        await Listing.updateMany(
-          { host: user._id },
-          { status: 'suspended' }
+        await pool.query(
+          `UPDATE listings SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE host_id = $1`,
+          [id]
         );
         
         // Cancel all pending bookings for this user's listings
-        await Booking.updateMany(
-          { 
-            listing: { $in: await Listing.find({ host: user._id }).distinct('_id') },
-            status: 'pending'
-          },
-          { status: 'cancelled' }
+        const listingIdsResult = await pool.query(
+          `SELECT id FROM listings WHERE host_id = $1`,
+          [id]
         );
+        const listingIds = listingIdsResult.rows.map(r => r.id);
+        
+        if (listingIds.length > 0) {
+          await pool.query(
+            `UPDATE bookings SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP 
+             WHERE listing_id = ANY($1::UUID[]) AND status = 'pending'`,
+            [listingIds]
+          );
+        }
         
         // Cancel all bookings made by this user
-        await Booking.updateMany(
-          { user: user._id, status: 'pending' },
-          { status: 'cancelled' }
+        await pool.query(
+          `UPDATE bookings SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP 
+           WHERE user_id = $1 AND status = 'pending'`,
+          [id]
         );
       }
       
       // Reactivated from suspension - reactivate listings
       if (previousStatus === 'suspended' && status !== 'suspended') {
-        await Listing.updateMany(
-          { host: user._id },
-          { status: 'active' }
+        await pool.query(
+          `UPDATE listings SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE host_id = $1`,
+          [id]
         );
       }
     }
 
-    // Also check if user role is being changed to host and they are being confirmed
-    if (role === 'host' && auth.user.role === "super_admin" && user.role !== 'host') {
-      wasPreviouslyHost = false;
-      // If setting to host and status is confirmed or will be confirmed
-      if (status === 'confirmed' || user.status === 'confirmed') {
-        wasHostJustConfirmed = true;
-      }
-    }
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    await user.save();
+    if (updateFields.length > 1) { // More than just updated_at
+      updateValues.push(id);
+      const updateQuery = `
+        UPDATE users 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING id, name, email, role, status, host_expiry_date
+      `;
+      
+      await pool.query(updateQuery, updateValues);
+    }
 
     // Send email notification if host was just confirmed
     if (wasHostJustConfirmed && user.email) {
       try {
-        const expiryDate = user.hostExpiryDate;
+        const expiryDate = newExpiryDate || new Date();
         const daysUntilExpiry = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
         
-        // Import sendEmail function
-        const { sendEmail } = await import('@/lib/sendEmail');
-        
-        // Create bilingual email content
-        const emailContent = getHostConfirmationEmailContent(user, expiryDate, daysUntilExpiry);
+        const emailContent = getHostConfirmationEmailContent(
+          { name: user.name, email: user.email }, 
+          expiryDate, 
+          daysUntilExpiry
+        );
         
         await sendEmail({
           to: user.email,
@@ -179,18 +239,13 @@ export async function PUT(request, { params }) {
         console.log('Host confirmation email sent to:', user.email);
       } catch (emailError) {
         console.error('Failed to send host confirmation email:', emailError);
-        // Don't fail the request if email fails
       }
     }
 
     // Send email notification if host was just suspended
-    if (wasHostJustSuspended && user.email && user.role === 'host') {
+    if (wasHostJustSuspended && user.email && (user.role === 'host' || role === 'host')) {
       try {
-        // Import sendEmail function
-        const { sendEmail } = await import('@/lib/sendEmail');
-        
-        // Create bilingual email content for suspension
-        const emailContent = getHostSuspensionEmailContent(user);
+        const emailContent = getHostSuspensionEmailContent({ name: user.name, email: user.email });
         
         await sendEmail({
           to: user.email,
@@ -201,17 +256,16 @@ export async function PUT(request, { params }) {
         console.log('Host suspension email sent to:', user.email);
       } catch (emailError) {
         console.error('Failed to send host suspension email:', emailError);
-        // Don't fail the request if email fails
       }
     }
 
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const updatedUser = await getUserById(id);
+    delete updatedUser.password_hash;
 
     return NextResponse.json({
       success: true,
       message: "User updated successfully",
-      user: userResponse,
+      user: updatedUser,
     });
   } catch (error) {
     console.error("PUT user error:", error);
@@ -219,292 +273,10 @@ export async function PUT(request, { params }) {
   }
 }
 
-// Helper function to format date for email
-function formatDateForEmail(date) {
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric'
-  });
-}
-
-// Bilingual email template for host confirmation
-function getHostConfirmationEmailContent(host, expiryDate, daysUntilExpiry) {
-  const formattedExpiryDate = formatDateForEmail(expiryDate);
-  
-  return {
-    subject: `Welcome as a Host! / مرحباً بك كمضيف! - Marhaba`,
-    text: `English: Congratulations! Your host account has been confirmed. Your hosting status is valid for 6 months until ${formattedExpiryDate}. You can now start listing your properties and accepting bookings.\n\nالعربية: تهانينا! تم تأكيد حسابك كمضيف. صلاحية حساب المضيف صالحة لمدة 6 أشهر حتى ${formattedExpiryDate}. يمكنك الآن البدء في إضافة عقاراتك واستقبال الحجوزات.`,
-    html: `
-<div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f6f2;">
-  
-  <!-- English Section -->
-  <div style="margin-bottom: 30px;">
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
-    </div>
-    
-    <h2 style="color: #4F46E5;">🎉 Welcome as a Host!</h2>
-    
-    <p>Dear ${host.name},</p>
-    
-    <p><strong>Congratulations!</strong> Your host account has been <strong>confirmed</strong> by the Marhaba admin team.</p>
-    
-    <div style="background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%); padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #4F46E5;">✨ Host Account Details:</h3>
-      <p><strong>📅 Account Status:</strong> <span style="color: #22c55e; font-weight: bold;">Confirmed</span></p>
-      <p><strong>⏰ Valid For:</strong> 6 months</p>
-      <p><strong>📆 Expiry Date:</strong> ${formattedExpiryDate}</p>
-      <p><strong>🔔 Days Remaining:</strong> ${daysUntilExpiry} days</p>
-    </div>
-    
-    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-      <p style="margin: 0; color: #92400e;">
-        <strong>📌 Important Note:</strong> Your hosting status is valid for 6 months. Before it expires, you will receive a notification to renew. You can renew by contacting the admin team.
-      </p>
-    </div>
-    
-    <div style="margin: 25px 0;">
-      <h3>🏠 What you can do now:</h3>
-      <ul style="padding-left: 20px;">
-        <li>Create and list your properties</li>
-        <li>Set your availability and pricing</li>
-        <li>Receive and manage booking requests</li>
-        <li>Connect with travelers from around the world</li>
-      </ul>
-    </div>
-    
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/dashboard" 
-       style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
-      Go to Host Dashboard →
-    </a>
-    
-    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-      If you have any questions, feel free to contact our support team.
-    </p>
-  </div>
-  
-  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
-  
-  <!-- Arabic Section -->
-  <div style="direction: rtl; text-align: right;">
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
-    </div>
-    
-    <h2 style="color: #4F46E5;">🎉 مرحباً بك كمضيف!</h2>
-    
-    <p>عزيزي ${host.name}،</p>
-    
-    <p><strong>تهانينا!</strong> تم <strong>تأكيد</strong> حسابك كمضيف من قبل فريق إدارة مرحبا.</p>
-    
-    <div style="background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%); padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #4F46E5;">✨ تفاصيل حساب المضيف:</h3>
-      <p><strong>📅 حالة الحساب:</strong> <span style="color: #22c55e; font-weight: bold;">مؤكد</span></p>
-      <p><strong>⏰ صالح لمدة:</strong> 6 أشهر</p>
-      <p><strong>📆 تاريخ الانتهاء:</strong> ${formattedExpiryDate}</p>
-      <p><strong>🔔 الأيام المتبقية:</strong> ${daysUntilExpiry} يوم</p>
-    </div>
-    
-    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #f59e0b;">
-      <p style="margin: 0; color: #92400e;">
-        <strong>📌 ملاحظة مهمة:</strong> صلاحية حساب المضيف صالحة لمدة 6 أشهر. قبل انتهاء الصلاحية، ستتلقى إشعاراً للتجديد. يمكنك التجديد عن طريق التواصل مع فريق الإدارة.
-      </p>
-    </div>
-    
-    <div style="margin: 25px 0;">
-      <h3>🏠 ما يمكنك فعله الآن:</h3>
-      <ul style="padding-right: 20px;">
-        <li>إضافة عقاراتك ونشرها</li>
-        <li>تحديد توفر العقار وأسعاره</li>
-        <li>استقبال وإدارة طلبات الحجز</li>
-        <li>التواصل مع المسافرين من جميع أنحاء العالم</li>
-      </ul>
-    </div>
-    
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host-dashboard" 
-       style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
-      الذهاب إلى لوحة التحكم ←
-    </a>
-    
-    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-      إذا كان لديك أي أسئلة، فلا تتردد في الاتصال بفريق الدعم.
-    </p>
-  </div>
-  
-  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
-  <p style="color: #6b7280; font-size: 12px; text-align: center;">
-    Thank you for hosting with Marhaba! / شكراً لاستضافتك مع مرحبا!
-  </p>
-</div>
-    `
-  };
-}
-
-// Bilingual email template for host suspension
-function getHostSuspensionEmailContent(host) {
-  const formattedDate = formatDateForEmail(new Date());
-  const supportEmail = "support@mar-haba.ly";
-  const supportUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/contact`;
-  
-  return {
-    subject: `Important: Your Host Account Has Been Suspended / مهم: تم تعليق حساب المضيف الخاص بك - Marhaba`,
-    text: `English: Your host account has been suspended. Your listings are no longer visible and you cannot receive new bookings. Please contact support at ${supportEmail} for more information.\n\nالعربية: تم تعليق حساب المضيف الخاص بك. لم تعد عقاراتك مرئية ولا يمكنك استقبال حجوزات جديدة. يرجى الاتصال بالدعم على ${supportEmail} للمزيد من المعلومات.`,
-    html: `
-<div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f6f2;">
-  
-  <!-- English Section -->
-  <div style="margin-bottom: 30px;">
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
-    </div>
-    
-    <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-      <span style="color: #791F1F; font-size: 12px; font-weight: 600;">⚠️ ACCOUNT SUSPENDED</span>
-    </div>
-    
-    <h2 style="color: #791F1F;">Account Suspension Notice</h2>
-    
-    <p>Dear ${host.name},</p>
-    
-    <p>We regret to inform you that your <strong>host account has been suspended</strong> by the Marhaba admin team.</p>
-    
-    <div style="background: #FEF3C7; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-      <h3 style="margin-top: 0; color: #92400e;">📋 What this means for you:</h3>
-      <ul style="color: #78350F; margin: 10px 0; padding-left: 20px;">
-        <li>Your listings are no longer visible to guests</li>
-        <li>You cannot receive new booking requests</li>
-        <li>Existing pending bookings have been cancelled</li>
-        <li>You cannot add or modify your listings</li>
-      </ul>
-    </div>
-    
-    <div style="background: #E6F1FB; padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #0C447C;">❓ Why was my account suspended?</h3>
-      <p style="color: #0C447C; margin: 10px 0;">
-        Common reasons for suspension include:
-      </p>
-      <ul style="color: #0C447C; margin: 10px 0; padding-left: 20px;">
-        <li>Violation of our terms of service</li>
-        <li>Complaints from guests</li>
-        <li>Expired verification documents</li>
-        <li>Inappropriate conduct</li>
-      </ul>
-    </div>
-    
-    <div style="background: #EAF3DE; padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #27500A;">📞 How to resolve this:</h3>
-      <p style="color: #27500A; margin: 10px 0;">
-        To have your account reinstated, please contact our support team:
-      </p>
-      <div style="margin: 15px 0;">
-        <p><strong>📧 Email:</strong> <a href="mailto:${supportEmail}" style="color: #185FA5;">${supportEmail}</a></p>
-        <p><strong>🌐 Contact Form:</strong> <a href="${supportUrl}" style="color: #185FA5;">${supportUrl}</a></p>
-      </div>
-      <p style="color: #27500A; font-size: 13px; margin-top: 10px;">
-        Please provide your account details and any relevant information to help us resolve this matter quickly.
-      </p>
-    </div>
-    
-    <div style="background: #FAEEDA; padding: 15px; border-radius: 8px; margin: 20px 0;">
-      <p style="margin: 0; color: #633806; font-size: 13px;">
-        <strong>🕒 Response Time:</strong> Our support team typically responds within 24-48 hours.
-      </p>
-    </div>
-    
-    <a href="mailto:${supportEmail}" 
-       style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; text-align: center;">
-      Contact Support →
-    </a>
-    
-    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-      We apologize for any inconvenience this may cause. Our team is here to help resolve any issues.
-    </p>
-  </div>
-  
-  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
-  
-  <!-- Arabic Section -->
-  <div style="direction: rtl; text-align: right;">
-    <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #1a1a2e; font-family: 'Cairo', serif;">مر<span style="color: #e8c547;">حبا</span></h1>
-    </div>
-    
-    <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-      <span style="color: #791F1F; font-size: 12px; font-weight: 600;">⚠️ الحساب معلق</span>
-    </div>
-    
-    <h2 style="color: #791F1F;">إشعار تعليق الحساب</h2>
-    
-    <p>عزيزي ${host.name}،</p>
-    
-    <p>نأسف لإبلاغك بأن <strong>حساب المضيف الخاص بك قد تم تعليقه</strong> من قبل فريق إدارة مرحبا.</p>
-    
-    <div style="background: #FEF3C7; padding: 20px; border-radius: 12px; margin: 20px 0; border-right: 4px solid #f59e0b;">
-      <h3 style="margin-top: 0; color: #92400e;">📋 ماذا يعني هذا بالنسبة لك:</h3>
-      <ul style="color: #78350F; margin: 10px 0; padding-right: 20px;">
-        <li>عقاراتك لم تعد مرئية للضيوف</li>
-        <li>لا يمكنك استقبال طلبات حجز جديدة</li>
-        <li>تم إلغاء الحجوزات المعلقة الحالية</li>
-        <li>لا يمكنك إضافة أو تعديل عقاراتك</li>
-      </ul>
-    </div>
-    
-    <div style="background: #E6F1FB; padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #0C447C;">❓ لماذا تم تعليق حسابي؟</h3>
-      <p style="color: #0C447C; margin: 10px 0;">
-        تشمل الأسباب الشائعة للتعليق:
-      </p>
-      <ul style="color: #0C447C; margin: 10px 0; padding-right: 20px;">
-        <li>انتهاك شروط الخدمة الخاصة بنا</li>
-        <li>شكاوى من الضيوف</li>
-        <li>انتهاء صلاحية مستندات التحقق</li>
-        <li>سلوك غير لائق</li>
-      </ul>
-    </div>
-    
-    <div style="background: #EAF3DE; padding: 20px; border-radius: 12px; margin: 20px 0;">
-      <h3 style="margin-top: 0; color: #27500A;">📞 كيفية حل هذه المشكلة:</h3>
-      <p style="color: #27500A; margin: 10px 0;">
-        لإعادة تفعيل حسابك، يرجى التواصل مع فريق الدعم:
-      </p>
-      <div style="margin: 15px 0;">
-        <p><strong>📧 البريد الإلكتروني:</strong> <a href="mailto:${supportEmail}" style="color: #185FA5;">${supportEmail}</a></p>
-        <p><strong>🌐 نموذج الاتصال:</strong> <a href="${supportUrl}" style="color: #185FA5;">${supportUrl}</a></p>
-      </div>
-      <p style="color: #27500A; font-size: 13px; margin-top: 10px;">
-        يرجى تقديم تفاصيل حسابك وأي معلومات ذات صلة لمساعدتنا في حل هذه المشكلة بسرعة.
-      </p>
-    </div>
-    
-    <div style="background: #FAEEDA; padding: 15px; border-radius: 8px; margin: 20px 0;">
-      <p style="margin: 0; color: #633806; font-size: 13px;">
-        <strong>🕒 وقت الاستجابة:</strong> عادةً ما يرد فريق الدعم في غضون 24-48 ساعة.
-      </p>
-    </div>
-    
-    <a href="mailto:${supportEmail}" 
-       style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; text-align: center;">
-      اتصل بالدعم ←
-    </a>
-    
-    <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-      نعتذر عن أي إزعاج قد يسببه هذا. فريقنا هنا للمساعدة في حل أي مشاكل.
-    </p>
-  </div>
-  
-  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
-  <p style="color: #6b7280; font-size: 12px; text-align: center;">
-    Thank you for being part of Marhaba! / شكراً لكونك جزءاً من مرحبا!
-  </p>
-</div>
-    `
-  };
-}
 // Delete user - delete all listings and bookings
 export async function DELETE(request, { params }) {
   try {
-    const resolvedParams = await params;
+    const { id } = await params;
 
     // Verify super_admin using cookie
     const auth = await verifyAdminFromCookie(request, "super_admin");
@@ -515,85 +287,164 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    if (!resolvedParams?.id) {
+    if (!id) {
       return NextResponse.json(
         { message: "User ID is required" },
         { status: 400 },
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(resolvedParams.id)) {
-      return NextResponse.json({ message: "Invalid user ID" }, { status: 400 });
-    }
-
-    await connectToDatabase();
-
-    const user = await User.findById(resolvedParams.id);
-
+    const user = await getUserById(id);
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     // Prevent deleting yourself
-    if (user._id.toString() === auth.user._id.toString()) {
+    if (user.id === auth.user.id) {
       return NextResponse.json(
         { message: "Cannot delete your own account" },
         { status: 400 },
       );
     }
 
-    // Start a session for transaction to ensure all operations succeed or fail together
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+    // Use a transaction to ensure all operations succeed or fail together
+    const client = await pool.connect();
+    
     try {
+      await client.query('BEGIN');
+      
       // Find all listings by this user
-      const userListings = await Listing.find({ host: user._id }).session(session);
-      const listingIds = userListings.map(listing => listing._id);
+      const userListingsResult = await client.query(
+        `SELECT id FROM listings WHERE host_id = $1`,
+        [id]
+      );
+      const listingIds = userListingsResult.rows.map(row => row.id);
       
       // Delete all bookings for these listings
       if (listingIds.length > 0) {
-        await Booking.deleteMany(
-          { listing: { $in: listingIds } },
-          { session }
+        await client.query(
+          `DELETE FROM bookings WHERE listing_id = ANY($1::UUID[])`,
+          [listingIds]
         );
       }
       
       // Delete all bookings made by this user
-      await Booking.deleteMany(
-        { user: user._id },
-        { session }
+      await client.query(
+        `DELETE FROM bookings WHERE user_id = $1`,
+        [id]
       );
       
       // Delete all listings by this user
-      await Listing.deleteMany(
-        { host: user._id },
-        { session }
+      await client.query(
+        `DELETE FROM listings WHERE host_id = $1`,
+        [id]
       );
       
       // Finally delete the user
-      await user.deleteOne({ session });
+      await client.query(
+        `DELETE FROM users WHERE id = $1`,
+        [id]
+      );
       
-      // Commit the transaction
-      await session.commitTransaction();
+      await client.query('COMMIT');
       
       return NextResponse.json({
         success: true,
         message: "User and all associated listings and bookings deleted successfully",
         deletedCount: {
           listings: listingIds.length,
-          bookings: await Booking.countDocuments({ user: user._id })
         }
       });
     } catch (error) {
-      // Rollback transaction on error
-      await session.abortTransaction();
+      await client.query('ROLLBACK');
       throw error;
     } finally {
-      session.endSession();
+      client.release();
     }
   } catch (error) {
     console.error("Delete error:", error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
+}
+
+// Bilingual email template for host confirmation
+function getHostConfirmationEmailContent(host, expiryDate, daysUntilExpiry) {
+  const formattedExpiryDate = formatDateForEmail(expiryDate);
+  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  
+  return {
+    subject: `Welcome as a Host! / مرحباً بك كمضيف! - Marhaba`,
+    text: `English: Congratulations! Your host account has been confirmed. Your hosting status is valid for 6 months until ${formattedExpiryDate}. You can now start listing your properties and accepting bookings.\n\nالعربية: تهانينا! تم تأكيد حسابك كمضيف. صلاحية حساب المضيف صالحة لمدة 6 أشهر حتى ${formattedExpiryDate}. يمكنك الآن البدء في إضافة عقاراتك واستقبال الحجوزات.`,
+    html: `
+<div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f6f2;">
+  <div style="text-align: center; margin-bottom: 20px;">
+    <h1 style="color: #1a1a2e;">مر<span style="color: #e8c547;">حبا</span></h1>
+  </div>
+  <h2 style="color: #4F46E5;">🎉 Welcome as a Host!</h2>
+  <p>Dear ${host.name},</p>
+  <p><strong>Congratulations!</strong> Your host account has been <strong>confirmed</strong> by the Marhaba admin team.</p>
+  <div style="background: #e0e7ff; padding: 20px; border-radius: 12px; margin: 20px 0;">
+    <h3>✨ Host Account Details:</h3>
+    <p><strong>📅 Expiry Date:</strong> ${formattedExpiryDate}</p>
+    <p><strong>🔔 Days Remaining:</strong> ${daysUntilExpiry} days</p>
+  </div>
+  <a href="${appUrl}/host-dashboard" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+    Go to Host Dashboard →
+  </a>
+  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
+  <div style="direction: rtl; text-align: right;">
+    <h2 style="color: #4F46E5;">🎉 مرحباً بك كمضيف!</h2>
+    <p>عزيزي ${host.name}،</p>
+    <p><strong>تهانينا!</strong> تم <strong>تأكيد</strong> حسابك كمضيف.</p>
+    <div style="background: #e0e7ff; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h3>✨ تفاصيل حساب المضيف:</h3>
+      <p><strong>📅 تاريخ الانتهاء:</strong> ${formattedExpiryDate}</p>
+      <p><strong>🔔 الأيام المتبقية:</strong> ${daysUntilExpiry} يوم</p>
+    </div>
+    <a href="${appUrl}/host-dashboard" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+      الذهاب إلى لوحة التحكم ←
+    </a>
+  </div>
+</div>
+    `
+  };
+}
+
+// Bilingual email template for host suspension
+function getHostSuspensionEmailContent(host) {
+  const supportEmail = "support@mar-haba.ly";
+  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  
+  return {
+    subject: `Important: Your Host Account Has Been Suspended / مهم: تم تعليق حساب المضيف الخاص بك - Marhaba`,
+    text: `English: Your host account has been suspended. Please contact support at ${supportEmail} for more information.\n\nالعربية: تم تعليق حساب المضيف الخاص بك. يرجى الاتصال بالدعم على ${supportEmail} للمزيد من المعلومات.`,
+    html: `
+<div style="font-family: Arial, 'Cairo', 'Tajawal', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f7f6f2;">
+  <div style="text-align: center; margin-bottom: 20px;">
+    <h1 style="color: #1a1a2e;">مر<span style="color: #e8c547;">حبا</span></h1>
+  </div>
+  <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+    <span style="color: #791F1F;">⚠️ ACCOUNT SUSPENDED</span>
+  </div>
+  <h2 style="color: #791F1F;">Account Suspension Notice</h2>
+  <p>Dear ${host.name},</p>
+  <p>Your <strong>host account has been suspended</strong>. Please contact support for assistance.</p>
+  <a href="mailto:${supportEmail}" style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+    Contact Support →
+  </a>
+  <div style="border-top: 2px solid #e5e7eb; margin: 20px 0;"></div>
+  <div style="direction: rtl; text-align: right;">
+    <div style="background: #FCEBEB; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+      <span style="color: #791F1F;">⚠️ الحساب معلق</span>
+    </div>
+    <h2 style="color: #791F1F;">إشعار تعليق الحساب</h2>
+    <p>عزيزي ${host.name}،</p>
+    <p><strong>تم تعليق حساب المضيف الخاص بك</strong>. يرجى التواصل مع الدعم للمساعدة.</p>
+    <a href="mailto:${supportEmail}" style="background-color: #1a1a2e; color: #e8c547; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+      اتصل بالدعم ←
+    </a>
+  </div>
+</div>
+    `
+  };
 }
