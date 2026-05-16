@@ -7,10 +7,9 @@ import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 import ImageUpload from "@/components/ImageUpload";
 import { useLanguage } from "@/hooks/useLanguage";
-import "./style.css";
 
-const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
-const TileLayer    = dynamic(() => import("react-leaflet").then((m) => m.TileLayer),    { ssr: false });
+const MapContainer     = dynamic(() => import("react-leaflet").then((m) => m.MapContainer),     { ssr: false });
+const TileLayer        = dynamic(() => import("react-leaflet").then((m) => m.TileLayer),        { ssr: false });
 const MapController    = dynamic(() => import("./MapComponents").then((m) => m.MapController),    { ssr: false });
 const FixedCenterMarker = dynamic(() => import("./MapComponents").then((m) => m.FixedCenterMarker), { ssr: false });
 
@@ -54,55 +53,30 @@ export default function HostListings() {
 
   const mapRef = useRef(null);
 
-  // Init Leaflet client-side only
-useEffect(() => {
-  if (typeof window === "undefined") return;
-  const L = require("leaflet");
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-    iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-    shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  });
-  
-  // Simple 📍-style gold pin marker
-  setFixedMarkerIcon(new L.DivIcon({
-    className: "fixed-center-marker",
-    html: `<div style="
-        position: relative;
-        width: 32px;
-        height: 32px;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-      ">
-        <!-- Pin shape like 📍 -->
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const L = require("leaflet");
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+      iconUrl:       "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+      shadowUrl:     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    });
+    setFixedMarkerIcon(new L.DivIcon({
+      className: "fixed-center-marker pointer-events-none",
+      html: `<div style="position:relative;width:32px;height:32px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" 
-                fill="#e8c547" 
-                stroke="#1a1a2e" 
-                stroke-width="2"/>
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#e8c547" stroke="#1a1a2e" stroke-width="2"/>
           <circle cx="12" cy="9" r="3" fill="#1a1a2e"/>
         </svg>
-        
-        <!-- Pulsing ring -->
-        <div style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          background-color: rgba(232,197,71,0.3);
-          animation: pulse 1.5s ease-out infinite;
-          pointer-events: none;
-        "></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background-color:rgba(232,197,71,0.3);animation:pulse 1.5s ease-out infinite;pointer-events:none;"></div>
       </div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -10],
-  }));
-}, []);
-  // Detect browser
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -10],
+    }));
+  }, []);
+
   useEffect(() => {
     const ua = navigator.userAgent;
     if      (ua.includes("Chrome") && !ua.includes("Edg")) setBrowserInfo("chrome");
@@ -112,11 +86,7 @@ useEffect(() => {
     else                                                    setBrowserInfo("other");
   }, []);
 
-  const bodyFont    = isAr ? "'Cairo','Tajawal','Almarai',sans-serif"    : "'DM Mono',monospace";
-  const displayFont = isAr ? "'Cairo','Tajawal','Almarai',sans-serif" : "'Fraunces',serif";
   const formatCurrency = (n) => isAr ? `${Math.round(n).toLocaleString()} دينار` : `${Math.round(n).toLocaleString()} LYD`;
-
-  // ── Data ────────────────────────────────────────────────────────────────────
 
   const fetchListings = async () => {
     try {
@@ -128,8 +98,6 @@ useEffect(() => {
   };
 
   useEffect(() => { fetchListings(); }, []);
-
-  // ── Location ─────────────────────────────────────────────────────────────────
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -145,7 +113,6 @@ useEffect(() => {
     setFormData((p) => ({ ...p, location: address, coordinates: { lat, lng } }));
   };
 
-  // Called by MapController on every moveend
   const handleMapLocationSelect = useCallback(async (lat, lng) => {
     setMarkerPosition({ lat, lng });
     await applyCoordinates(lat, lng);
@@ -209,8 +176,6 @@ useEffect(() => {
       setLocationError(msg); alert(msg);
     }
   };
-
-  // ── Form helpers ─────────────────────────────────────────────────────────────
 
   const handleInputChange  = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
   const handleArrayChange  = (i, field, val) => setFormData((p) => { const a = [...p[field]]; a[i] = val; return { ...p, [field]: a }; });
@@ -293,376 +258,338 @@ useEffect(() => {
     if (showForm && !isEditing && !mapCenter && !isGettingLocation) setMapCenter(DEFAULT_CENTER);
   }, [showForm, isEditing, mapCenter, isGettingLocation]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // Shared input/textarea classes
+  const fieldInput = "w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none transition-all focus:border-[#e8c547] focus:shadow-[0_0_0_3px_rgba(232,197,71,0.12)] focus:bg-white";
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f6f2" }}>
-      <div style={{ width: 40, height: 40, border: "3px solid #e8c547", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+    <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
+      <div className="w-10 h-10 border-[3px] border-[#e8c547] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
-        .font-display { font-family: ${displayFont} !important; }
-        .nav-link { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: color .15s, background .15s; }
-        .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-link.active { color: #e8c547; }
-        .btn-primary { background: #e8c547; color: #1a1a2e; padding: 9px 20px; border-radius: 8px; font-size: 12px; font-family: inherit; font-weight: 500; border: none; cursor: pointer; transition: opacity .15s, transform .15s; }
-        .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-dark { background: #1a1a2e; color: #e8c547; padding: 9px 20px; border-radius: 8px; font-size: 12px; font-family: inherit; font-weight: 500; border: none; cursor: pointer; transition: opacity .15s, transform .15s; }
-        .btn-dark:hover { opacity: .88; transform: translateY(-1px); }
-        .btn-ghost-sm { background: transparent; color: #555; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-family: inherit; border: 1px solid rgba(0,0,0,0.12); cursor: pointer; transition: border-color .15s, color .15s; }
-        .btn-ghost-sm:hover { border-color: rgba(0,0,0,0.3); color: #111118; }
-        .form-panel { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.07); padding: 2rem; margin-bottom: 2rem; }
-        .field-label { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
-        .field-input { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-family: inherit; color: #111118; background: #fafaf8; outline: none; transition: border-color .15s, box-shadow .15s; }
-        .field-input:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
-        .field-textarea { width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; font-size: 13px; font-family: inherit; color: #111118; background: #fafaf8; outline: none; resize: vertical; transition: border-color .15s, box-shadow .15s; }
-        .field-textarea:focus { border-color: #e8c547; box-shadow: 0 0 0 3px rgba(232,197,71,0.12); background: #fff; }
-        .map-wrapper { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; position: relative; }
-        .map-header { background: #1a1a2e; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .location-pill { background: #fdf8e7; border: 1px solid rgba(232,197,71,0.3); border-radius: 10px; padding: 10px 14px; margin-top: 10px; }
-        .images-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .add-img-btn { border: 2px dashed rgba(0,0,0,0.12); border-radius: 12px; padding: 1.5rem; background: none; cursor: pointer; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color .15s; font-family: inherit; font-size: 12px; color: #999; }
-        .add-img-btn:hover { border-color: #e8c547; color: #e8c547; }
-        .divider { border: none; border-top: 1px solid rgba(0,0,0,0.07); margin: 1.5rem 0; }
-        .listings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        .listing-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.07); overflow: hidden; transition: transform .22s, box-shadow .22s; }
-        .listing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.08); }
-        .category-badge { position: absolute; bottom: 12px; left: 12px; background: rgba(26,26,46,0.9); color: #e8c547; border-radius: 20px; padding: 4px 10px; font-size: 11px; display: flex; align-items: center; gap: 4px; }
-        .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
-        .hamburger span { display: block; width: 20px; height: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; transition: all .2s; }
-        .mobile-menu { display: none; position: fixed; top: 56px; left: 0; right: 0; background: #1a1a2e; border-bottom: 1px solid rgba(232,197,71,0.15); padding: 1rem 1.5rem; z-index: 40; flex-direction: column; gap: 10px; }
-        .mobile-menu.open { display: flex; }
-        .fixed-center-marker { pointer-events: none !important; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 1024px) { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 768px)  { .listings-grid { grid-template-columns: 1fr; } .images-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px)  { .hamburger { display: flex; } .desktop-nav { display: none !important; } }
-      `}</style>
+    <div className="min-h-screen bg-[#f7f6f2]" dir={isAr ? "rtl" : "ltr"}>
 
-      <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
+      {/* NAV */}
+      <nav className="sticky top-0 z-50 bg-[rgba(26,26,46,0.97)] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between backdrop-blur-md">
+        <Link href="/" className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide">
+          مر<span className="font-bold text-[#e8c547]">حبا</span>
+        </Link>
 
-        {/* Nav */}
-        <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(26,26,46,0.97)", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#ffffff",
-                letterSpacing: "1px",
-              }}
-            >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
-
-          <div className="desktop-nav" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <Link href="/host-dashboard" className="nav-link">{t.overview}</Link>
-            <Link href="/host/listings"  className="nav-link active">{t.myListings}</Link>
-            <Link href="/host/bookings"  className="nav-link">{t.bookings}</Link>
-            <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#e8c547", fontFamily: "inherit", marginLeft: 8 }}>
-              {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
-            </button>
-            <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.12)", margin: "0 6px" }} />
-            <button onClick={() => router.push("/host-dashboard")} className="btn-primary" style={{ padding: "6px 14px" }}>{t.dashboard} →</button>
-          </div>
-          <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
-            <span style={{ transform: menuOpen ? "rotate(45deg) translateY(7px)"   : "none" }} />
-            <span style={{ opacity:   menuOpen ? 0 : 1 }} />
-            <span style={{ transform: menuOpen ? "rotate(-45deg) translateY(-7px)" : "none" }} />
-          </button>
-        </nav>
-
-        <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
-          <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "#e8c547", fontFamily: "inherit", width: "100%", marginBottom: 8 }}>
+        <div className="hidden sm:flex items-center gap-1">
+          <Link href="/host-dashboard" className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-white hover:bg-white/[0.06] transition-colors">{t.overview}</Link>
+          <Link href="/host/listings"  className="text-xs text-[#e8c547] no-underline px-3 py-1.5 rounded-md">{t.myListings}</Link>
+          <Link href="/host/bookings"  className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-white hover:bg-white/[0.06] transition-colors">{t.bookings}</Link>
+          <button onClick={toggleLanguage} className="ms-2 bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]">
             {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
           </button>
-          <Link href="/host-dashboard" style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textDecoration: "none", padding: "8px 0" }}>{t.overview}</Link>
-          <Link href="/host/listings"  style={{ fontSize: 13, color: "#e8c547",               textDecoration: "none", padding: "8px 0" }}>{t.myListings}</Link>
-          <Link href="/host/bookings"  style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textDecoration: "none", padding: "8px 0" }}>{t.bookings}</Link>
+          <div className="w-px h-4 bg-white/12 mx-1.5" />
+          <button onClick={() => router.push("/host-dashboard")} className="bg-[#e8c547] text-[#1a1a2e] px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none hover:opacity-88 hover:-translate-y-px transition-all">
+            {t.dashboard} →
+          </button>
         </div>
 
-        {/* Page header */}
-        <div style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.12)", padding: "2.5rem 1.5rem 2rem" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem" }}>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(232,197,71,0.6)", marginBottom: 8 }}>{t.hostPanel}</div>
-              <h1 className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: "clamp(28px,4vw,38px)", color: "#fff" }}>
-                {t.myListingsTitle} <span style={{ fontWeight: 500, color: "#e8c547" }}>{t.listings}</span>
-              </h1>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
-                {listings.length} {listings.length !== 1 ? t.listingsActive : t.listingActive}
-              </p>
-            </div>
-            {!showForm && (
-              <button onClick={() => { resetForm(); setShowForm(true); }} className="btn-primary" style={{ flexShrink: 0 }}>
-                + {t.addNewListing}
-              </button>
-            )}
+        {/* Hamburger */}
+        <button onClick={() => setMenuOpen((o) => !o)} className="sm:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1" aria-label="Menu">
+          <span className={`block w-5 h-0.5 bg-white/70 rounded transition-transform ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
+          <span className={`block w-5 h-0.5 bg-white/70 rounded transition-opacity ${menuOpen ? "opacity-0" : ""}`} />
+          <span className={`block w-5 h-0.5 bg-white/70 rounded transition-transform ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
+        </button>
+      </nav>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="sm:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 py-4 z-40 flex flex-col gap-2.5">
+          <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] font-[inherit] w-full mb-2">
+            {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
+          </button>
+          <Link href="/host-dashboard" className="text-[13px] text-white/70 no-underline py-2">{t.overview}</Link>
+          <Link href="/host/listings"  className="text-[13px] text-[#e8c547] no-underline py-2">{t.myListings}</Link>
+          <Link href="/host/bookings"  className="text-[13px] text-white/70 no-underline py-2">{t.bookings}</Link>
+        </div>
+      )}
+
+      {/* Page header */}
+      <div className="bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-10 pb-8">
+        <div className="max-w-[1100px] mx-auto flex justify-between items-end gap-4">
+          <div>
+            <div className="text-[10px] tracking-[0.12em] uppercase text-[#e8c547]/60 mb-2">{t.hostPanel}</div>
+            <h1 className="font-['Fraunces',serif] italic font-light text-[clamp(28px,4vw,38px)] text-white">
+              {t.myListingsTitle} <span className="font-medium text-[#e8c547]">{t.listings}</span>
+            </h1>
+            <p className="text-xs text-white/35 mt-1.5">
+              {listings.length} {listings.length !== 1 ? t.listingsActive : t.listingActive}
+            </p>
           </div>
+          {!showForm && (
+            <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-[#e8c547] text-[#1a1a2e] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer shrink-0 hover:opacity-88 hover:-translate-y-px transition-all">
+              + {t.addNewListing}
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Main */}
-        <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      {/* Main */}
+      <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-8">
 
-          {showForm && (
-            <div className="form-panel">
-              <div style={{ marginBottom: "1.75rem" }}>
-                <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#999", marginBottom: 6 }}>
-                  {isEditing ? t.editListing : t.newListing}
-                </div>
-                <h2 className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 26, color: "#111118" }}>
-                  {isEditing ? t.edit : t.createA} <span style={{ fontWeight: 500 }}>{t.listing}</span>
-                </h2>
+        {/* FORM */}
+        {showForm && (
+          <div className="bg-white rounded-2xl border border-black/7 p-8 mb-8">
+            <div className="mb-7">
+              <div className="text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5">
+                {isEditing ? t.editListing : t.newListing}
+              </div>
+              <h2 className="font-['Fraunces',serif] italic font-light text-[26px] text-[#111118]">
+                {isEditing ? t.edit : t.createA} <span className="font-medium">{t.listing}</span>
+              </h2>
+            </div>
+
+            <form onSubmit={isEditing ? handleUpdate : handleSubmit}>
+
+              {/* Title */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.title} *</label>
+                <input type="text" name="title" required value={formData.title} onChange={handleInputChange} className={fieldInput} placeholder={t.titlePlaceholder} />
               </div>
 
-              <form onSubmit={isEditing ? handleUpdate : handleSubmit}>
+              {/* Description */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.description} *</label>
+                <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className={`${fieldInput} resize-y`} placeholder={t.descriptionPlaceholder} />
+              </div>
 
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.title} *</label>
-                  <input type="text" name="title" required value={formData.title} onChange={handleInputChange} className="field-input" placeholder={t.titlePlaceholder} />
+              {/* Price */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.pricePerNight} / {isAr ? "دينار" : "LYD"} *</label>
+                <input type="number" name="price" required min="0" step="0.01" value={formData.price} onChange={handleInputChange} className={fieldInput} placeholder="99" />
+              </div>
+
+              {/* Category */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{isAr ? "الفئة" : "Category"} *</label>
+                <select name="category" required value={formData.category} onChange={handleInputChange} className={`${fieldInput} cursor-pointer`}>
+                  <option value="">{isAr ? "اختر فئة" : "Select a category"}</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.icon} {isAr ? cat.labelAr : cat.labelEn}</option>
+                  ))}
+                </select>
+                {formData.category && (
+                  <div className="text-[11px] text-[#666] mt-1.5">
+                    {isAr ? CATEGORIES.find((c) => c.id === formData.category)?.descriptionAr : CATEGORIES.find((c) => c.id === formData.category)?.descriptionEn}
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-none border-t border-black/7 my-6" />
+
+              {/* Location */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.location} *</label>
+
+                {browserInfo && browserInfo !== "chrome" && (
+                  <div className="bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 mb-3 text-xs text-orange-800">
+                    ℹ️ {browserInfo === "firefox" && (isAr ? "فايرفوكس: دقة الموقع قد تكون أقل." : "Firefox: Location accuracy may be lower.")}
+                    {browserInfo === "safari"  && (isAr ? "سفاري: تأكد من تمكين خدمات الموقع." : "Safari: Ensure location services are enabled.")}
+                    {browserInfo === "edge"    && (isAr ? "إيدج: تحقق من إعدادات الخصوصية." : "Edge: Check privacy settings.")}
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap mb-2.5">
+                  <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className={`${fieldInput} flex-1 min-w-[180px]`} placeholder={t.addressWillAppear} readOnly />
+                  <button type="button" onClick={useCurrentLocation} disabled={isGettingLocation}
+                    className={`px-4 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer whitespace-nowrap transition-all hover:opacity-88 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed ${isGettingLocation ? "bg-[#ccc] text-white" : "bg-[#1D9E75] text-white"}`}>
+                    {isGettingLocation ? t.gettingLocation : `📍 ${t.myLocation}`}
+                  </button>
                 </div>
 
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.description} *</label>
-                  <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className="field-textarea" placeholder={t.descriptionPlaceholder} />
-                </div>
+                {/* Map wrapper */}
+                <div className="border border-black/10 rounded-xl overflow-hidden">
+                  <div className="bg-[#1a1a2e] px-4 py-2.5 flex justify-between items-center flex-wrap gap-2">
+                    <span className="text-[11px] text-white/50">
+                      💡 {isAr ? "حرك الخريطة لتحديد الموقع — العلامة ثابتة في المنتصف" : "Move the map to select location — marker stays fixed in center"}
+                    </span>
+                  </div>
 
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.pricePerNight} / {isAr ? "دينار" : "LYD"} *</label>
-                  <input type="number" name="price" required min="0" step="0.01" value={formData.price} onChange={handleInputChange} className="field-input" placeholder="99" />
-                </div>
+                  {(!mapCenter || isGettingLocation) && (
+                    <div className="h-[400px] flex items-center justify-center bg-[#f7f6f2] flex-col gap-3">
+                      {isGettingLocation ? (
+                        <>
+                          <div className="w-10 h-10 border-[3px] border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+                          <p className="text-xs text-[#999]">{t.gettingLocation}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-[#999]">
+                          {locationError || (isAr ? "انقر على 'موقعي' أو انتظر تحميل الخريطة" : "Click 'My Location' or wait for map to load")}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{isAr ? "الفئة" : "Category"} *</label>
-                  <select name="category" required value={formData.category} onChange={handleInputChange} className="field-input" style={{ cursor: "pointer" }}>
-                    <option value="">{isAr ? "اختر فئة" : "Select a category"}</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.icon} {isAr ? cat.labelAr : cat.labelEn}</option>
-                    ))}
-                  </select>
-                  {formData.category && (
-                    <div style={{ fontSize: 11, color: "#666", marginTop: 5 }}>
-                      {isAr ? CATEGORIES.find((c) => c.id === formData.category)?.descriptionAr : CATEGORIES.find((c) => c.id === formData.category)?.descriptionEn}
+                  {mapCenter && !isGettingLocation && (
+                    <div className="h-[400px] w-full relative">
+                      <MapContainer
+                        key={`${mapCenter.lat}-${mapCenter.lng}`}
+                        center={[mapCenter.lat, mapCenter.lng]}
+                        zoom={markerPosition ? 14 : 2}
+                        style={{ height: "100%", width: "100%" }}
+                        whenCreated={(map) => { mapRef.current = map; }}
+                        dragging scrollWheelZoom doubleClickZoom
+                      >
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+                        {fixedMarkerIcon && <FixedCenterMarker icon={fixedMarkerIcon} />}
+                        <MapController onLocationSelect={handleMapLocationSelect} initialCenter={mapCenter} markerPosition={markerPosition} />
+                      </MapContainer>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 border-[#e8c547]/40 bg-[#e8c547]/[0.08] pointer-events-none z-[1000]" />
                     </div>
                   )}
                 </div>
 
-                <hr className="divider" />
-
-                {/* Location */}
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.location} *</label>
-
-                  {browserInfo && browserInfo !== "chrome" && (
-                    <div style={{ background: "#FFF3E0", border: "1px solid #FFB74D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#E65100" }}>
-                      ℹ️ {browserInfo === "firefox" && (isAr ? "فايرفوكس: دقة الموقع قد تكون أقل." : "Firefox: Location accuracy may be lower.")}
-                      {browserInfo === "safari"  && (isAr ? "سفاري: تأكد من تمكين خدمات الموقع." : "Safari: Ensure location services are enabled.")}
-                      {browserInfo === "edge"    && (isAr ? "إيدج: تحقق من إعدادات الخصوصية." : "Edge: Check privacy settings.")}
-                    </div>
+                {/* Location pill */}
+                <div className="bg-[#fdf8e7] border border-[#e8c547]/30 rounded-xl px-3.5 py-2.5 mt-2.5">
+                  <p className="text-xs text-[#7a6012] font-medium">
+                    📍 {selectedLocation?.address || (isAr ? "حرك الخريطة لاختيار الموقع" : "Move the map to select location")}
+                  </p>
+                  {selectedLocation && (
+                    <p className="text-[11px] text-[#a08020] mt-0.5">{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
                   )}
+                </div>
+              </div>
 
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                    <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className="field-input" placeholder={t.addressWillAppear} readOnly style={{ flex: 1, minWidth: 180 }} />
-                    <button type="button" onClick={useCurrentLocation} disabled={isGettingLocation} className="btn-primary" style={{ background: isGettingLocation ? "#ccc" : "#1D9E75", whiteSpace: "nowrap" }}>
-                      {isGettingLocation ? t.gettingLocation : `📍 ${t.myLocation}`}
+              <hr className="border-none border-t border-black/7 my-6" />
+
+              {/* Images */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.imagesRequired}</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {formData.images.map((image, index) => (
+                    <ImageUpload key={index} index={index} imageUrl={image} onImageUpload={handleImageUpload} onRemove={handleImageRemove} />
+                  ))}
+                  {formData.images.length < 6 && (
+                    <button type="button" onClick={addImageSlot}
+                      className="border-2 border-dashed border-black/12 rounded-xl p-6 bg-transparent cursor-pointer w-full flex flex-col items-center gap-1.5 text-xs text-[#999] font-[inherit] hover:border-[#e8c547] hover:text-[#e8c547] transition-colors">
+                      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      {t.addImage}
                     </button>
-                  </div>
-
-                  <div className="map-wrapper">
-                    <div className="map-header">
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                        💡 {isAr ? "حرك الخريطة لتحديد الموقع — العلامة ثابتة في المنتصف" : "Move the map to select location — marker stays fixed in center"}
-                      </span>
-                    </div>
-
-                    {(!mapCenter || isGettingLocation) && (
-                      <div style={{ height: 400, display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f6f2", flexDirection: "column", gap: 12 }}>
-                        {isGettingLocation ? (
-                          <>
-                            <div style={{ width: 40, height: 40, border: "3px solid #e8c547", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                            <p style={{ fontSize: 12, color: "#999" }}>{t.gettingLocation}</p>
-                          </>
-                        ) : (
-                          <p style={{ fontSize: 12, color: "#999" }}>
-                            {locationError || (isAr ? "انقر على 'موقعي' أو انتظر تحميل الخريطة" : "Click 'My Location' or wait for map to load")}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {mapCenter && !isGettingLocation && (
-                      <div style={{ height: 400, width: "100%", position: "relative" }}>
-                        <MapContainer
-                          key={`${mapCenter.lat}-${mapCenter.lng}`}
-                          center={[mapCenter.lat, mapCenter.lng]}
-                          zoom={markerPosition ? 14 : 2}
-                          style={{ height: "100%", width: "100%" }}
-                          whenCreated={(map) => { mapRef.current = map; }}
-                          dragging scrollWheelZoom doubleClickZoom
-                        >
-                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                          {fixedMarkerIcon && <FixedCenterMarker icon={fixedMarkerIcon} />}
-                          <MapController onLocationSelect={handleMapLocationSelect} initialCenter={mapCenter} markerPosition={markerPosition} />
-                        </MapContainer>
-
-                        {/* Pulse ring behind the marker */}
-                        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(232,197,71,0.4)", background: "rgba(232,197,71,0.08)", pointerEvents: "none", zIndex: 1000 }} />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="location-pill">
-                    <p style={{ fontSize: 12, color: "#7a6012", fontWeight: 500 }}>
-                      📍 {selectedLocation?.address || (isAr ? "حرك الخريطة لاختيار الموقع" : "Move the map to select location")}
-                    </p>
-                    {selectedLocation && (
-                      <p style={{ fontSize: 11, color: "#a08020" }}>{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
-                    )}
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                <hr className="divider" />
+              <hr className="border-none border-t border-black/7 my-6" />
 
-                {/* Images */}
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.imagesRequired}</label>
-                  <div className="images-grid">
-                    {formData.images.map((image, index) => (
-                      <ImageUpload key={index} index={index} imageUrl={image} onImageUpload={handleImageUpload} onRemove={handleImageRemove} />
-                    ))}
-                    {formData.images.length < 6 && (
-                      <button type="button" onClick={addImageSlot} className="add-img-btn">
-                        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        {t.addImage}
+              {/* Amenities */}
+              <div className="mb-6">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.amenities}</label>
+                {formData.amenities.map((amenity, index) => (
+                  <div key={index} className="flex gap-2 mb-2 items-center">
+                    <input type="text" value={amenity} onChange={(e) => handleArrayChange(index, "amenities", e.target.value)} placeholder={t.amenityPlaceholder} className={`${fieldInput} flex-1`} />
+                    {index > 0 && (
+                      <button type="button" onClick={() => removeArrayField("amenities", index)} className="bg-red-100 text-red-800 border-none rounded-md px-3 py-1.5 text-[11px] cursor-pointer">
+                        {t.remove}
                       </button>
                     )}
                   </div>
-                </div>
-
-                <hr className="divider" />
-
-                {/* Amenities */}
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <label className="field-label">{t.amenities}</label>
-                  {formData.amenities.map((amenity, index) => (
-                    <div key={index} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                      <input type="text" value={amenity} onChange={(e) => handleArrayChange(index, "amenities", e.target.value)} placeholder={t.amenityPlaceholder} className="field-input" style={{ flex: 1 }} />
-                      {index > 0 && (
-                        <button type="button" onClick={() => removeArrayField("amenities", index)} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>{t.remove}</button>
-                      )}
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => addArrayField("amenities")} style={{ fontSize: 12, color: "#e8c547", background: "none", border: "none", cursor: "pointer", padding: "4px 0", marginTop: 4 }}>
-                    + {t.addAmenity}
-                  </button>
-                </div>
-
-                {/* Rules */}
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <label className="field-label">{t.houseRules}</label>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#999", marginBottom: 8 }}>{t.quickAdd}</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {[t.ruleNoSmoking, t.ruleNoParties, t.ruleNoPets, t.ruleQuietHours, t.ruleSelfCheckIn, t.ruleNoShoes].map((suggestion) => (
-                        <button key={suggestion} type="button"
-                          onClick={() => { if (!formData.rules.includes(suggestion)) setFormData((p) => ({ ...p, rules: [...p.rules, suggestion] })); }}
-                          style={{ background: formData.rules.includes(suggestion) ? "#e8c547" : "#fafaf8", color: formData.rules.includes(suggestion) ? "#1a1a2e" : "#888", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
-                          + {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {formData.rules.map((rule, index) => (
-                    <div key={index} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                      <div style={{ width: 20, height: 20, borderRadius: 4, background: "#e8c547", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-6" stroke="#1a1a2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <input type="text" value={rule}
-                        onChange={(e) => { const rules = [...formData.rules]; rules[index] = e.target.value; setFormData((p) => ({ ...p, rules })); }}
-                        placeholder={t.rulePlaceholder} className="field-input" style={{ flex: 1 }} />
-                      <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: p.rules.filter((_, i) => i !== index) }))}
-                        style={{ background: "none", border: "none", color: "#e05a5a", fontSize: 18, cursor: "pointer", padding: "0 8px" }}>✕</button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: [...p.rules, ""] }))}
-                    style={{ fontSize: 12, color: "#e8c547", background: "none", border: "1px dashed rgba(232,197,71,0.5)", borderRadius: 8, cursor: "pointer", padding: "8px 12px", marginTop: 8, width: "100%" }}>
-                    + {t.addCustomRule}
-                  </button>
-                </div>
-
-                <hr className="divider" />
-
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: "1.25rem", borderTop: "1px solid rgba(0,0,0,0.07)" }}>
-                  <button type="button" onClick={cancelEdit} className="btn-ghost-sm">{t.cancel}</button>
-                  <button type="submit" className="btn-dark">{isEditing ? t.updateListing : t.createListing}</button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {!showForm && (
-            listings.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "5rem", textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
-                <p style={{ fontSize: 13, color: "#999", marginBottom: 16 }}>{t.noListingsYet}</p>
-                <button onClick={() => { resetForm(); setShowForm(true); }} style={{ background: "none", border: "none", color: "#e8c547", fontSize: 13, cursor: "pointer" }}>
-                  {t.createFirstListing} →
+                ))}
+                <button type="button" onClick={() => addArrayField("amenities")} className="text-xs text-[#e8c547] bg-transparent border-none cursor-pointer py-1 mt-1">
+                  + {t.addAmenity}
                 </button>
               </div>
-            ) : (
-              <div className="listings-grid">
-                {listings.map((listing) => {
-                  const category = CATEGORIES.find((c) => c.id === listing.category);
-                  return (
-                    <div key={listing.id} className="listing-card">
-                      <div style={{ height: 200, overflow: "hidden", position: "relative" }}>
-                        <img src={listing.images[0]} alt={listing.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,46,0.92)", color: "#e8c547", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500 }}>
-                          {formatCurrency(listing.price)}<span style={{ fontSize: 10, color: "rgba(232,197,71,0.6)" }}>/{t.night}</span>
-                        </div>
-                        {category && (
-                          <div className="category-badge">{category.icon} {isAr ? category.labelAr : category.labelEn}</div>
-                        )}
+
+              {/* Rules */}
+              <div className="mb-5">
+                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.houseRules}</label>
+                <div className="mb-3">
+                  <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2">{t.quickAdd}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {[t.ruleNoSmoking, t.ruleNoParties, t.ruleNoPets, t.ruleQuietHours, t.ruleSelfCheckIn, t.ruleNoShoes].map((suggestion) => (
+                      <button key={suggestion} type="button"
+                        onClick={() => { if (!formData.rules.includes(suggestion)) setFormData((p) => ({ ...p, rules: [...p.rules, suggestion] })); }}
+                        className={`border border-black/10 rounded-full px-3 py-1 text-[11px] cursor-pointer transition-colors ${formData.rules.includes(suggestion) ? "bg-[#e8c547] text-[#1a1a2e]" : "bg-[#fafaf8] text-[#888]"}`}>
+                        + {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {formData.rules.map((rule, index) => (
+                  <div key={index} className="flex gap-2 mb-2 items-center">
+                    <div className="w-5 h-5 rounded shrink-0 bg-[#e8c547] flex items-center justify-center">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-6" stroke="#1a1a2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <input type="text" value={rule}
+                      onChange={(e) => { const rules = [...formData.rules]; rules[index] = e.target.value; setFormData((p) => ({ ...p, rules })); }}
+                      placeholder={t.rulePlaceholder} className={`${fieldInput} flex-1`} />
+                    <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: p.rules.filter((_, i) => i !== index) }))}
+                      className="bg-transparent border-none text-[#e05a5a] text-lg cursor-pointer px-2">✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: [...p.rules, ""] }))}
+                  className="text-xs text-[#e8c547] bg-transparent border border-dashed border-[#e8c547]/50 rounded-lg cursor-pointer py-2 px-3 mt-2 w-full hover:border-[#e8c547] transition-colors">
+                  + {t.addCustomRule}
+                </button>
+              </div>
+
+              <hr className="border-none border-t border-black/7 my-6" />
+
+              <div className="flex justify-end gap-2.5 pt-5 border-t border-black/7">
+                <button type="button" onClick={cancelEdit} className="bg-transparent text-[#555] px-3.5 py-2 rounded-lg text-xs font-[inherit] border border-black/12 cursor-pointer hover:border-black/30 hover:text-[#111118] transition-colors">
+                  {t.cancel}
+                </button>
+                <button type="submit" className="bg-[#1a1a2e] text-[#e8c547] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer hover:opacity-88 hover:-translate-y-px transition-all">
+                  {isEditing ? t.updateListing : t.createListing}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* LISTINGS GRID */}
+        {!showForm && (
+          listings.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-black/7 py-20 px-6 text-center">
+              <div className="text-5xl mb-3">🏠</div>
+              <p className="text-[13px] text-[#999] mb-4">{t.noListingsYet}</p>
+              <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-transparent border-none text-[#e8c547] text-[13px] cursor-pointer">
+                {t.createFirstListing} →
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {listings.map((listing) => {
+                const category = CATEGORIES.find((c) => c.id === listing.category);
+                return (
+                  <div key={listing.id} className="bg-white rounded-2xl border border-black/7 overflow-hidden transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
+                    <div className="h-[200px] overflow-hidden relative">
+                      <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+                      <div className="absolute top-3 right-3 bg-[rgba(26,26,46,0.92)] text-[#e8c547] rounded-lg px-2.5 py-1 text-xs font-medium">
+                        {formatCurrency(listing.price)}<span className="text-[10px] text-[#e8c547]/60">/{t.night}</span>
                       </div>
-                      <div style={{ padding: "1.25rem" }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111118", marginBottom: 6 }}>{listing.title}</h3>
-                        <p style={{ fontSize: 12, color: "#888", marginBottom: "0.5rem" }}>📍 {listing.location}</p>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: "0.875rem" }}>
-                          <Link href={`/listings/${listing.id}`} style={{ fontSize: 12, color: "#1a1a2e", textDecoration: "none" }}>{t.viewDetails} →</Link>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => handleEdit(listing)}       style={{ fontSize: 12, color: "#185FA5", background: "none", border: "none", cursor: "pointer" }}>{t.edit}</button>
-                            <button onClick={() => handleDelete(listing.id)} style={{ fontSize: 12, color: "#e05a5a", background: "none", border: "none", cursor: "pointer" }}>{t.delete}</button>
-                          </div>
+                      {category && (
+                        <div className="absolute bottom-3 left-3 bg-[rgba(26,26,46,0.9)] text-[#e8c547] rounded-full px-2.5 py-1 text-[11px] flex items-center gap-1">
+                          {category.icon} {isAr ? category.labelAr : category.labelEn}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <h3 className="text-[15px] font-medium text-[#111118] mb-1.5">{listing.title}</h3>
+                      <p className="text-xs text-[#888] mb-2">📍 {listing.location}</p>
+                      <div className="flex justify-between items-center border-t border-black/[0.06] pt-3.5">
+                        <Link href={`/listings/${listing.id}`} className="text-xs text-[#1a1a2e] no-underline">{t.viewDetails} →</Link>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEdit(listing)}       className="text-xs text-[#185FA5] bg-transparent border-none cursor-pointer">{t.edit}</button>
+                          <button onClick={() => handleDelete(listing.id)} className="text-xs text-[#e05a5a] bg-transparent border-none cursor-pointer">{t.delete}</button>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )
-          )}
-        </main>
-
-        {/* <footer style={{ background: "#111118", borderTop: "1px solid rgba(232,197,71,0.08)", padding: "2rem 1.5rem", marginTop: "3rem" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 18, color: "#fff" }}>
-              mar<span style={{ fontStyle: "normal", fontWeight: 500, color: "#e8c547" }}>haba</span>
+                  </div>
+                );
+              })}
             </div>
-            <p style={{ fontSize: 11, color: "#333" }}>© 2024 Marhaba. {t.rights}</p>
-          </div>
-        </footer> */}
-      </div>
-    </>
+          )
+        )}
+      </main>
+    </div>
   );
 }
