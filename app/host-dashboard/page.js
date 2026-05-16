@@ -4,10 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
-import "./style.css";
-
-const CLOUDINARY_CLOUD_NAME = "dcakmhk1o";
-const CLOUDINARY_UPLOAD_PRESET = "host_id_verification"; // create an unsigned preset in Cloudinary dashboard
 
 export default function HostDashboard() {
   const router = useRouter();
@@ -24,7 +20,6 @@ export default function HostDashboard() {
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // ID upload state
   const [idFile, setIdFile] = useState(null);
   const [idPreview, setIdPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -32,15 +27,6 @@ export default function HostDashboard() {
   const [uploadError, setUploadError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
-
-  const arabicFont =
-    "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishFont = "'DM Mono', monospace";
-  const arabicDisplay =
-    "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishDisplay = "'Fraunces', serif";
-  const bodyFont = isAr ? arabicFont : englishFont;
-  const displayFont = isAr ? arabicDisplay : englishDisplay;
 
   useEffect(() => {
     (async () => {
@@ -55,25 +41,14 @@ export default function HostDashboard() {
         const listingsData = await listingsRes.json();
         const bookingsData = await bookingsRes.json();
 
-        if (!userRes.ok) {
-          router.push("/login");
-          return;
-        }
+        if (!userRes.ok) { router.push("/login"); return; }
 
         const user = userData?.user || null;
-        const listings = Array.isArray(listingsData?.listings)
-          ? listingsData.listings
-          : [];
-        const bookings = Array.isArray(bookingsData?.bookings)
-          ? bookingsData.bookings
-          : [];
+        const listings = Array.isArray(listingsData?.listings) ? listingsData.listings : [];
+        const bookings = Array.isArray(bookingsData?.bookings) ? bookingsData.bookings : [];
 
         setUser(user);
-
-        if (user?.role !== "host") {
-          router.push("/dashboard");
-          return;
-        }
+        if (user?.role !== "host") { router.push("/dashboard"); return; }
 
         const confirmed = bookings.filter((b) => b.status === "confirmed");
         setStats({
@@ -84,11 +59,8 @@ export default function HostDashboard() {
           rating: user?.hostDetails?.rating || 0,
         });
 
-        // Check if ID was already uploaded
-        if (user?.idVerificationUrl) {
-          setUploadDone(true);
-        }
-      } catch (e) {
+        if (user?.idVerificationUrl) setUploadDone(true);
+      } catch {
         router.push("/login");
       } finally {
         setLoading(false);
@@ -105,536 +77,398 @@ export default function HostDashboard() {
     }
   };
 
-  // --- Cloudinary Upload ---
   const handleFileChange = (file) => {
     if (!file) return;
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     if (!allowed.includes(file.type)) {
-      setUploadError(
-        isAr
-          ? "صيغة غير مدعومة. استخدم JPG أو PNG أو PDF."
-          : "Unsupported format. Use JPG, PNG, or PDF."
-      );
+      setUploadError(isAr ? "صيغة غير مدعومة. استخدم JPG أو PNG أو PDF." : "Unsupported format. Use JPG, PNG, or PDF.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setUploadError(
-        isAr ? "الملف أكبر من 10 ميغابايت." : "File exceeds 10 MB."
-      );
+      setUploadError(isAr ? "الملف أكبر من 10 ميغابايت." : "File exceeds 10 MB.");
       return;
     }
     setUploadError("");
     setIdFile(file);
-    if (file.type.startsWith("image/")) {
-      setIdPreview(URL.createObjectURL(file));
-    } else {
+    if (file.type.startsWith("image/")) setIdPreview(URL.createObjectURL(file));
+    else setIdPreview(null);
+  };
+
+  const handleUploadID = async () => {
+    if (!idFile) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", idFile);
+      const cloudRes = await fetch("/api/upload/host-id", { method: "POST", body: formData });
+      const cloudData = await cloudRes.json();
+      if (!cloudRes.ok) throw new Error(cloudData.message || "Cloudinary upload failed");
+      const imageUrl = cloudData.url;
+      if (!imageUrl) throw new Error("No URL returned from Cloudinary");
+
+      const saveRes = await fetch("/api/host/upload-id", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idVerificationUrl: imageUrl, publicId: cloudData.public_id }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.message || "Failed to save verification URL");
+
+      setUploadDone(true);
+      const userRes = await fetch("/api/auth/me", { credentials: "include" });
+      const userData = await userRes.json();
+      if (userData.user) setUser(userData.user);
+      setIdFile(null);
       setIdPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      setUploadError(isAr ? `فشل الرفع: ${err.message}` : `Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
     }
   };
 
-const handleUploadID = async () => {
-  if (!idFile) return;
-  setUploading(true);
-  setUploadError("");
-  try {
-    // Upload to Cloudinary
-    const formData = new FormData();
-    formData.append("file", idFile);
-    // Note: Don't send upload_preset and folder here if you're handling it in the backend
-    // The backend already has folder: 'marhaba-hostId'
-
-    console.log("Uploading file:", idFile.name);
-    
-    const cloudRes = await fetch("/api/upload/host-id", {
-      method: "POST",
-      body: formData
-    });
-    
-    const cloudData = await cloudRes.json();
-    console.log("Cloudinary response:", cloudData);
-
-    if (!cloudRes.ok) {
-      throw new Error(cloudData.message || "Cloudinary upload failed");
-    }
-
-    // FIX: Use 'url' not 'secure_url' (your backend returns 'url')
-    const imageUrl = cloudData.url;
-    if (!imageUrl) {
-      throw new Error("No URL returned from Cloudinary");
-    }
-
-    console.log("Saving to database with URL:", imageUrl);
-    
-    // Save the URL to the user record via your API
-    const saveRes = await fetch("/api/host/upload-id", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        idVerificationUrl: imageUrl,  // FIX: Use 'url' from cloudData
-        publicId: cloudData.public_id,
-      }),
-    });
-
-    const saveData = await saveRes.json();
-    console.log("Save response:", saveData);
-
-    if (!saveRes.ok) {
-      throw new Error(saveData.message || "Failed to save verification URL");
-    }
-
-    setUploadDone(true);
-    
-    // Refresh user data to reflect the uploaded ID
-    const userRes = await fetch("/api/auth/me", { credentials: "include" });
-    const userData = await userRes.json();
-    if (userData.user) {
-      setUser(userData.user);
-    }
-    
-    // Clear the file input
-    setIdFile(null);
-    setIdPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    
-  } catch (err) {
-    console.error("Upload error:", err);
-    setUploadError(
-      isAr
-        ? `فشل الرفع: ${err.message}`
-        : `Upload failed: ${err.message}`
-    );
-  } finally {
-    setUploading(false);
-  }
-};
-
   const AVATAR_PAL = [
-    { bg: "#EEEDFE", color: "#3C3489" },
-    { bg: "#E6F1FB", color: "#0C447C" },
-    { bg: "#EAF3DE", color: "#27500A" },
-    { bg: "#FAEEDA", color: "#633806" },
-    { bg: "#E1F5EE", color: "#085041" },
-    { bg: "#FBEAF0", color: "#72243E" },
+    { bg: "bg-[#EEEDFE]", color: "text-[#3C3489]" },
+    { bg: "bg-[#E6F1FB]", color: "text-[#0C447C]" },
+    { bg: "bg-[#EAF3DE]", color: "text-[#27500A]" },
+    { bg: "bg-[#FAEEDA]", color: "text-[#633806]" },
+    { bg: "bg-[#E1F5EE]", color: "text-[#085041]" },
+    { bg: "bg-[#FBEAF0]", color: "text-[#72243E]" },
   ];
-  const avi = (name) =>
-    AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
+  const avi = (name) => AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
-  if (loading)
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f7f6f2",
-        }}
-      >
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            border: "2.5px solid #1a1a2e",
-            borderTopColor: "transparent",
-            animation: "spin 0.7s linear infinite",
-          }}
-        />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
+  // --- LOADING ---
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
+      <div className="w-7 h-7 rounded-full border-[2.5px] border-[#1a1a2e] border-t-transparent animate-spin" />
+    </div>
+  );
 
-  // --- PENDING STATE: show ID upload UI ---
+  // --- PENDING STATE ---
   if (user?.role === "host" && user?.status === "pending") {
     const isExpired = user?.statusReason === "expired";
     const alreadyUploaded = uploadDone || !!user?.idVerificationUrl;
-    const userInitials =
-      user?.name
-        ?.split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() ?? "H";
+    const userInitials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "H";
     const { bg: aviBg, color: aviColor } = avi(user?.name);
 
     return (
-      <>
-        <style jsx global>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&display=swap');
-          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: ${bodyFont} !important; background: #f7f6f2; -webkit-font-smoothing: antialiased; }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-          .pending-card { animation: fadeUp 0.4s ease both; }
-          .upload-drop-zone { border: 2px dashed #d0cfc8; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-          .upload-drop-zone:hover, .upload-drop-zone.drag-over { border-color: #e8c547; background: rgba(232,197,71,0.04); }
-          .upload-btn { background: #1a1a2e; color: #e8c547; border: none; border-radius: 8px; padding: 10px 24px; font-size: 13px; cursor: pointer; font-family: inherit; transition: opacity 0.15s; width: 100%; margin-top: 1rem; }
-          .upload-btn:hover { opacity: 0.85; }
-          .upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        `}</style>
-
-        <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: isAr ? "rtl" : "ltr" }}>
-          {/* NAV */}
-          <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-            <Link href="/" style={{ textDecoration: "none", fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'Fraunces', serif", fontWeight: 500, fontSize: "24px", color: "#ffffff" }}>
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
-            </Link>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>
-                {userInitials}
-              </div>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
-              <button onClick={handleLogout} style={{ background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", borderRadius: 6, color: "#e8c547", padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
-                {t.logout || "Logout"}
-              </button>
+      <div className={`min-h-screen bg-[#f7f6f2] ${isAr ? "dir-rtl" : ""}`} dir={isAr ? "rtl" : "ltr"}>
+        {/* NAV */}
+        <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+          <Link href="/" className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide">
+            مر<span className="font-bold text-[#e8c547]">حبا</span>
+          </Link>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-medium ${aviBg} ${aviColor}`}>
+              {userInitials}
             </div>
-          </nav>
+            <span className="text-xs text-white/60">{user?.name}</span>
+            <button onClick={handleLogout} className="bg-[#e8c547]/10 border border-[#e8c547]/25 rounded-md text-[#e8c547] px-3 py-1 text-[11px] cursor-pointer font-[inherit]">
+              {t.logout || "Logout"}
+            </button>
+          </div>
+        </nav>
 
-          <main style={{ maxWidth: 560, margin: "0 auto", padding: "3rem 1.5rem" }}>
-            <div className="pending-card" style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.07)", padding: "2.5rem", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
+        <main className="max-w-[560px] mx-auto px-6 py-12">
+          <div className="bg-white rounded-2xl border border-black/7 p-10 shadow-[0_4px_24px_rgba(0,0,0,0.06)] animate-[fadeUp_0.4s_ease_both]">
 
-              {/* Status badge */}
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
-                <span style={{ background: isExpired ? "#FEE2E2" : "#FAEEDA", color: isExpired ? "#991B1B" : "#633806", fontSize: 11, fontWeight: 600, padding: "4px 14px", borderRadius: 20, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  {isExpired ? (isAr ? "انتهت الصلاحية" : "Expired") : (isAr ? "قيد المراجعة" : "Pending Approval")}
-                </span>
-              </div>
+            {/* Status badge */}
+            <div className="flex justify-center mb-6">
+              <span className={`text-[11px] font-semibold px-3.5 py-1 rounded-full tracking-wide uppercase ${isExpired ? "bg-red-100 text-red-800" : "bg-[#FAEEDA] text-[#633806]"}`}>
+                {isExpired ? (isAr ? "انتهت الصلاحية" : "Expired") : (isAr ? "قيد المراجعة" : "Pending Approval")}
+              </span>
+            </div>
 
-              {/* Title */}
-              <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-                <h2 style={{ fontFamily: displayFont, fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 26, color: "#111118", marginBottom: 8 }}>
-                  {isExpired
-                    ? (isAr ? "انتهت صلاحية اشتراكك" : "Subscription Expired")
-                    : (isAr ? "مرحباً بك في لوحة المضيف" : "Welcome, Host")}
-                </h2>
-                <p style={{ fontSize: 13, color: "#777", lineHeight: 1.7, maxWidth: 380, margin: "0 auto" }}>
-                  {alreadyUploaded
-                    ? (isAr ? "تم استلام وثيقة الهوية. سيتم مراجعة حسابك من قِبل الفريق وستتلقى إشعاراً عند التفعيل." : "Your ID document has been received. Our team will review your account and notify you once it's approved.")
-                    : (isAr ? "لإتمام التسجيل كمضيف والتمكن من إضافة العقارات، يرجى رفع صورة من وثيقة هويتك الرسمية." : "To complete your host registration and start adding listings, please upload a copy of your official ID document.")
-                  }
-                </p>
-              </div>
+            {/* Title */}
+            <div className="text-center mb-7">
+              <h2 className="font-['Fraunces',serif] italic font-light text-[26px] text-[#111118] mb-2">
+                {isExpired ? (isAr ? "انتهت صلاحية اشتراكك" : "Subscription Expired") : (isAr ? "مرحباً بك في لوحة المضيف" : "Welcome, Host")}
+              </h2>
+              <p className="text-[13px] text-[#777] leading-relaxed max-w-[380px] mx-auto">
+                {alreadyUploaded
+                  ? (isAr ? "تم استلام وثيقة الهوية. سيتم مراجعة حسابك من قِبل الفريق وستتلقى إشعاراً عند التفعيل." : "Your ID document has been received. Our team will review your account and notify you once it's approved.")
+                  : (isAr ? "لإتمام التسجيل كمضيف والتمكن من إضافة العقارات، يرجى رفع صورة من وثيقة هويتك الرسمية." : "To complete your host registration and start adding listings, please upload a copy of your official ID document.")}
+              </p>
+            </div>
 
-              {/* Already uploaded — waiting state */}
-              {alreadyUploaded ? (
-                <div style={{ background: "#EAF3DE", borderRadius: 12, padding: "1.25rem", textAlign: "center" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-                  <div style={{ fontSize: 13, color: "#27500A", fontWeight: 500 }}>
-                    {isAr ? "تم رفع الهوية بنجاح" : "ID uploaded successfully"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#27500A", opacity: 0.7, marginTop: 4 }}>
-                    {isAr ? "في انتظار موافقة الإدارة" : "Awaiting admin approval"}
-                  </div>
+            {/* Already uploaded */}
+            {alreadyUploaded ? (
+              <div className="bg-[#EAF3DE] rounded-xl p-5 text-center">
+                <div className="text-[28px] mb-2">✅</div>
+                <div className="text-[13px] text-[#27500A] font-medium">
+                  {isAr ? "تم رفع الهوية بنجاح" : "ID uploaded successfully"}
                 </div>
-              ) : (
-                /* Upload form */
-                <>
-                  {/* Drop zone */}
-                  <div
-                    className={`upload-drop-zone${dragOver ? " drag-over" : ""}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]); }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e.target.files[0])}
-                    />
-
-                    {idPreview ? (
-                      <div>
-                        <img src={idPreview} alt="ID preview" style={{ maxHeight: 160, maxWidth: "100%", borderRadius: 8, objectFit: "contain", marginBottom: 8 }} />
-                        <div style={{ fontSize: 12, color: "#555" }}>{idFile?.name}</div>
+                <div className="text-xs text-[#27500A]/70 mt-1">
+                  {isAr ? "في انتظار موافقة الإدارة" : "Awaiting admin approval"}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Drop zone */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]); }}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-[#e8c547] bg-[#e8c547]/5" : "border-[#d0cfc8] hover:border-[#e8c547] hover:bg-[#e8c547]/[0.04]"}`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e.target.files[0])}
+                  />
+                  {idPreview ? (
+                    <div>
+                      <img src={idPreview} alt="ID preview" className="max-h-40 max-w-full rounded-lg object-contain mb-2 mx-auto" />
+                      <div className="text-xs text-[#555]">{idFile?.name}</div>
+                    </div>
+                  ) : idFile ? (
+                    <div>
+                      <div className="text-[32px] mb-2">📄</div>
+                      <div className="text-xs text-[#555]">{idFile.name}</div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-[36px] mb-2.5">🪪</div>
+                      <div className="text-[13px] text-[#555] mb-1">
+                        {isAr ? "اسحب الملف هنا أو انقر للاختيار" : "Drag & drop or click to choose"}
                       </div>
-                    ) : idFile ? (
-                      <div>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
-                        <div style={{ fontSize: 12, color: "#555" }}>{idFile.name}</div>
+                      <div className="text-[11px] text-[#aaa]">
+                        {isAr ? "JPG · PNG · PDF — بحد أقصى 10 ميغابايت" : "JPG · PNG · PDF — max 10 MB"}
                       </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: 36, marginBottom: 10 }}>🪪</div>
-                        <div style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>
-                          {isAr ? "اسحب الملف هنا أو انقر للاختيار" : "Drag & drop or click to choose"}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#aaa" }}>
-                          {isAr ? "JPG · PNG · PDF — بحد أقصى 10 ميغابايت" : "JPG · PNG · PDF — max 10 MB"}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Error */}
-                  {uploadError && (
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#C53030", background: "#FFF5F5", border: "1px solid #FEB2B2", borderRadius: 8, padding: "8px 12px" }}>
-                      {uploadError}
                     </div>
                   )}
+                </div>
 
-                  {/* Upload button */}
-                  <button
-                    className="upload-btn"
-                    onClick={handleUploadID}
-                    disabled={!idFile || uploading}
-                  >
-                    {uploading ? (
-                      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                        <span style={{ width: 14, height: 14, border: "2px solid rgba(232,197,71,0.3)", borderTopColor: "#e8c547", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
-                        {isAr ? "جارٍ الرفع..." : "Uploading..."}
-                      </span>
-                    ) : (
-                      isAr ? "رفع الهوية" : "Submit ID for Verification"
-                    )}
-                  </button>
-
-                  {/* Info note */}
-                  <p style={{ fontSize: 11, color: "#bbb", textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
-                    {isAr
-                      ? "سيتم استخدام هذه الوثيقة للتحقق من هويتك فقط ولن تُشارك مع أي طرف آخر."
-                      : "This document will only be used for identity verification and will not be shared with third parties."}
-                  </p>
-                </>
-              )}
-
-              {/* Steps indicator */}
-              <div style={{ marginTop: "2rem", display: "flex", gap: 0, borderTop: "1px solid #f0ede8", paddingTop: "1.25rem" }}>
-                {[
-                  { step: 1, label: isAr ? "إنشاء الحساب" : "Create Account", done: true },
-                  { step: 2, label: isAr ? "رفع الهوية" : "Upload ID", done: alreadyUploaded },
-                  { step: 3, label: isAr ? "موافقة الإدارة" : "Admin Approval", done: false },
-                  { step: 4, label: isAr ? "إضافة عقارات" : "Add Listings", done: false },
-                ].map((s, i, arr) => (
-                  <div key={s.step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-                    {i < arr.length - 1 && (
-                      <div style={{ position: "absolute", top: 13, left: "50%", right: "-50%", height: 2, background: s.done ? "#1D9E75" : "#e5e3dc", zIndex: 0 }} />
-                    )}
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: s.done ? "#1D9E75" : "#e5e3dc", color: s.done ? "#fff" : "#aaa", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", position: "relative", zIndex: 1 }}>
-                      {s.done ? "✓" : s.step}
-                    </div>
-                    <div style={{ fontSize: 10, color: s.done ? "#27500A" : "#aaa", lineHeight: 1.3 }}>{s.label}</div>
+                {/* Error */}
+                {uploadError && (
+                  <div className="mt-2.5 text-xs text-[#C53030] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {uploadError}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {/* Upload button */}
+                <button
+                  onClick={handleUploadID}
+                  disabled={!idFile || uploading}
+                  className="w-full mt-4 bg-[#1a1a2e] text-[#e8c547] border-none rounded-lg py-2.5 px-6 text-[13px] cursor-pointer font-[inherit] transition-opacity hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {uploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-[#e8c547]/30 border-t-[#e8c547] rounded-full animate-spin inline-block" />
+                      {isAr ? "جارٍ الرفع..." : "Uploading..."}
+                    </span>
+                  ) : (isAr ? "رفع الهوية" : "Submit ID for Verification")}
+                </button>
+
+                <p className="text-[11px] text-[#bbb] text-center mt-3 leading-relaxed">
+                  {isAr
+                    ? "سيتم استخدام هذه الوثيقة للتحقق من هويتك فقط ولن تُشارك مع أي طرف آخر."
+                    : "This document will only be used for identity verification and will not be shared with third parties."}
+                </p>
+              </>
+            )}
+
+            {/* Steps indicator */}
+            <div className="mt-8 flex border-t border-[#f0ede8] pt-5">
+              {[
+                { step: 1, label: isAr ? "إنشاء الحساب" : "Create Account", done: true },
+                { step: 2, label: isAr ? "رفع الهوية" : "Upload ID", done: alreadyUploaded },
+                { step: 3, label: isAr ? "موافقة الإدارة" : "Admin Approval", done: false },
+                { step: 4, label: isAr ? "إضافة عقارات" : "Add Listings", done: false },
+              ].map((s, i, arr) => (
+                <div key={s.step} className="flex-1 text-center relative">
+                  {i < arr.length - 1 && (
+                    <div className={`absolute top-[13px] left-1/2 right-[-50%] h-0.5 z-0 ${s.done ? "bg-[#1D9E75]" : "bg-[#e5e3dc]"}`} />
+                  )}
+                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center mx-auto mb-1.5 relative z-10 text-[11px] font-semibold ${s.done ? "bg-[#1D9E75] text-white" : "bg-[#e5e3dc] text-[#aaa]"}`}>
+                    {s.done ? "✓" : s.step}
+                  </div>
+                  <div className={`text-[10px] leading-tight ${s.done ? "text-[#27500A]" : "text-[#aaa]"}`}>{s.label}</div>
+                </div>
+              ))}
             </div>
-          </main>
-        </div>
-      </>
+          </div>
+        </main>
+      </div>
     );
   }
 
-  // --- MAIN DASHBOARD (confirmed hosts) ---
-  const userInitials =
-    user?.name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() ?? "H";
+  // --- MAIN DASHBOARD ---
+  const userInitials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "H";
   const { bg: aviBg, color: aviColor } = avi(user?.name);
   const avgPerBooking = stats.totalEarnings / (stats.confirmedBookings || 1);
   const pendingCount = stats.totalBookings - stats.confirmedBookings;
-
-  const formatCurrency = (amount) =>
-    isAr
-      ? `${Math.round(amount).toLocaleString()} دينار`
-      : `${Math.round(amount).toLocaleString()} LYD`;
+  const formatCurrency = (amount) => isAr ? `${Math.round(amount).toLocaleString()} دينار` : `${Math.round(amount).toLocaleString()} LYD`;
 
   const NAV_LINKS = [
-    { href: "/host-dashboard", label: t.overview },
+    { href: "/host-dashboard", label: t.dashboard },
     { href: "/host/listings", label: t.myListings },
     { href: "/host/bookings", label: t.bookings },
   ];
 
   const STAT_CARDS = [
-    { label: t.activeListings, value: stats.totalListings, accent: "#378ADD" },
-    { label: t.totalBookings, value: stats.totalBookings, sub: `${stats.confirmedBookings} ${t.confirmed}`, accent: "#7F77DD" },
-    { label: t.totalEarnings, value: formatCurrency(stats.totalEarnings), sub: t.confirmedOnly, accent: "#1D9E75" },
-    { label: t.hostRating, value: stats.rating.toFixed(1), accent: "#e8c547" },
+    { label: t.activeListings, value: stats.totalListings, borderColor: "border-t-[#378ADD]" },
+    { label: t.totalBookings, value: stats.totalBookings, sub: `${stats.confirmedBookings} ${t.confirmed}`, borderColor: "border-t-[#7F77DD]" },
+    { label: t.totalEarnings, value: formatCurrency(stats.totalEarnings), sub: t.confirmedOnly, borderColor: "border-t-[#1D9E75]" },
+    { label: t.hostRating, value: stats.rating.toFixed(1), borderColor: "border-t-[#e8c547]" },
   ];
 
   const SUMMARY_CARDS = [
-    { label: t.confirmed, value: stats.confirmedBookings, sub: t.readyForGuests, sBg: "#EAF3DE", sColor: "#27500A", bColor: "#1D9E75" },
-    { label: t.pending, value: pendingCount, sub: t.awaitingAction, sBg: "#FAEEDA", sColor: "#633806", bColor: "#BA7517" },
-    { label: t.avgPerBooking, value: formatCurrency(avgPerBooking), sub: t.fromConfirmed, sBg: "#E6F1FB", sColor: "#0C447C", bColor: "#378ADD" },
+    { label: t.confirmed, value: stats.confirmedBookings, sub: t.readyForGuests, bg: "bg-[#EAF3DE]", textColor: "text-[#27500A]", borderColor: "border-t-[#1D9E75]" },
+    { label: t.pending, value: pendingCount, sub: t.awaitingAction, bg: "bg-[#FAEEDA]", textColor: "text-[#633806]", borderColor: "border-t-[#BA7517]" },
+    { label: t.avgPerBooking, value: formatCurrency(avgPerBooking), sub: t.fromConfirmed, bg: "bg-[#E6F1FB]", textColor: "text-[#0C447C]", borderColor: "border-t-[#378ADD]" },
   ];
 
   const ACTION_CARDS = [
-    { href: "/host/listings", label: t.manageListings, desc: t.manageListingsDesc, accent: "#7F77DD" },
-    { href: "/host/bookings", label: t.viewBookings, desc: t.viewBookingsDesc, accent: "#1D9E75" },
+    { href: "/host/listings", label: t.manageListings, desc: t.manageListingsDesc, accentText: "text-[#7F77DD]", borderColor: "border-t-[#7F77DD]" },
+    { href: "/host/bookings", label: t.viewBookings, desc: t.viewBookingsDesc, accentText: "text-[#1D9E75]", borderColor: "border-t-[#1D9E75]" },
   ];
 
   return (
-    <>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: ${bodyFont} !important; background: #f7f6f2; color: #222; -webkit-font-smoothing: antialiased; }
-        .font-display { font-family: ${displayFont} !important; }
-        .nav-link { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: color .15s, background .15s; }
-        .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-link.active { color: #e8c547; }
-        .logout-btn { background: rgba(232,197,71,0.1); border: 1px solid rgba(232,197,71,0.25); border-radius: 6px; color: #e8c547; padding: 4px 12px; font-size: 11px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
-        .logout-btn:hover { background: rgba(232,197,71,0.2); }
-        .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
-        .hamburger span { display: block; width: 20px; height: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; transition: all 0.2s; }
-        .mobile-nav-menu { display: none; position: fixed; top: 56px; left: 0; right: 0; background: #1a1a2e; border-bottom: 1px solid rgba(232,197,71,0.15); padding: 1rem 1.5rem; z-index: 40; flex-direction: column; gap: 10px; }
-        .mobile-nav-menu.open { display: flex; }
-        .mobile-nav-link { font-size: 13px; color: rgba(255,255,255,0.7); text-decoration: none; padding: 8px 0; }
-        .stat-card { background: #fff; border-radius: 12px; border: 1px solid rgba(0,0,0,0.07); padding: 1rem; border-top: 3px solid var(--accent); }
-        .summary-card { border-radius: 12px; padding: 1rem; }
-        .action-card { background: #fff; border-radius: 12px; border: 1px solid rgba(0,0,0,0.07); padding: 1.25rem; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; }
-        .action-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .summary-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .action-grid { grid-template-columns: 1fr !important; }
-          .desktop-nav-links, .desktop-user-info { display: none !important; }
-          .hamburger { display: flex; }
-        }
-        @media (max-width: 480px) {
-          .stats-grid { grid-template-columns: 1fr !important; }
-          .summary-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-
-      <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: lang === "ar" ? "rtl" : "ltr" }}>
-        {/* NAV */}
-        <nav style={{ background: "#1a1a2e", borderBottom: "1px solid rgba(232,197,71,0.15)", padding: "0 1.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <Link href="/" style={{ textDecoration: "none", fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'Fraunces', serif", fontWeight: 500, fontSize: "24px", color: "#ffffff", letterSpacing: "1px" }}>
-              mar<span style={{ fontWeight: 700, color: "#e8c547" }}>haba</span>
-            </Link>
-            <div className="desktop-nav-links" style={{ display: "flex", gap: 2 }}>
-              {NAV_LINKS.map(({ href, label }) => (
-                <Link key={href} href={href} className="nav-link">{label}</Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="desktop-user-info" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#e8c547", fontFamily: "inherit" }}>
-              {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
-            </button>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
-              {userInitials}
-            </div>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
-            <span style={{ fontSize: 10, color: "#e8c547", background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.25)", padding: "2px 10px", borderRadius: 20 }}>
-              {t.host}
-            </span>
-            <button onClick={handleLogout} className="logout-btn">{t.logout}</button>
-          </div>
-
-          <button className="hamburger" onClick={() => setMobileNavOpen(!mobileNavOpen)} aria-label="Menu">
-            <span style={{ transform: mobileNavOpen ? "rotate(45deg) translateY(7px)" : "none" }} />
-            <span style={{ opacity: mobileNavOpen ? 0 : 1 }} />
-            <span style={{ transform: mobileNavOpen ? "rotate(-45deg) translateY(-7px)" : "none" }} />
-          </button>
-        </nav>
-
-        {/* Mobile nav */}
-        <div className={`mobile-nav-menu ${mobileNavOpen ? "open" : ""}`}>
-          <button onClick={toggleLanguage} style={{ background: "rgba(232,197,71,0.15)", border: "1px solid rgba(232,197,71,0.3)", borderRadius: 6, padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "#e8c547", fontFamily: "inherit", marginBottom: 10, width: "100%" }}>
-            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
-          </button>
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link key={href} href={href} className="mobile-nav-link" onClick={() => setMobileNavOpen(false)}>{label}</Link>
-          ))}
-          <div style={{ paddingTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500 }}>{userInitials}</div>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
-            </div>
-            <button onClick={handleLogout} className="logout-btn">{t.logout}</button>
+    <div className="min-h-screen bg-[#f7f6f2]" dir={isAr ? "rtl" : "ltr"}>
+      {/* NAV */}
+      <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide">
+            مر<span className="font-bold text-[#e8c547]">حبا</span>
+          </Link>
+          <div className="hidden md:flex gap-0.5">
+            {NAV_LINKS.map(({ href, label }) => (
+              <Link key={href} href={href} className="text-xs text-white/45 no-underline px-3 py-1.5 rounded-md hover:text-white/90 hover:bg-white/[0.06] transition-colors">
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
 
-        <main className="main-pad" style={{ maxWidth: 1100, margin: "0 auto", padding: "1.75rem 1.5rem" }}>
-          {/* PROFILE STRIP */}
-          <div className="fu profile-strip" style={{ background: "#fff", borderRadius: 12, border: "1px solid rgba(0,0,0,0.07)", padding: "1.25rem 1.5rem", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: aviBg, color: aviColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 500, flexShrink: 0 }}>
-                {userInitials}
+        <div className="hidden md:flex items-center gap-2.5">
+          <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]">
+            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+          </button>
+          <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-medium shrink-0 ${aviBg} ${aviColor}`}>
+            {userInitials}
+          </div>
+          <span className="text-xs text-white/60">{user?.name}</span>
+          <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2.5 py-0.5 rounded-full">
+            {t.host}
+          </span>
+          <button onClick={handleLogout} className="bg-none border border-white/12 rounded-md text-white/40 font-['DM_Mono',monospace] text-[11px] px-3 py-1 cursor-pointer hover:border-red-400/50 hover:text-red-400/90 transition-colors">
+            {t.logout}
+          </button>
+        </div>
+
+        {/* Hamburger */}
+        <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="md:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1" aria-label="Menu">
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-opacity ${mobileNavOpen ? "opacity-0" : ""}`} />
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
+        </button>
+      </nav>
+
+      {/* Mobile nav */}
+      {mobileNavOpen && (
+        <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-4 z-40 flex flex-col gap-1">
+          <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full">
+            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+          </button>
+          {NAV_LINKS.map(({ href, label }) => (
+            <Link key={href} href={href} onClick={() => setMobileNavOpen(false)} className="text-[13px] text-white/60 no-underline py-2.5 border-b border-white/[0.06] last:border-b-0">
+              {label}
+            </Link>
+          ))}
+          <div className="pt-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium ${aviBg} ${aviColor}`}>{userInitials}</div>
+              <span className="text-xs text-white/60">{user?.name}</span>
+            </div>
+            <button onClick={handleLogout} className="bg-none border border-white/12 rounded-md text-white/40 text-[11px] px-3 py-1 cursor-pointer">
+              {t.logout}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-7">
+        {/* PROFILE STRIP */}
+        <div className="bg-white rounded-xl border border-black/7 px-6 py-5 mb-3 flex items-center justify-between gap-4 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-[46px] h-[46px] rounded-full flex items-center justify-center text-[15px] font-medium shrink-0 ${aviBg} ${aviColor}`}>
+              {userInitials}
+            </div>
+            <div>
+              <div className="font-['Fraunces',serif] italic font-light text-[22px] text-[#111118] leading-tight">
+                {user?.name}
               </div>
-              <div>
-                <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 22, color: "#111118", lineHeight: 1.1 }}>
-                  {user?.name}
-                </div>
-                <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>{t.hostAccount}</div>
-                <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>
-                  {t.expiryDate}{" "}
-                  {user?.hostExpiryDate ? new Date(user.hostExpiryDate).toLocaleDateString() : t.notAvailable}
-                </div>
+              <div className="text-[11px] text-[#999] mt-0.5">{t.hostAccount}</div>
+              <div className="text-[11px] text-[#999] mt-0.5">
+                {t.expiryDate}{" "}
+                {user?.hostExpiryDate ? new Date(user.hostExpiryDate).toLocaleDateString() : t.notAvailable}
               </div>
             </div>
-            <Link href="/host/listings" style={{ background: "#1a1a2e", color: "#e8c547", padding: "8px 18px", borderRadius: 8, fontSize: 12, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
-              + {t.newListing}
+          </div>
+          <Link href="/host/listings" className="bg-[#1a1a2e] text-[#e8c547] px-4 py-2 rounded-lg text-xs no-underline whitespace-nowrap shrink-0 hover:opacity-90 transition-opacity">
+            + {t.newListing}
+          </Link>
+        </div>
+
+        {/* STAT CARDS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-3 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.07s_both]">
+          {STAT_CARDS.map(({ label, value, borderColor, sub }) => (
+            <div key={label} className={`bg-white rounded-xl border border-black/7 p-4 border-t-[3px] ${borderColor}`}>
+              <div className="font-['Fraunces',serif] italic font-light text-[30px] text-[#111118] leading-none mb-1">
+                {value}
+              </div>
+              <div className="text-[11px] tracking-wide uppercase text-[#999]">{label}</div>
+              {sub && <div className="text-[11px] text-[#bbb] mt-1">{sub}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* BOOKING SUMMARY */}
+        <div className="bg-white rounded-xl border border-black/7 p-6 mb-3 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.14s_both]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-['Fraunces',serif] italic font-light text-xl text-[#111118]">
+              {t.bookingSummary}
+            </div>
+            <Link href="/host/bookings" className="text-xs text-[#185FA5] no-underline">
+              {t.viewAll} →
             </Link>
           </div>
-
-          {/* STAT CARDS */}
-          <div className="fu fu1 stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: "1.25rem" }}>
-            {STAT_CARDS.map(({ label, value, accent, sub }) => (
-              <div key={label} className="stat-card" style={{ "--accent": accent }}>
-                <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 30, color: "#111118", lineHeight: 1, marginBottom: 4 }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            {SUMMARY_CARDS.map(({ label, value, sub, bg, textColor, borderColor }) => (
+              <div key={label} className={`rounded-xl p-5 border-t-[3px] ${bg} ${borderColor}`}>
+                <div className={`font-['Fraunces',serif] italic font-light text-[28px] leading-none mb-1 ${textColor}`}>
                   {value}
                 </div>
-                <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "#999" }}>{label}</div>
-                {sub && <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>{sub}</div>}
+                <div className={`text-[11px] tracking-wide uppercase opacity-85 ${textColor}`}>{label}</div>
+                <div className={`text-[11px] opacity-55 mt-1 ${textColor}`}>{sub}</div>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* BOOKING SUMMARY */}
-          <div className="fu fu2" style={{ background: "#fff", borderRadius: 12, border: "1px solid rgba(0,0,0,0.07)", padding: "1.5rem", marginBottom: "1.25rem" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 20, color: "#111118" }}>
-                {t.bookingSummary}
+        {/* QUICK ACTIONS */}
+        <div className="font-['Fraunces',serif] italic font-light text-xl text-[#111118] mb-4 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.21s_both]">
+          {t.quickActions}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.28s_both]">
+          {ACTION_CARDS.map(({ href, label, desc, accentText, borderColor }) => (
+            <Link key={href} href={href} className={`bg-white rounded-xl border border-black/7 border-t-[3px] ${borderColor} p-6 no-underline block hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(0,0,0,0.08)] transition-all duration-200`}>
+              <div className="font-['Fraunces',serif] italic font-light text-xl text-[#111118] mb-1.5">
+                {label}
               </div>
-              <Link href="/host/bookings" style={{ fontSize: 12, color: "#185FA5", textDecoration: "none" }}>
-                {t.viewAll} →
-              </Link>
-            </div>
-            <div className="summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {SUMMARY_CARDS.map(({ label, value, sub, sBg, sColor, bColor }) => (
-                <div key={label} className="summary-card" style={{ "--bColor": bColor, background: sBg }}>
-                  <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 28, color: sColor, lineHeight: 1, marginBottom: 4 }}>
-                    {value}
-                  </div>
-                  <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: sColor, opacity: 0.85 }}>{label}</div>
-                  <div style={{ fontSize: 11, color: sColor, opacity: 0.55, marginTop: 4 }}>{sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* QUICK ACTIONS */}
-          <div className="fu fu3">
-            <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 20, color: "#111118", marginBottom: "1rem" }}>
-              {t.quickActions}
-            </div>
-          </div>
-          <div className="fu fu4 action-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            {ACTION_CARDS.map(({ href, label, desc, accent }) => (
-              <Link key={href} href={href} className="action-card" style={{ "--accent": accent }}>
-                <div className="font-display" style={{ fontStyle: isAr ? "normal" : "italic", fontWeight: 300, fontSize: 20, color: "#111118", marginBottom: 6 }}>
-                  {label}
-                </div>
-                <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6 }}>{desc}</p>
-                <div style={{ fontSize: 12, color: accent, marginTop: "1rem", fontWeight: 500 }}>{t.go} →</div>
-              </Link>
-            ))}
-          </div>
-        </main>
-      </div>
-    </>
+              <p className="text-[13px] text-[#888] leading-relaxed">{desc}</p>
+              <div className={`text-xs mt-4 font-medium ${accentText}`}>{t.go} →</div>
+            </Link>
+          ))}
+        </div>
+      </main>
+    </div>
   );
 }
