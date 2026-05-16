@@ -124,7 +124,10 @@ export default function ListingDetail({ params }) {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setCurrentUser(d.user));
+      .then((d) => {
+      console.log("Current user data:", d?.user);
+      setCurrentUser(d?.user);
+    });
   }, []);
   useEffect(() => {
     if (unwrappedParams?.id) fetchListing();
@@ -997,282 +1000,316 @@ const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_ad
             </div>
 
             {/* RIGHT: Booking / Host panel */}
-            <div className="sidebar">
-              {isHost  (
-                <div
-                  className="fu fu2 section-card"
-                  style={{ borderTop: "3px solid #e8c547" }}
-                >
-                  {/* Price */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "baseline",
-                      gap: 4,
-                      marginBottom: "1.25rem",
-                      paddingTop: "1rem",
-                    }}
-                  >
-                    <span
-                      className="font-display"
-                      style={{
-                        fontStyle: isAr ? "normal" : "italic",
-                        fontWeight: 300,
-                        fontSize: 34,
-                        color: "#111118",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {formatCurrency(listing.price)}
-                    </span>
-                    <span style={{ fontSize: 12, color: "#999" }}>/ {t.night}</span>
-                  </div>
+       {/* RIGHT: Booking / Host panel */}
+<div className="sidebar">
+  {!isHost && !isAdmin ? (
+    // REGULAR USERS - can book (NOT host, NOT admin)
+    <div className="fu fu2 section-card" style={{ borderTop: "3px solid #e8c547" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 4,
+          marginBottom: "1.25rem",
+          paddingTop: "1rem",
+        }}
+      >
+        <span
+          className="font-display"
+          style={{
+            fontStyle: isAr ? "normal" : "italic",
+            fontWeight: 300,
+            fontSize: 34,
+            color: "#111118",
+            lineHeight: 1,
+          }}
+        >
+          {formatCurrency(listing.price)}
+        </span>
+        <span style={{ fontSize: 12, color: "#999" }}>/ {t.night}</span>
+      </div>
 
-                  <form
-                    onSubmit={handleBooking}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 14,
-                    }}
-                  >
-                    <div>
-                      <label className="field-label">{t.selectDates}</label>
-                      <BookingCalendar
-                        bookedDates={bookedDates}
-                        onDateSelect={(dates) =>
-                          setBooking((prev) => ({ ...prev, ...dates }))
-                        }
-                        checkIn={booking.checkIn}
-                        checkOut={booking.checkOut}
-                      />
-                    </div>
+      <form
+        onSubmit={handleBooking}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        <div>
+          <label className="field-label">{t.selectDates}</label>
+          <BookingCalendar
+            bookedDates={bookedDates}
+            onDateSelect={(dates) =>
+              setBooking((prev) => ({ ...prev, ...dates }))
+            }
+            checkIn={booking.checkIn}
+            checkOut={booking.checkOut}
+          />
+        </div>
 
-                    {/* Date display */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 8,
-                      }}
-                    >
-                      {[
-                        [t.checkIn, booking.checkIn],
-                        [t.checkOut, booking.checkOut],
-                      ].map(([label, val]) => (
-                        <div
-                          key={label}
-                          style={{
-                            background: "#f7f6f2",
-                            border: "1px solid rgba(0,0,0,0.07)",
-                            borderRadius: 8,
-                            padding: "10px 12px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: 10,
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                              color: "#999",
-                              marginBottom: 3,
-                            }}
-                          >
-                            {label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: val ? "#111118" : "#bbb",
-                            }}
-                          >
-                            {val ? displayDate(val) : "—"}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div>
-                      <label className="field-label">{t.guests}</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        required
-                        value={booking.guests}
-                        onChange={(e) =>
-                          setBooking({
-                            ...booking,
-                            guests: parseInt(e.target.value),
-                          })
-                        }
-                        className="field-input"
-                      />
-                    </div>
-
-                    {/* Price breakdown */}
-                    {nights > 0 && (
-                      <div
-                        style={{
-                          background: "#f7f6f2",
-                          borderRadius: 8,
-                          padding: "12px",
-                          border: "1px solid rgba(0,0,0,0.07)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: 12,
-                            color: "#666",
-                            marginBottom: 8,
-                          }}
-                        >
-                          <span>
-                            {formatCurrency(listing.price)} × {nights}{" "}
-                            {nights === 1 ? t.night : t.nights}
-                          </span>
-                          <span>{formatCurrency(totalPrice)}</span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "#111118",
-                            paddingTop: 8,
-                            borderTop: "1px solid rgba(0,0,0,0.07)",
-                          }}
-                        >
-                          <span>{t.total}</span>
-                          <span style={{ color: "#1D9E75" }}>
-                            {formatCurrency(totalPrice)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {bookingError && (
-                      <div
-                        style={{
-                          background: "#FCEBEB",
-                          border: "1px solid rgba(163,45,45,0.15)",
-                          borderRadius: 8,
-                          padding: "10px 12px",
-                          fontSize: 12,
-                          color: "#791F1F",
-                        }}
-                      >
-                        {bookingError}
-                      </div>
-                    )}
-                    {bookingSuccess && (
-                      <div
-                        style={{
-                          background: "#EAF3DE",
-                          border: "1px solid rgba(39,80,10,0.15)",
-                          borderRadius: 8,
-                          padding: "10px 12px",
-                          fontSize: 12,
-                          color: "#27500A",
-                        }}
-                      >
-                        {bookingSuccess}
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={!booking.checkIn || !booking.checkOut}
-                      className="book-btn"
-                    >
-                      {t.bookNow} →
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div
-                  className="fu fu2 section-card"
-                  style={{ borderTop: "3px solid #7F77DD" }}
-                >
-                  <div
-                    style={{
-                      paddingTop: "1rem",
-                      textAlign: "center",
-                      marginBottom: "1.25rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: "50%",
-                        background: "#EEEDFE",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        margin: "0 auto 12px",
-                        fontSize: 22,
-                      }}
-                    >
-                      🏠
-                    </div>
-                    <div
-                      className="font-display"
-                      style={{
-                        fontStyle: isAr ? "normal" : "italic",
-                        fontWeight: 300,
-                        fontSize: 18,
-                        color: "#111118",
-                        marginBottom: 6,
-                      }}
-                    >
-                      {t.youOwnThisProperty}
-                    </div>
-                    <p style={{ fontSize: 12, color: "#999", lineHeight: 1.6 }}>
-                      {t.cannotBookOwnListing}
-                    </p>
-                  </div>
-
-                  <div style={{ borderTop: "1px solid rgba(0,0,0,0.07)" }}>
-                    <BookingCalendar
-                      bookedDates={bookedDates}
-                      onDateSelect={() => {}}
-                      checkIn=""
-                      checkOut=""
-                      isHost={true}
-                    />
-                    <HostDateManager
-                      listingId={listing.id}
-                      blockedDates={blockedDatesArr}
-                      onDatesUpdated={fetchListing}
-                    />
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "1.25rem",
-                      paddingTop: "1rem",
-                      borderTop: "1px solid rgba(0,0,0,0.07)",
-                      textAlign: "center",
-                    }}
-                  >
-                    <Link
-                      href="/host/bookings"
-                      style={{
-                        fontSize: 12,
-                        color: "#185FA5",
-                        textDecoration: "none",
-                      }}
-                    >
-                      {t.viewAllBookings} →
-                    </Link>
-                  </div>
-                </div>
-              )}
+        {/* Date display */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+          }}
+        >
+          {[
+            [t.checkIn, booking.checkIn],
+            [t.checkOut, booking.checkOut],
+          ].map(([label, val]) => (
+            <div
+              key={label}
+              style={{
+                background: "#f7f6f2",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 8,
+                padding: "10px 12px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "#999",
+                  marginBottom: 3,
+                }}
+              >
+                {label}
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: val ? "#111118" : "#bbb",
+                }}
+              >
+                {val ? displayDate(val) : "—"}
+              </div>
             </div>
+          ))}
+        </div>
+
+        <div>
+          <label className="field-label">{t.guests}</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            required
+            value={booking.guests}
+            onChange={(e) =>
+              setBooking({
+                ...booking,
+                guests: parseInt(e.target.value),
+              })
+            }
+            className="field-input"
+          />
+        </div>
+
+        {/* Price breakdown */}
+        {nights > 0 && (
+          <div
+            style={{
+              background: "#f7f6f2",
+              borderRadius: 8,
+              padding: "12px",
+              border: "1px solid rgba(0,0,0,0.07)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 12,
+                color: "#666",
+                marginBottom: 8,
+              }}
+            >
+              <span>
+                {formatCurrency(listing.price)} × {nights}{" "}
+                {nights === 1 ? t.night : t.nights}
+              </span>
+              <span>{formatCurrency(totalPrice)}</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#111118",
+                paddingTop: 8,
+                borderTop: "1px solid rgba(0,0,0,0.07)",
+              }}
+            >
+              <span>{t.total}</span>
+              <span style={{ color: "#1D9E75" }}>
+                {formatCurrency(totalPrice)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {bookingError && (
+          <div
+            style={{
+              background: "#FCEBEB",
+              border: "1px solid rgba(163,45,45,0.15)",
+              borderRadius: 8,
+              padding: "10px 12px",
+              fontSize: 12,
+              color: "#791F1F",
+            }}
+          >
+            {bookingError}
+          </div>
+        )}
+        {bookingSuccess && (
+          <div
+            style={{
+              background: "#EAF3DE",
+              border: "1px solid rgba(39,80,10,0.15)",
+              borderRadius: 8,
+              padding: "10px 12px",
+              fontSize: 12,
+              color: "#27500A",
+            }}
+          >
+            {bookingSuccess}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={!booking.checkIn || !booking.checkOut}
+          className="book-btn"
+        >
+          {t.bookNow} →
+        </button>
+      </form>
+    </div>
+  ) : isHost ? (
+    // HOSTS - show host panel with date blocking
+    <div
+      className="fu fu2 section-card"
+      style={{ borderTop: "3px solid #7F77DD" }}
+    >
+      <div
+        style={{
+          paddingTop: "1rem",
+          textAlign: "center",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "50%",
+            background: "#EEEDFE",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 12px",
+            fontSize: 22,
+          }}
+        >
+          🏠
+        </div>
+        <div
+          className="font-display"
+          style={{
+            fontStyle: isAr ? "normal" : "italic",
+            fontWeight: 300,
+            fontSize: 18,
+            color: "#111118",
+            marginBottom: 6,
+          }}
+        >
+          {t.youOwnThisProperty}
+        </div>
+        <p style={{ fontSize: 12, color: "#999", lineHeight: 1.6 }}>
+          {t.cannotBookOwnListing}
+        </p>
+      </div>
+
+      <div style={{ borderTop: "1px solid rgba(0,0,0,0.07)" }}>
+        <BookingCalendar
+          bookedDates={bookedDates}
+          onDateSelect={() => {}}
+          checkIn=""
+          checkOut=""
+          isHost={true}
+        />
+        <HostDateManager
+          listingId={listing.id}
+          blockedDates={blockedDatesArr}
+          onDatesUpdated={fetchListing}
+        />
+      </div>
+
+      <div
+        style={{
+          marginTop: "1.25rem",
+          paddingTop: "1rem",
+          borderTop: "1px solid rgba(0,0,0,0.07)",
+          textAlign: "center",
+        }}
+      >
+        <Link
+          href="/host/bookings"
+          style={{
+            fontSize: 12,
+            color: "#185FA5",
+            textDecoration: "none",
+          }}
+        >
+          {t.viewAllBookings} →
+        </Link>
+      </div>
+    </div>
+  ) : (
+    // ADMINS - cannot book, cannot block
+    <div
+      className="fu fu2 section-card"
+      style={{ borderTop: "3px solid #999", textAlign: "center", padding: "1.5rem" }}
+    >
+      <div style={{ fontSize: 48, marginBottom: 12 }}>👑</div>
+      <div
+        className="font-display"
+        style={{
+          fontStyle: isAr ? "normal" : "italic",
+          fontWeight: 300,
+          fontSize: 18,
+          color: "#111118",
+          marginBottom: 8,
+        }}
+      >
+        {t.adminViewOnly || "Admin View"}
+      </div>
+      <p style={{ fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+        {t.adminCannotBookOrBlock || "Admins can view listings but cannot make bookings or block dates."}
+      </p>
+      <Link
+        href="/admin"
+        style={{
+          display: "inline-block",
+          marginTop: "1rem",
+          fontSize: 12,
+          color: "#185FA5",
+          textDecoration: "none",
+        }}
+      >
+        {t.goToAdminPanel || "Go to Admin Panel →"}
+      </Link>
+    </div>
+  )}
+</div>
           </div>
         </main>
       </div>
