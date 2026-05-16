@@ -121,6 +121,8 @@ export default function Home() {
       const data = await res.json();
       if (data.success && data.listings?.length > 0) {
         setListings(data.listings);
+        console.log(data.listing);
+        
       } else {
         await fetchAllListings();
       }
