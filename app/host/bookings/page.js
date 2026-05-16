@@ -631,10 +631,10 @@ export default function HostBookings() {
               {getFiltered().map((booking, idx) => {
                 const ss = statusStyle(booking.status);
                 const nights = calcNights(booking.checkIn, booking.checkOut);
-                const isLoading = actionLoading === booking._id;
+                const isLoading = actionLoading === booking.id;
                 return (
                   <div
-                    key={booking._id}
+                    key={booking.id}
                     className="booking-card fu"
                     style={{ animationDelay: `${idx * 0.05}s` }}
                   >
@@ -819,7 +819,7 @@ export default function HostBookings() {
                         {booking.status === "pending" && (
                           <>
                             <button
-                              onClick={() => handleConfirmBooking(booking._id)}
+                              onClick={() => handleConfirmBooking(booking.id)}
                               disabled={isLoading}
                               className="action-btn"
                               style={{
@@ -831,7 +831,7 @@ export default function HostBookings() {
                               {isLoading ? <Spinner /> : `✓ ${t.confirm}`}
                             </button>
                             <button
-                              onClick={() => handleCancelBooking(booking._id)}
+                              onClick={() => handleCancelBooking(booking.id)}
                               disabled={isLoading}
                               className="action-btn"
                               style={{
@@ -846,7 +846,7 @@ export default function HostBookings() {
                         )}
                         {booking.status === "confirmed" && (
                           <button
-                            onClick={() => handleCancelBooking(booking._id)}
+                            onClick={() => handleCancelBooking(booking.id)}
                             disabled={isLoading}
                             className="action-btn"
                             style={{
@@ -871,7 +871,7 @@ export default function HostBookings() {
                           </div>
                         )}
                         <Link
-                          href={`/listings/${booking.listing?._id}`}
+                          href={`/listings/${booking.listing?.id}`}
                           style={{
                             background: "rgba(0,0,0,0.04)",
                             color: "#555",
