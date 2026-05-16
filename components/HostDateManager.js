@@ -234,7 +234,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
   return (
     <div className="mt-5">
       {/* Header */}
-      <div className="flex flex-col items-center justify-center mb-4">
+      <div className="flex flex-col justify-between items-start mb-4">
         <div>
           <div className="text-[15px] font-bold text-[#222] mb-1">Manage Blocked Dates</div>
           <div className="text-[12px] text-[#717171] flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
           </div>
         </div>
         <button
-          className={`rounded-3xl px-[18px] py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap transition-opacity hover:opacity-85 border-0 ${
+          className={`rounded-3xl px-[18px] py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap transition-opacity tm-2 hover:opacity-85 border-0 ${
             showBlockForm ? 'bg-[#f7f7f7] text-[#717171]' : 'bg-[#1a1a2e] text-[#e8c547]'
           }`}
           onClick={() => { setShowBlockForm(!showBlockForm); setSelectedRange(null); setReason(''); }}
