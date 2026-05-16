@@ -886,7 +886,7 @@ export default function UserDashboard() {
                             }}
                           >
                             <Link
-                              href={`/listings/${l._id}`}
+                              href={`/listings/${l.id}`}
                               style={{
                                 background: "#1a1a2e",
                                 color: "#e8c547",
