@@ -379,8 +379,8 @@ export default function Home() {
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
             {filteredListings.map((listing, index) => (
               <div
-                key={listing._id || index}
-                onClick={() => router.push(`/listings/${listing._id}`)}
+                key={listing.id || index}
+                onClick={() => router.push(`/listings/${listing.id}`)}
                 className="cursor-pointer rounded-2xl overflow-hidden hover:-translate-y-1 transition-transform animate-[fadeIn_0.3s_ease_both]"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
