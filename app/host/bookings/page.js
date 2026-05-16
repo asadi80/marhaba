@@ -635,7 +635,7 @@ console.log(data);
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {getFiltered().map((booking, idx) => {
                 const ss = statusStyle(booking.status);
-                const nights = calcNights(booking.checkIn, booking.checkOut);
+                const nights = calcNights(booking.check_in, booking.check_out);
                 const isLoading = actionLoading === booking.id;
                 return (
                   <div
@@ -735,8 +735,8 @@ console.log(data);
                           }}
                         >
                           {[
-                            [t.checkIn, formatDate(booking.checkIn)],
-                            [t.checkOut, formatDate(booking.checkOut)],
+                            [t.checkIn, formatDate(booking.check_in)],
+                            [t.checkOut, formatDate(booking.check_out)],
                             [
                               t.nights,
                               `${nights} ${nights !== 1 ? t.nights : t.night}`,
@@ -796,7 +796,7 @@ console.log(data);
                               color: "#1a1a2e",
                             }}
                           >
-                            {formatCurrency(booking.totalPrice)}
+                            {formatCurrency(booking.total_price)}
                           </span>
                           <span
                             style={{
