@@ -46,8 +46,8 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
   const getBookingsForDay = (day) => {
     const date = new Date(Date.UTC(currentYear, currentMonth, day));
     return bookings.filter((b) => {
-      const checkIn = new Date(b.checkIn);
-      const checkOut = new Date(b.checkOut);
+      const checkIn = new Date(b.check_in);
+      const checkOut = new Date(b.check_out);
       const checkInUTC = new Date(
         Date.UTC(
           checkIn.getUTCFullYear(),
