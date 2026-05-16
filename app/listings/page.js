@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import "./style.css"
+
 export default function ListingsPage() {
   const router = useRouter();
   const [listings, setListings] = useState([]);
@@ -30,9 +30,12 @@ export default function ListingsPage() {
   const handleSearch = (e) => { e.preventDefault(); fetchListings(); };
 
   const AVATAR_PAL = [
-    { bg: '#EEEDFE', color: '#3C3489' }, { bg: '#E6F1FB', color: '#0C447C' },
-    { bg: '#EAF3DE', color: '#27500A' }, { bg: '#FAEEDA', color: '#633806' },
-    { bg: '#E1F5EE', color: '#085041' }, { bg: '#FBEAF0', color: '#72243E' },
+    { bg: 'bg-[#EEEDFE]', color: 'text-[#3C3489]' },
+    { bg: 'bg-[#E6F1FB]', color: 'text-[#0C447C]' },
+    { bg: 'bg-[#EAF3DE]', color: 'text-[#27500A]' },
+    { bg: 'bg-[#FAEEDA]', color: 'text-[#633806]' },
+    { bg: 'bg-[#E1F5EE]', color: 'text-[#085041]' },
+    { bg: 'bg-[#FBEAF0]', color: 'text-[#72243E]' },
   ];
   const avi = (name) => AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
@@ -41,210 +44,233 @@ export default function ListingsPage() {
     { href: '/listings', label: 'browse', active: true },
   ];
 
+  const inputClass =
+    'w-full py-2.5 px-3 bg-[#fafaf8] border border-black/10 rounded-lg text-[13px] text-[#111118] font-[\'DM_Mono\',monospace] outline-none transition-all placeholder:text-[#c0bfbb] hover:border-black/18 focus:border-[#185FA5] focus:shadow-[0_0_0_3px_rgba(24,95,165,0.08)] focus:bg-white';
+
   return (
-    <>
-   
+    <div className="min-h-screen bg-[#f7f6f2]">
 
-      <div style={{ minHeight: '100vh', background: '#f7f6f2' }}>
-
-        {/* NAV */}
-        <nav style={{
-          background: '#1a1a2e', borderBottom: '1px solid rgba(232,197,71,0.15)',
-          padding: '0 1.5rem', height: 56,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          position: 'sticky', top: 0, zIndex: 50,
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      {/* NAV */}
+      <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide">
+            مر<span className="font-bold text-[#e8c547]">حبا</span>
+          </Link>
+          <div className="hidden md:flex gap-0.5">
+            {NAV_LINKS.map(({ href, label, active }) => (
               <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#ffffff",
-                letterSpacing: "1px",
-              }}
-            >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
-
-            <div className="desktop-nav" style={{ display: 'flex', gap: 2 }}>
-              {NAV_LINKS.map(({ href, label, active }) => (
-                <Link key={href} href={href} className={`nav-link${active ? ' active' : ''}`}>{label}</Link>
-              ))}
-            </div>
+                key={href}
+                href={href}
+                className={`text-xs no-underline px-3 py-1.5 rounded-md transition-colors ${active ? 'text-white/90' : 'text-white/45 hover:text-white/90 hover:bg-white/[0.06]'}`}
+              >
+                {label}
+              </Link>
+            ))}
           </div>
-
-          <div className="desktop-nav" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Link href="/dashboard" style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>← dashboard</Link>
-          </div>
-
-          <button className="hamburger" onClick={() => setMobileNavOpen(!mobileNavOpen)} aria-label="Menu">
-            <span style={{ transform: mobileNavOpen ? 'rotate(45deg) translateY(7px)' : 'none' }} />
-            <span style={{ opacity: mobileNavOpen ? 0 : 1 }} />
-            <span style={{ transform: mobileNavOpen ? 'rotate(-45deg) translateY(-7px)' : 'none' }} />
-          </button>
-        </nav>
-
-        {/* Mobile nav */}
-        <div className={`mobile-nav ${mobileNavOpen ? 'open' : ''}`}>
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link key={href} href={href} className="mobile-nav-link" onClick={() => setMobileNavOpen(false)}>{label}</Link>
-          ))}
         </div>
 
-        <main className="main-pad" style={{ maxWidth: 1100, margin: '0 auto', padding: '1.75rem 1.5rem' }}>
+        <div className="hidden md:flex items-center gap-2">
+          <Link href="/dashboard" className="text-xs text-white/45 no-underline">← dashboard</Link>
+        </div>
 
-          {/* HEADER */}
-          <div className="fu" style={{ marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
-              explore
-            </div>
-            <h1 className="font-display" style={{ fontStyle: 'italic', fontWeight: 300, fontSize: 'clamp(24px,4vw,36px)', color: '#111118', lineHeight: 1.1 }}>
-              Browse listings
-            </h1>
-          </div>
+        {/* Hamburger */}
+        <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="md:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1" aria-label="Menu">
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-opacity ${mobileNavOpen ? 'opacity-0' : ''}`} />
+          <span className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
+        </button>
+      </nav>
 
-          {/* FILTER BAR */}
-          <div className="fu fu1" style={{
-            background: '#fff', borderRadius: 14,
-            border: '1px solid rgba(0,0,0,0.07)',
-            padding: '1.25rem 1.5rem', marginBottom: '1.5rem',
-            borderTop: '3px solid #e8c547',
-          }}>
-            <form onSubmit={handleSearch}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div style={{ flex: '2 1 180px', minWidth: 0 }}>
-                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#999', marginBottom: 5 }}>location</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.78 3.5 6.5 3.5 6.5s3.5-3.72 3.5-6.5C9.5 2.57 7.93 1 6 1zm0 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="#bbb"/></svg>
-                    </span>
-                    <input type="text" name="location" placeholder="Anywhere"
-                      value={filters.location}
-                      onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                      className="filter-input" style={{ paddingLeft: 28 }} />
-                  </div>
-                </div>
-                <div style={{ flex: '1 1 110px', minWidth: 0 }}>
-                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#999', marginBottom: 5 }}>min price</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#bbb', pointerEvents: 'none' }}>$</span>
-                    <input type="number" name="minPrice" placeholder="0"
-                      value={filters.minPrice}
-                      onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                      className="filter-input" style={{ paddingLeft: 22 }} />
-                  </div>
-                </div>
-                <div style={{ flex: '1 1 110px', minWidth: 0 }}>
-                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#999', marginBottom: 5 }}>max price</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#bbb', pointerEvents: 'none' }}>$</span>
-                    <input type="number" name="maxPrice" placeholder="∞"
-                      value={filters.maxPrice}
-                      onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                      className="filter-input" style={{ paddingLeft: 22 }} />
-                  </div>
-                </div>
-                <div style={{ flexShrink: 0 }}>
-                  <button type="submit" className="search-btn">
+      {/* Mobile nav */}
+      {mobileNavOpen && (
+        <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-4 z-40 flex flex-col gap-1">
+          {NAV_LINKS.map(({ href, label }) => (
+            <Link key={href} href={href} onClick={() => setMobileNavOpen(false)}
+              className="text-[13px] text-white/60 no-underline py-2.5 border-b border-white/[0.06] last:border-b-0 block">
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-7">
+
+        {/* HEADER */}
+        <div className="mb-6 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
+          <div className="text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5">explore</div>
+          <h1 className="font-['Fraunces',serif] italic font-light text-[clamp(24px,4vw,36px)] text-[#111118] leading-tight">
+            Browse listings
+          </h1>
+        </div>
+
+        {/* FILTER BAR */}
+        <div className="bg-white rounded-[14px] border border-black/7 border-t-[3px] border-t-[#e8c547] px-6 py-5 mb-6 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.07s_both]">
+          <form onSubmit={handleSearch}>
+            <div className="flex flex-wrap gap-2.5 items-end">
+
+              {/* Location */}
+              <div className="flex-[2_1_180px] min-w-0">
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">location</label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="5" cy="5" r="3.5" stroke="#e8c547" strokeWidth="1.2"/>
-                      <path d="M7.5 7.5L10 10" stroke="#e8c547" strokeWidth="1.2" strokeLinecap="round"/>
+                      <path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.78 3.5 6.5 3.5 6.5s3.5-3.72 3.5-6.5C9.5 2.57 7.93 1 6 1zm0 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="#bbb"/>
                     </svg>
-                    search
-                  </button>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Anywhere"
+                    value={filters.location}
+                    onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                    className={`${inputClass} pl-7`}
+                  />
                 </div>
               </div>
-            </form>
+
+              {/* Min price */}
+              <div className="flex-[1_1_110px] min-w-0">
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">min price</label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#bbb] pointer-events-none">$</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={filters.minPrice}
+                    onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
+                    className={`${inputClass} pl-[22px]`}
+                  />
+                </div>
+              </div>
+
+              {/* Max price */}
+              <div className="flex-[1_1_110px] min-w-0">
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">max price</label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#bbb] pointer-events-none">$</span>
+                  <input
+                    type="number"
+                    placeholder="∞"
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                    className={`${inputClass} pl-[22px]`}
+                  />
+                </div>
+              </div>
+
+              {/* Search btn */}
+              <div className="shrink-0">
+                <button type="submit"
+                  className="bg-[#1a1a2e] text-[#e8c547] border-none rounded-lg py-2.5 px-[22px] text-[13px] font-['DM_Mono',monospace] cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 transition-all hover:opacity-88 hover:-translate-y-px">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="5" cy="5" r="3.5" stroke="#e8c547" strokeWidth="1.2"/>
+                    <path d="M7.5 7.5L10 10" stroke="#e8c547" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  search
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Results count */}
+        {!loading && listings.length > 0 && (
+          <div className="text-xs text-[#999] mb-4 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.07s_both]">
+            {listings.length} {listings.length === 1 ? 'listing' : 'listings'} found
+            {filters.location && <> in <span className="text-[#111118]">{filters.location}</span></>}
           </div>
+        )}
 
-          {/* Results count */}
-          {!loading && listings.length > 0 && (
-            <div className="fu fu1" style={{ fontSize: 12, color: '#999', marginBottom: '1rem' }}>
-              {listings.length} {listings.length === 1 ? 'listing' : 'listings'} found
-              {filters.location && <> in <span style={{ color: '#111118' }}>{filters.location}</span></>}
-            </div>
-          )}
-
-          {/* LISTINGS GRID */}
-          {loading ? (
-            <div className="listings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-              {[...Array(6)].map((_, i) => (
-                <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.07)', overflow: 'hidden' }}>
-                  <div className="skeleton" style={{ height: 200 }} />
-                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div className="skeleton" style={{ height: 14, width: '75%' }} />
-                    <div className="skeleton" style={{ height: 11, width: '50%' }} />
-                    <div className="skeleton" style={{ height: 13, width: '35%' }} />
-                    <div className="skeleton" style={{ height: 11, width: '55%' }} />
-                  </div>
+        {/* LISTINGS GRID */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-[14px] border border-black/7 overflow-hidden">
+                <div className="h-[200px] bg-gradient-to-r from-[#ebe9e3] via-[#f3f1ea] to-[#ebe9e3] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-none" />
+                <div className="p-5 flex flex-col gap-2.5">
+                  <div className="h-3.5 w-3/4 bg-gradient-to-r from-[#ebe9e3] via-[#f3f1ea] to-[#ebe9e3] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-lg" />
+                  <div className="h-[11px] w-1/2 bg-gradient-to-r from-[#ebe9e3] via-[#f3f1ea] to-[#ebe9e3] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-lg" />
+                  <div className="h-3 w-[35%] bg-gradient-to-r from-[#ebe9e3] via-[#f3f1ea] to-[#ebe9e3] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-lg" />
+                  <div className="h-[11px] w-[55%] bg-gradient-to-r from-[#ebe9e3] via-[#f3f1ea] to-[#ebe9e3] bg-[length:200%_100%] animate-[shimmer_1.4s_infinite] rounded-lg" />
                 </div>
-              ))}
-            </div>
-          ) : listings.length > 0 ? (
-            <div className="fu fu2 listings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-              {listings.map((listing) => {
-                const hostAvi = avi(listing.host?.name);
-                const hostInitial = listing.host?.name?.charAt(0)?.toUpperCase() || 'H';
-                return (
-                  <Link href={`/listings/${listing._id}`} key={listing._id} className="listing-card">
-                    <div style={{ overflow: 'hidden', height: 200 }}>
-                      <img src={listing.images?.[0]} alt={listing.title} className="listing-img" />
-                    </div>
-                    <div style={{ padding: '1.25rem' }}>
-                      <div className="font-display" style={{ fontStyle: 'italic', fontWeight: 300, fontSize: 18, color: '#111118', lineHeight: 1.2, marginBottom: 6 }}>
-                        {listing.title}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#888', marginBottom: 10, overflow: 'hidden' }}>
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                          <path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.78 3.5 6.5 3.5 6.5s3.5-3.72 3.5-6.5C9.5 2.57 7.93 1 6 1zm0 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="#ccc"/>
-                        </svg>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{listing.location}</span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                        <div className="price-tag">
-                          <span style={{ fontSize: 16, fontWeight: 500, color: '#111118' }}>${listing.price}</span>
-                          <span style={{ fontSize: 11, color: '#999' }}>&nbsp;/ night</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 22, height: 22, borderRadius: '50%', background: hostAvi.bg, color: hostAvi.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, flexShrink: 0 }}>
-                            {hostInitial}
-                          </div>
-                          <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>{listing.host?.name}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="fu fu2 empty-state">
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#f0efe9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                  <circle cx="10" cy="10" r="7" stroke="#ccc" strokeWidth="1.5"/>
-                  <path d="M15.5 15.5L19 19" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
               </div>
-              <div className="font-display" style={{ fontStyle: 'italic', fontWeight: 300, fontSize: 22, color: '#111118', marginBottom: 8 }}>
-                No listings found
-              </div>
-              <p style={{ fontSize: 13, color: '#999', marginBottom: '1.25rem' }}>
-                Try adjusting your search filters.
-              </p>
-              <button onClick={() => { setFilters({ location: '', minPrice: '', maxPrice: '' }); fetchListings(); }}
-                style={{ background: 'none', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontFamily: 'inherit', color: '#555', cursor: 'pointer' }}>
-                clear filters
-              </button>
-            </div>
-          )}
+            ))}
+          </div>
+        ) : listings.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.14s_both]">
+            {listings.map((listing) => {
+              const hostAvi = avi(listing.host?.name);
+              const hostInitial = listing.host?.name?.charAt(0)?.toUpperCase() || 'H';
+              return (
+                <Link
+                  href={`/listings/${listing._id}`}
+                  key={listing._id}
+                  className="bg-white rounded-[14px] border border-black/7 overflow-hidden no-underline block transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.09)] group"
+                >
+                  <div className="overflow-hidden h-[200px]">
+                    <img
+                      src={listing.images?.[0]}
+                      alt={listing.title}
+                      className="w-full h-[200px] object-cover block transition-transform duration-300 group-hover:scale-[1.04]"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <div className="font-['Fraunces',serif] italic font-light text-[18px] text-[#111118] leading-snug mb-1.5">
+                      {listing.title}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-[#888] mb-2.5 overflow-hidden">
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+                        <path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.78 3.5 6.5 3.5 6.5s3.5-3.72 3.5-6.5C9.5 2.57 7.93 1 6 1zm0 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="#ccc"/>
+                      </svg>
+                      <span className="overflow-hidden text-ellipsis whitespace-nowrap">{listing.location}</span>
+                    </div>
 
-        </main>
-      </div>
-    </>
+                    <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
+                      <div className="inline-flex items-baseline gap-0.5">
+                        <span className="text-base font-medium text-[#111118]">${listing.price}</span>
+                        <span className="text-[11px] text-[#999]">&nbsp;/ night</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-[22px] h-[22px] rounded-full flex items-center justify-center text-[10px] font-medium shrink-0 ${hostAvi.bg} ${hostAvi.color}`}>
+                          {hostInitial}
+                        </div>
+                        <span className="text-[11px] text-[#888] overflow-hidden text-ellipsis whitespace-nowrap max-w-[80px]">
+                          {listing.host?.name}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.14s_both] text-center py-20 px-6 bg-white rounded-[14px] border border-black/7">
+            <div className="w-12 h-12 rounded-full bg-[#f0efe9] flex items-center justify-center mx-auto mb-5">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <circle cx="10" cy="10" r="7" stroke="#ccc" strokeWidth="1.5"/>
+                <path d="M15.5 15.5L19 19" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="font-['Fraunces',serif] italic font-light text-[22px] text-[#111118] mb-2">
+              No listings found
+            </div>
+            <p className="text-[13px] text-[#999] mb-5">Try adjusting your search filters.</p>
+            <button
+              onClick={() => { setFilters({ location: '', minPrice: '', maxPrice: '' }); fetchListings(); }}
+              className="bg-transparent border border-black/10 rounded-lg py-2 px-[18px] text-xs font-[inherit] text-[#555] cursor-pointer hover:border-black/20 transition-colors"
+            >
+              clear filters
+            </button>
+          </div>
+        )}
+
+      </main>
+
+      {/* Keyframes via a style tag — Tailwind can't generate custom @keyframes without config */}
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+      `}</style>
+    </div>
   );
 }

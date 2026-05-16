@@ -171,12 +171,19 @@ export default function Home() {
         <div className="max-w-screen-xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link
-            href="/"
-            className="no-underline font-[Cairo,Tajawal,sans-serif] font-medium text-[26px] text-[#1a1a2e] tracking-wide"
-          >
-            مر<span className="font-bold text-yellow-400">حبا</span>
-          </Link>
+             <Link
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                fontWeight: 500,
+                fontSize: "26px",
+                color: "#000000",
+                letterSpacing: "1px",
+              }}
+            >
+             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+            </Link>
 
           {/* Location button */}
           <button
