@@ -760,7 +760,7 @@ export default function UserDashboard() {
                                   </div>
                                   <div style={{ display: "flex", gap: 6 }}>
                                     <Link
-                                      href={`/listings/${l._id}`}
+                                      href={`/listings/${l.id}`}
                                       style={{
                                         flex: 1,
                                         background: "#1a1a2e",
