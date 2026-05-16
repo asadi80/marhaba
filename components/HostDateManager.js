@@ -1,18 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 const getLocalDateString = (date) => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
 // ─── HostCalendar ─────────────────────────────────────────────────────────────
-function HostCalendar({
-  blockedDates,
-  bookings,
-  onRangeSelect,
-  existingBlockedRanges,
-}) {
+function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRanges }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedStartDate, setSelectedStartDate] = useState(null);
   const [selectedEndDate, setSelectedEndDate] = useState(null);
@@ -22,55 +17,31 @@ function HostCalendar({
 
   useEffect(() => {
     const blocked = new Set();
-    existingBlockedRanges?.forEach((range) => {
+    existingBlockedRanges?.forEach(range => {
       let current = new Date(range.startDate);
       const end = new Date(range.endDate);
-      while (current < end) {
-        blocked.add(getLocalDateString(current));
-        current.setDate(current.getDate() + 1);
-      }
+      while (current < end) { blocked.add(getLocalDateString(current)); current.setDate(current.getDate() + 1); }
     });
     setBlockedDatesSet(blocked);
   }, [existingBlockedRanges]);
 
   useEffect(() => {
     const booked = new Map();
-    bookings?.forEach((booking) => {
+    bookings?.forEach(booking => {
       let current = new Date(booking.checkIn);
       const end = new Date(booking.checkOut);
-      while (current < end) {
-        const s = getLocalDateString(current);
-        if (!booked.has(s)) booked.set(s, booking.status);
-        current.setDate(current.getDate() + 1);
-      }
+      while (current < end) { const s = getLocalDateString(current); if (!booked.has(s)) booked.set(s, booking.status); current.setDate(current.getDate() + 1); }
     });
     setBookedDatesMap(booked);
   }, [bookings]);
 
-  const MONTH_NAMES = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const WEEK_DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
   const isBlocked = (d) => blockedDatesSet.has(getLocalDateString(d));
   const getBookingStatus = (d) => bookedDatesMap.get(getLocalDateString(d));
   const isBooked = (d) => bookedDatesMap.has(getLocalDateString(d));
-  const isPast = (d) => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return d < t;
-  };
+  const isPast = (d) => { const t = new Date(); t.setHours(0,0,0,0); return d < t; };
   const isAvailable = (d) => !isBlocked(d) && !isBooked(d) && !isPast(d);
   const isInRange = (d) => {
     if (!selectedStartDate || selectedEndDate || !hoverDate) return false;
@@ -81,50 +52,33 @@ function HostCalendar({
     if (selectedEndDate) return d >= selectedStartDate && d <= selectedEndDate;
     return d.getTime() === selectedStartDate.getTime();
   };
-  const isStart = (d) =>
-    selectedStartDate && d.getTime() === selectedStartDate.getTime();
-  const isEnd = (d) =>
-    selectedEndDate && d.getTime() === selectedEndDate.getTime();
+  const isStart = (d) => selectedStartDate && d.getTime() === selectedStartDate.getTime();
+  const isEnd = (d) => selectedEndDate && d.getTime() === selectedEndDate.getTime();
 
   const handleDateClick = (date) => {
     if (!isAvailable(date)) return;
     if (!selectedStartDate || (selectedStartDate && selectedEndDate)) {
-      setSelectedStartDate(date);
-      setSelectedEndDate(null);
+      setSelectedStartDate(date); setSelectedEndDate(null);
     } else if (selectedStartDate && !selectedEndDate) {
       if (date > selectedStartDate) {
         setSelectedEndDate(date);
-        onRangeSelect({
-          startDate: getLocalDateString(selectedStartDate),
-          endDate: getLocalDateString(date),
-        });
-      } else {
-        setSelectedStartDate(date);
-      }
+        onRangeSelect({ startDate: getLocalDateString(selectedStartDate), endDate: getLocalDateString(date) });
+      } else { setSelectedStartDate(date); }
     }
   };
 
   const getDaysInMonth = (date) => {
-    const y = date.getFullYear(),
-      m = date.getMonth();
-    const firstDay = new Date(y, m, 1),
-      lastDay = new Date(y, m + 1, 0);
+    const y = date.getFullYear(), m = date.getMonth();
+    const firstDay = new Date(y, m, 1), lastDay = new Date(y, m + 1, 0);
     const days = [];
-    for (let i = firstDay.getDay() - 1; i >= 0; i--)
-      days.push({ date: new Date(y, m, -i), isCurrentMonth: false });
-    for (let i = 1; i <= lastDay.getDate(); i++)
-      days.push({ date: new Date(y, m, i), isCurrentMonth: true });
+    for (let i = firstDay.getDay() - 1; i >= 0; i--) days.push({ date: new Date(y, m, -i), isCurrentMonth: false });
+    for (let i = 1; i <= lastDay.getDate(); i++) days.push({ date: new Date(y, m, i), isCurrentMonth: true });
     const rem = 42 - days.length;
-    for (let i = 1; i <= rem; i++)
-      days.push({ date: new Date(y, m + 1, i), isCurrentMonth: false });
+    for (let i = 1; i <= rem; i++) days.push({ date: new Date(y, m + 1, i), isCurrentMonth: false });
     return days;
   };
 
-  const clearSelection = () => {
-    setSelectedStartDate(null);
-    setSelectedEndDate(null);
-    setHoverDate(null);
-  };
+  const clearSelection = () => { setSelectedStartDate(null); setSelectedEndDate(null); setHoverDate(null); };
   const days = getDaysInMonth(currentMonth);
 
   const getDayClasses = (date, isCurrentMonth) => {
@@ -137,23 +91,16 @@ function HostCalendar({
     const inRange = isInRange(date);
     const hasEnd = !!selectedEndDate;
 
-    const base =
-      "relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer font-[inherit]";
+    const base = "relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer font-[inherit]";
 
     if (!isCurrentMonth) return `${base} opacity-30 cursor-default`;
-    if (start && hasEnd)
-      return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-l-full`;
-    if (end)
-      return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-r-full`;
-    if (start)
-      return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-full`;
+    if (start && hasEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-l-full`;
+    if (end) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-r-full`;
+    if (start) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-full`;
     if (inRange) return `${base} bg-[#e8c547]/15 text-[#222] rounded-none`;
-    if (blocked)
-      return `${base} bg-[#ebebeb] text-[#999] cursor-not-allowed line-through rounded-full`;
-    if (status === "confirmed")
-      return `${base} bg-[#FCEBEB] text-[#791F1F] cursor-not-allowed line-through rounded-full`;
-    if (status === "pending")
-      return `${base} bg-[#FAEEDA] text-[#633806] cursor-not-allowed line-through rounded-full`;
+    if (blocked) return `${base} bg-[#ebebeb] text-[#999] cursor-not-allowed line-through rounded-full`;
+    if (status === "confirmed") return `${base} bg-[#FCEBEB] text-[#791F1F] cursor-not-allowed line-through rounded-full`;
+    if (status === "pending") return `${base} bg-[#FAEEDA] text-[#633806] cursor-not-allowed line-through rounded-full`;
     if (past) return `${base} text-[#ccc] cursor-not-allowed`;
     return `${base} hover:bg-[#f0f0f0] text-[#222] rounded-full`;
   };
@@ -164,38 +111,21 @@ function HostCalendar({
       <div className="flex justify-between items-center mb-5">
         <button
           className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
-          onClick={() => {
-            const d = new Date(currentMonth);
-            d.setMonth(d.getMonth() - 1);
-            setCurrentMonth(d);
-          }}
-        >
-          ←
-        </button>
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); }}
+        >←</button>
         <span className="text-[15px] font-bold text-[#222]">
           {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </span>
         <button
           className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
-          onClick={() => {
-            const d = new Date(currentMonth);
-            d.setMonth(d.getMonth() + 1);
-            setCurrentMonth(d);
-          }}
-        >
-          →
-        </button>
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); }}
+        >→</button>
       </div>
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-2">
-        {WEEK_DAYS.map((d) => (
-          <div
-            key={d}
-            className="text-center text-[11px] font-bold tracking-[0.05em] text-[#717171] py-1"
-          >
-            {d}
-          </div>
+        {WEEK_DAYS.map(d => (
+          <div key={d} className="text-center text-[11px] font-bold tracking-[0.05em] text-[#717171] py-1">{d}</div>
         ))}
       </div>
 
@@ -211,25 +141,13 @@ function HostCalendar({
               className={getDayClasses(date, isCurrentMonth)}
               style={{ opacity: !isCurrentMonth ? 0.3 : 1 }}
               onClick={() => isCurrentMonth && handleDateClick(date)}
-              onMouseEnter={() => {
-                if (
-                  avail &&
-                  selectedStartDate &&
-                  !selectedEndDate &&
-                  date > selectedStartDate
-                )
-                  setHoverDate(date);
-              }}
+              onMouseEnter={() => { if (avail && selectedStartDate && !selectedEndDate && date > selectedStartDate) setHoverDate(date); }}
               onMouseLeave={() => setHoverDate(null)}
               disabled={!avail && isCurrentMonth}
             >
               {date.getDate()}
-              {status === "pending" && (
-                <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#e8c547]" />
-              )}
-              {status === "confirmed" && (
-                <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#A32D2D]" />
-              )}
+              {status === "pending" && <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#e8c547]" />}
+              {status === "confirmed" && <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#A32D2D]" />}
             </button>
           );
         })}
@@ -239,17 +157,9 @@ function HostCalendar({
       {(selectedStartDate || selectedEndDate) && (
         <div className="mt-3.5 px-3.5 py-3 bg-[#f7f7f7] rounded-[10px] flex justify-between items-center">
           <span className="text-[13px] text-[#222] font-medium">
-            {selectedStartDate?.toLocaleDateString()}
-            {selectedEndDate
-              ? ` → ${selectedEndDate.toLocaleDateString()}`
-              : ""}
+            {selectedStartDate?.toLocaleDateString()}{selectedEndDate ? ` → ${selectedEndDate.toLocaleDateString()}` : ""}
           </span>
-          <button
-            className="text-[12px] text-[#717171] bg-none border-none cursor-pointer font-medium underline"
-            onClick={clearSelection}
-          >
-            Clear
-          </button>
+          <button className="text-[12px] text-[#717171] bg-none border-none cursor-pointer font-medium underline" onClick={clearSelection}>Clear</button>
         </div>
       )}
 
@@ -264,10 +174,7 @@ function HostCalendar({
           { bg: "bg-[#FCEBEB]", label: "Confirmed" },
           { bg: "bg-[#f0f0f0]", label: "Past" },
         ].map(({ bg, label }) => (
-          <div
-            key={label}
-            className="flex items-center gap-1.5 text-[11px] text-[#717171]"
-          >
+          <div key={label} className="flex items-center gap-1.5 text-[11px] text-[#717171]">
             <span className={`w-3 h-3 rounded-full flex-shrink-0 ${bg}`} />
             {label}
           </div>
@@ -278,123 +185,77 @@ function HostCalendar({
 }
 
 // ─── HostDateManager ──────────────────────────────────────────────────────────
-export default function HostDateManager({
-  listingId,
-  blockedDates,
-  bookings,
-  onDatesUpdated,
-}) {
+export default function HostDateManager({ listingId, blockedDates, bookings, onDatesUpdated }) {
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleBlockSubmit = async () => {
-    if (!selectedRange) {
-      setError("Please select a date range on the calendar");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    const start = new Date(selectedRange.startDate),
-      end = new Date(selectedRange.endDate);
-    if (start >= end) {
-      setError("End date must be after start date");
-      setLoading(false);
-      return;
-    }
-    if (start < new Date()) {
-      setError("Cannot block past dates");
-      setLoading(false);
-      return;
-    }
+    if (!selectedRange) { setError('Please select a date range on the calendar'); return; }
+    setLoading(true); setError(''); setSuccess('');
+    const start = new Date(selectedRange.startDate), end = new Date(selectedRange.endDate);
+    if (start >= end) { setError('End date must be after start date'); setLoading(false); return; }
+    if (start < new Date()) { setError('Cannot block past dates'); setLoading(false); return; }
     try {
       const res = await fetch(`/api/listings/${listingId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: selectedRange.startDate,
-          endDate: selectedRange.endDate,
-          reason: reason || "Blocked by host",
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: selectedRange.startDate, endDate: selectedRange.endDate, reason: reason || 'Blocked by host' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setSuccess("Dates blocked successfully!");
-      setSelectedRange(null);
-      setReason("");
-      setShowBlockForm(false);
+      setSuccess('Dates blocked successfully!');
+      setSelectedRange(null); setReason(''); setShowBlockForm(false);
       onDatesUpdated?.();
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   const handleRemoveBlock = async (blockId) => {
-    if (!confirm("Remove this blocked date range?")) return;
+    if (!confirm('Remove this blocked date range?')) return;
     try {
       const res = await fetch(`/api/listings/${listingId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ blockId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setSuccess("Blocked dates removed!");
+      setSuccess('Blocked dates removed!');
       onDatesUpdated?.();
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.message);
-    }
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { setError(err.message); }
   };
 
-  const fmtDate = (s) =>
-    new Date(s).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const fmtDate = (s) => new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
   return (
     <div className="mt-5">
       {/* Header */}
-      <div className="mb-4">
-        <div className="text-[15px] font-bold text-[#222] mb-1">
-          Manage Blocked Dates
-        </div>
-        <div className="text-[12px] text-[#717171] flex items-center gap-3 mb-3">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" />{" "}
-            Pending
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#A32D2D] flex-shrink-0" />{" "}
-            Confirmed
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#ebebeb] border border-[#ddd] flex-shrink-0" />{" "}
-            Blocked
-          </span>
+      <div className="flex flex-col items-center justify-center mb-4">
+        <div>
+          <div className="text-[15px] font-bold text-[#222] mb-1">Manage Blocked Dates</div>
+          <div className="text-[12px] text-[#717171] flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" /> Pending
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#A32D2D] flex-shrink-0" /> Confirmed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#ebebeb] border border-[#ddd] flex-shrink-0" /> Blocked
+            </span>
+          </div>
         </div>
         <button
           className={`rounded-3xl px-[18px] py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap transition-opacity hover:opacity-85 border-0 ${
-            showBlockForm
-              ? "bg-[#f7f7f7] text-[#717171]"
-              : "bg-[#1a1a2e] text-[#e8c547]"
+            showBlockForm ? 'bg-[#f7f7f7] text-[#717171]' : 'bg-[#1a1a2e] text-[#e8c547]'
           }`}
-          onClick={() => {
-            setShowBlockForm(!showBlockForm);
-            setSelectedRange(null);
-            setReason("");
-          }}
+          onClick={() => { setShowBlockForm(!showBlockForm); setSelectedRange(null); setReason(''); }}
         >
-          {showBlockForm ? "Cancel" : "+ Block Dates"}
+          {showBlockForm ? 'Cancel' : '+ Block Dates'}
         </button>
       </div>
 
@@ -413,8 +274,7 @@ export default function HostDateManager({
 
           {selectedRange && (
             <div className="mt-3.5 px-4 py-3 bg-white border-[1.5px] border-[#e8c547] rounded-[10px] text-[13px] font-semibold text-[#222]">
-              📅 {fmtDate(selectedRange.startDate)} →{" "}
-              {fmtDate(selectedRange.endDate)}
+              📅 {fmtDate(selectedRange.startDate)} → {fmtDate(selectedRange.endDate)}
             </div>
           )}
 
@@ -445,11 +305,7 @@ export default function HostDateManager({
           <div className="flex justify-end gap-2.5 mt-4">
             <button
               className="bg-white text-[#717171] border-[1.5px] border-[#e5e5e5] rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer font-[inherit] hover:border-[#aaa] transition-colors"
-              onClick={() => {
-                setShowBlockForm(false);
-                setSelectedRange(null);
-                setReason("");
-              }}
+              onClick={() => { setShowBlockForm(false); setSelectedRange(null); setReason(''); }}
             >
               Cancel
             </button>
@@ -458,7 +314,7 @@ export default function HostDateManager({
               disabled={loading || !selectedRange}
               onClick={handleBlockSubmit}
             >
-              {loading ? "Blocking…" : "Block Selected Dates"}
+              {loading ? 'Blocking…' : 'Block Selected Dates'}
             </button>
           </div>
         </div>
@@ -491,9 +347,7 @@ export default function HostDateManager({
                   {fmtDate(block.startDate)} → {fmtDate(block.endDate)}
                 </div>
                 {block.reason && (
-                  <div className="text-[12px] text-[#A32D2D] mt-0.5 opacity-75">
-                    {block.reason}
-                  </div>
+                  <div className="text-[12px] text-[#A32D2D] mt-0.5 opacity-75">{block.reason}</div>
                 )}
               </div>
               <button
