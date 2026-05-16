@@ -249,6 +249,8 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
             </span>
           </div>
         </div>
+         <div>
+
         <button
           className={`rounded-3xl px-[18px] py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap transition-opacity tm-3 hover:opacity-85 border-0 ${
             showBlockForm ? 'bg-[#f7f7f7] text-[#717171]' : 'bg-[#1a1a2e] text-[#e8c547]'
@@ -257,6 +259,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
         >
           {showBlockForm ? 'Cancel' : '+ Block Dates'}
         </button>
+         </div>
       </div>
 
       {/* Block form */}
