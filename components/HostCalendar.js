@@ -269,7 +269,7 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
               >
                 {dayBookings.slice(0, 2).map((b) => (
                   <div
-                    key={b._id}
+                    key={b.id}
                     style={{
                       height: 3,
                       borderRadius: 2,
@@ -312,10 +312,10 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
             </span>
           </div>
           {getBookingsForDay(selected).map((b) => {
-            const userColor = getUserColor(b.user?._id);
+            const userColor = getUserColor(b.user?.id);
             return (
               <div
-                key={b._id}
+                key={b.id}
                 style={{
                   padding: "1rem",
                   borderBottom: "1px solid rgba(0,0,0,0.06)",
@@ -379,7 +379,7 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
                   </span>
                   {b.status === "pending" && (
                     <button
-                      onClick={() => onConfirmBooking(b._id)}
+                      onClick={() => onConfirmBooking(b.id)}
                       style={{
                         background: "#1D9E75",
                         color: "#fff",
@@ -396,7 +396,7 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
                   )}
                   {b.status !== "cancelled" && (
                     <button
-                      onClick={() => onCancelBooking(b._id)}
+                      onClick={() => onCancelBooking(b.id)}
                       style={{
                         background: "#fee2e2",
                         color: "#991b1b",

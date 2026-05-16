@@ -339,7 +339,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
                   <div className="hdm-block-dates">{fmtDate(block.startDate)} → {fmtDate(block.endDate)}</div>
                   {block.reason && <div className="hdm-block-reason">{block.reason}</div>}
                 </div>
-                <button className="hdm-remove-btn" onClick={() => handleRemoveBlock(block._id)}>Remove</button>
+                <button className="hdm-remove-btn" onClick={() => handleRemoveBlock(block.id)}>Remove</button>
               </div>
             ))}
           </div>
