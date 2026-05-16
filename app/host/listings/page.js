@@ -642,7 +642,7 @@ useEffect(() => {
                           <Link href={`/listings/${listing._id}`} style={{ fontSize: 12, color: "#1a1a2e", textDecoration: "none" }}>{t.viewDetails} →</Link>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => handleEdit(listing)}       style={{ fontSize: 12, color: "#185FA5", background: "none", border: "none", cursor: "pointer" }}>{t.edit}</button>
-                            <button onClick={() => handleDelete(listing._id)} style={{ fontSize: 12, color: "#e05a5a", background: "none", border: "none", cursor: "pointer" }}>{t.delete}</button>
+                            <button onClick={() => handleDelete(listing.id)} style={{ fontSize: 12, color: "#e05a5a", background: "none", border: "none", cursor: "pointer" }}>{t.delete}</button>
                           </div>
                         </div>
                       </div>

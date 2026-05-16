@@ -133,7 +133,7 @@ CREATE TRIGGER update_host_expiry_trigger
   EXECUTE FUNCTION update_host_expiry();
 
 -- =====================================================
--- INSERT TEST DATA (Run after getting password hashes)
+-- INSERT ADMIN (Run after getting password hashes)
 -- =====================================================
 
 -- Insert Super Admin
@@ -146,51 +146,12 @@ INSERT INTO users (
   status, 
   email_verified
 ) VALUES (
-  'Super Admin',
-  'a8sadi@gmail.com',
-  ' $2b$10$6Y34ZW1D.Xvp8XjW1DeOfuUkr0Yayo48EYT1rR',
+  'Abdurraouf Sadi',
+  'abdurraouf@mar-haba.ly',
+  '$2b$10$FVWuK/Bzg8zbNisWc86Ja.4kXGPqdGe0jxxp/fm.Y0HJYxFpKKkcS',
   '+218910000001',
   'super_admin',
   'confirmed',
   true
 );
 
--- Insert Test Host
-INSERT INTO users (
-  name, 
-  email, 
-  password_hash, 
-  phone_number, 
-  role, 
-  status, 
-  email_verified,
-  host_details
-) VALUES (
-  'Test Host',
-  'a.k.sadi80@gmail.com',
-  '$2b$10$uPR9tDb1RPtjCnE0yPZe9.pLoxYMzZrk9zkT.wRw',
-  '+218910000002',
-  'host',
-  'confirmed',
-  true,
-  '{"rating": 4.5, "totalListings": 0, "verified": true}'
-);
-
--- Insert Test User
-INSERT INTO users (
-  name, 
-  email, 
-  password_hash, 
-  phone_number, 
-  role, 
-  status, 
-  email_verified
-) VALUES (
-  'Test User',
-  'a-sadi@outlook.com',
-  '$2b$10$siPf0GvLhWd3WVlANNavwu9uj3b2oGIl8FceDxCc',
-  '+218910000003',
-  'user',
-  'confirmed',
-  true
-);
