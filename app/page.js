@@ -119,7 +119,7 @@ export default function Home() {
       const ct = res.headers.get("content-type");
       if (!ct?.includes("application/json")) throw new Error("Not JSON");
       const data = await res.json();
-      console.log(data.listings);
+      console.log(data);
       if (data.success && data.listings?.length > 0) {
         setListings(data.listings);
         console.log(data.listings);
