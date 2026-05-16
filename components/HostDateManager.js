@@ -81,113 +81,106 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
   const clearSelection = () => { setSelectedStartDate(null); setSelectedEndDate(null); setHoverDate(null); };
   const days = getDaysInMonth(currentMonth);
 
+  const getDayClasses = (date, isCurrentMonth) => {
+    const status = getBookingStatus(date);
+    const blocked = isBlocked(date);
+    const past = isPast(date);
+    const avail = isAvailable(date);
+    const start = isStart(date);
+    const end = isEnd(date);
+    const inRange = isInRange(date);
+    const hasEnd = !!selectedEndDate;
+
+    const base = "relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer font-[inherit]";
+
+    if (!isCurrentMonth) return `${base} opacity-30 cursor-default`;
+    if (start && hasEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-l-full`;
+    if (end) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-r-full`;
+    if (start) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-full`;
+    if (inRange) return `${base} bg-[#e8c547]/15 text-[#222] rounded-none`;
+    if (blocked) return `${base} bg-[#ebebeb] text-[#999] cursor-not-allowed line-through rounded-full`;
+    if (status === "confirmed") return `${base} bg-[#FCEBEB] text-[#791F1F] cursor-not-allowed line-through rounded-full`;
+    if (status === "pending") return `${base} bg-[#FAEEDA] text-[#633806] cursor-not-allowed line-through rounded-full`;
+    if (past) return `${base} text-[#ccc] cursor-not-allowed`;
+    return `${base} hover:bg-[#f0f0f0] text-[#222] rounded-full`;
+  };
+
   return (
-    <>
-      <style jsx>{`
-        .hc-wrap { background: #fff; border-radius: 16px; border: 1.5px solid #e5e5e5; padding: 20px; user-select: none; }
-        .hc-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .hc-nav-btn { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #e5e5e5; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #222; transition: border-color 0.15s; }
-        .hc-nav-btn:hover { border-color: #222; }
-        .hc-month { font-size: 15px; font-weight: 700; color: #222; }
-        .hc-weekdays { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 8px; }
-        .hc-weekday { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #717171; padding: 4px 0; }
-        .hc-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
-        .hc-day {
-          position: relative; aspect-ratio: 1; border: none; font-size: 13px; font-family: inherit;
-          display: flex; align-items: center; justify-content: center;
-          border-radius: 50%; transition: background 0.1s; cursor: pointer;
-        }
-        .hc-day.available:hover { background: #f0f0f0; }
-        .hc-day.sel-start, .hc-day.sel-end { background: #1a1a2e !important; color: #e8c547 !important; font-weight: 700; border-radius: 50%; }
-        .hc-day.in-range { background: rgba(232,197,71,0.15); border-radius: 0; color: #222; }
-        .hc-day.range-s { border-radius: 50% 0 0 50%; }
-        .hc-day.range-e { border-radius: 0 50% 50% 0; }
-        .hc-day.blocked-d { background: #ebebeb; color: #999; cursor: not-allowed; text-decoration: line-through; }
-        .hc-day.confirmed-d { background: #FCEBEB; color: #791F1F; cursor: not-allowed; text-decoration: line-through; }
-        .hc-day.pending-d { background: #FAEEDA; color: #633806; cursor: not-allowed; text-decoration: line-through; }
-        .hc-day.past-d { color: #ccc; cursor: not-allowed; }
-        .hc-day.other-m { color: #ddd; cursor: default; }
-        .hc-dot { position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; }
-        .hc-selection { margin-top: 14px; padding: 12px 14px; background: #f7f7f7; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .hc-sel-text { font-size: 13px; color: #222; font-weight: 500; }
-        .hc-clear { font-size: 12px; color: #717171; background: none; border: none; cursor: pointer; font-weight: 500; text-decoration: underline; }
-        .hc-legend { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
-        .hc-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #717171; }
-        .hc-swatch { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-      `}</style>
-      <div className="hc-wrap">
-        <div className="hc-nav">
-          <button className="hc-nav-btn" onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); }}>←</button>
-          <span className="hc-month">{MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
-          <button className="hc-nav-btn" onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); }}>→</button>
-        </div>
-        <div className="hc-weekdays">{WEEK_DAYS.map(d => <div key={d} className="hc-weekday">{d}</div>)}</div>
-        <div className="hc-days">
-          {days.map(({ date, isCurrentMonth }, i) => {
-            const status = getBookingStatus(date);
-            const blocked = isBlocked(date);
-            const past = isPast(date);
-            const sel = isSelected(date);
-            const inRange = isInRange(date);
-            const avail = isAvailable(date);
-            const start = isStart(date);
-            const end = isEnd(date);
-
-            let cls = "hc-day";
-            if (!isCurrentMonth) cls += " other-m";
-            else if (start && selectedEndDate) cls += " sel-start in-range range-s";
-            else if (end) cls += " sel-end in-range range-e";
-            else if (start) cls += " sel-start";
-            else if (inRange) cls += " in-range";
-            else if (blocked) cls += " blocked-d";
-            else if (status === "confirmed") cls += " confirmed-d";
-            else if (status === "pending") cls += " pending-d";
-            else if (past) cls += " past-d";
-            else if (isCurrentMonth) cls += " available";
-
-            return (
-              <button key={i} type="button" className={cls} style={{ opacity: !isCurrentMonth ? 0.3 : 1 }}
-                onClick={() => isCurrentMonth && handleDateClick(date)}
-                onMouseEnter={() => { if (avail && selectedStartDate && !selectedEndDate && date > selectedStartDate) setHoverDate(date); }}
-                onMouseLeave={() => setHoverDate(null)}
-                disabled={!avail && isCurrentMonth}
-                title={blocked ? "Blocked by you" : status === "confirmed" ? "Confirmed booking" : status === "pending" ? "Pending booking" : past ? "Past date" : "Available to block"}
-              >
-                {date.getDate()}
-                {status === "pending" && <span className="hc-dot" style={{ background: "#e8c547" }} />}
-                {status === "confirmed" && <span className="hc-dot" style={{ background: "#A32D2D" }} />}
-              </button>
-            );
-          })}
-        </div>
-
-        {(selectedStartDate || selectedEndDate) && (
-          <div className="hc-selection">
-            <span className="hc-sel-text">
-              {selectedStartDate?.toLocaleDateString()}{selectedEndDate ? ` → ${selectedEndDate.toLocaleDateString()}` : ""}
-            </span>
-            <button className="hc-clear" onClick={clearSelection}>Clear</button>
-          </div>
-        )}
-
-        <div className="hc-legend">
-          {[
-            { bg: "#fff", border: "1.5px solid #ddd", label: "Available" },
-            { bg: "#1a1a2e", label: "Selected" },
-            { bg: "rgba(232,197,71,0.15)", label: "Range" },
-            { bg: "#ebebeb", label: "Blocked by you" },
-            { bg: "#FAEEDA", label: "Pending" },
-            { bg: "#FCEBEB", label: "Confirmed" },
-            { bg: "#f0f0f0", label: "Past" },
-          ].map(({ bg, border, label }) => (
-            <div key={label} className="hc-legend-item">
-              <span className="hc-swatch" style={{ background: bg, border: border || "none" }} />
-              {label}
-            </div>
-          ))}
-        </div>
+    <div className="bg-white rounded-2xl border-[1.5px] border-[#e5e5e5] p-5 select-none">
+      {/* Month nav */}
+      <div className="flex justify-between items-center mb-5">
+        <button
+          className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); }}
+        >←</button>
+        <span className="text-[15px] font-bold text-[#222]">
+          {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </span>
+        <button
+          className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); }}
+        >→</button>
       </div>
-    </>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 mb-2">
+        {WEEK_DAYS.map(d => (
+          <div key={d} className="text-center text-[11px] font-bold tracking-[0.05em] text-[#717171] py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 gap-0.5">
+        {days.map(({ date, isCurrentMonth }, i) => {
+          const status = getBookingStatus(date);
+          const avail = isAvailable(date);
+          return (
+            <button
+              key={i}
+              type="button"
+              className={getDayClasses(date, isCurrentMonth)}
+              style={{ opacity: !isCurrentMonth ? 0.3 : 1 }}
+              onClick={() => isCurrentMonth && handleDateClick(date)}
+              onMouseEnter={() => { if (avail && selectedStartDate && !selectedEndDate && date > selectedStartDate) setHoverDate(date); }}
+              onMouseLeave={() => setHoverDate(null)}
+              disabled={!avail && isCurrentMonth}
+            >
+              {date.getDate()}
+              {status === "pending" && <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#e8c547]" />}
+              {status === "confirmed" && <span className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-[#A32D2D]" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selection display */}
+      {(selectedStartDate || selectedEndDate) && (
+        <div className="mt-3.5 px-3.5 py-3 bg-[#f7f7f7] rounded-[10px] flex justify-between items-center">
+          <span className="text-[13px] text-[#222] font-medium">
+            {selectedStartDate?.toLocaleDateString()}{selectedEndDate ? ` → ${selectedEndDate.toLocaleDateString()}` : ""}
+          </span>
+          <button className="text-[12px] text-[#717171] bg-none border-none cursor-pointer font-medium underline" onClick={clearSelection}>Clear</button>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div className="mt-4 pt-4 border-t border-[#f0f0f0] flex flex-wrap gap-x-4 gap-y-2">
+        {[
+          { bg: "bg-white border border-[#ddd]", label: "Available" },
+          { bg: "bg-[#1a1a2e]", label: "Selected" },
+          { bg: "bg-[#e8c547]/15", label: "Range" },
+          { bg: "bg-[#ebebeb]", label: "Blocked by you" },
+          { bg: "bg-[#FAEEDA]", label: "Pending" },
+          { bg: "bg-[#FCEBEB]", label: "Confirmed" },
+          { bg: "bg-[#f0f0f0]", label: "Past" },
+        ].map(({ bg, label }) => (
+          <div key={label} className="flex items-center gap-1.5 text-[11px] text-[#717171]">
+            <span className={`w-3 h-3 rounded-full flex-shrink-0 ${bg}`} />
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -239,112 +232,134 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
   const fmtDate = (s) => new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
   return (
-    <>
-      <style jsx>{`
-        .hdm-wrap { margin-top: 20px; }
-        .hdm-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-        .hdm-title { font-size: 15px; font-weight: 700; color: #222; margin-bottom: 4px; }
-        .hdm-sub { font-size: 12px; color: #717171; display: flex; align-items: center; gap: 12px; }
-        .hdm-sub-dot { display: inline-flex; align-items: center; gap: 5px; }
-        .hdm-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .hdm-block-btn {
-          background: #1a1a2e; color: #e8c547; border: none; border-radius: 24px;
-          padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
-          transition: opacity 0.15s;
-        }
-        .hdm-block-btn:hover { opacity: 0.85; }
-        .hdm-block-btn.cancel { background: #f7f7f7; color: #717171; }
-        .hdm-form { background: #f7f7f7; border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 1.5px solid #f0f0f0; }
-        .hdm-form-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #717171; margin-bottom: 8px; display: block; }
-        .hdm-form-input {
-          width: 100%; padding: 10px 14px; background: #fff; border: 1.5px solid #e5e5e5;
-          border-radius: 10px; font-size: 14px; color: #222; outline: none; font-family: inherit;
-          transition: border-color 0.15s;
-        }
-        .hdm-form-input:focus { border-color: #e8c547; }
-        .hdm-selected-range { margin-top: 14px; padding: 12px 16px; background: #fff; border: 1.5px solid #e8c547; border-radius: 10px; font-size: 13px; font-weight: 600; color: #222; }
-        .hdm-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-        .hdm-btn-cancel { background: #fff; color: #717171; border: 1.5px solid #e5e5e5; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: border-color 0.15s; }
-        .hdm-btn-cancel:hover { border-color: #aaa; }
-        .hdm-btn-submit { background: #1a1a2e; color: #e8c547; border: none; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
-        .hdm-btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
-        .hdm-alert-err { background: #FCEBEB; border: 1.5px solid rgba(163,45,45,0.2); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #791F1F; margin-top: 10px; }
-        .hdm-alert-ok { background: #EAF3DE; border: 1.5px solid rgba(39,80,10,0.15); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #27500A; margin-top: 10px; }
-        .hdm-blocks-title { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
-        .hdm-blocks { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-        .hdm-block-item { background: #FCEBEB; border: 1.5px solid rgba(163,45,45,0.12); border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-        .hdm-block-dates { font-size: 13px; color: #791F1F; font-weight: 600; }
-        .hdm-block-reason { font-size: 12px; color: #A32D2D; margin-top: 3px; opacity: 0.75; }
-        .hdm-remove-btn { background: none; border: none; color: #A32D2D; font-size: 12px; cursor: pointer; font-weight: 600; text-decoration: underline; flex-shrink: 0; }
-      `}</style>
-
-      <div className="hdm-wrap">
-        <div className="hdm-header">
-          <div>
-            <div className="hdm-title">Manage Blocked Dates</div>
-            <div className="hdm-sub">
-              <span className="hdm-sub-dot"><span className="hdm-dot" style={{ background: "#e8c547" }} /> Pending</span>
-              <span className="hdm-sub-dot"><span className="hdm-dot" style={{ background: "#A32D2D" }} /> Confirmed</span>
-              <span className="hdm-sub-dot"><span className="hdm-dot" style={{ background: "#ebebeb", border: "1px solid #ddd" }} /> Blocked</span>
-            </div>
+    <div className="mt-5">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <div className="text-[15px] font-bold text-[#222] mb-1">Manage Blocked Dates</div>
+          <div className="text-[12px] text-[#717171] flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" /> Pending
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#A32D2D] flex-shrink-0" /> Confirmed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#ebebeb] border border-[#ddd] flex-shrink-0" /> Blocked
+            </span>
           </div>
-          <button className={`hdm-block-btn${showBlockForm ? " cancel" : ""}`} onClick={() => { setShowBlockForm(!showBlockForm); setSelectedRange(null); setReason(''); }}>
-            {showBlockForm ? 'Cancel' : '+ Block Dates'}
-          </button>
         </div>
+        <button
+          className={`rounded-3xl px-[18px] py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap transition-opacity hover:opacity-85 border-0 ${
+            showBlockForm ? 'bg-[#f7f7f7] text-[#717171]' : 'bg-[#1a1a2e] text-[#e8c547]'
+          }`}
+          onClick={() => { setShowBlockForm(!showBlockForm); setSelectedRange(null); setReason(''); }}
+        >
+          {showBlockForm ? 'Cancel' : '+ Block Dates'}
+        </button>
+      </div>
 
-        {showBlockForm && (
-          <div className="hdm-form">
-            <label className="hdm-form-label">Select date range to block</label>
-            <HostCalendar
-              blockedDates={blockedDates}
-              bookings={bookings}
-              onRangeSelect={setSelectedRange}
-              existingBlockedRanges={blockedDates}
-            />
+      {/* Block form */}
+      {showBlockForm && (
+        <div className="bg-[#f7f7f7] rounded-2xl p-5 mb-4 border-[1.5px] border-[#f0f0f0]">
+          <label className="block text-[11px] font-bold tracking-[0.07em] uppercase text-[#717171] mb-2">
+            Select date range to block
+          </label>
+          <HostCalendar
+            blockedDates={blockedDates}
+            bookings={bookings}
+            onRangeSelect={setSelectedRange}
+            existingBlockedRanges={blockedDates}
+          />
 
-            {selectedRange && (
-              <div className="hdm-selected-range">
-                📅 {fmtDate(selectedRange.startDate)} → {fmtDate(selectedRange.endDate)}
-              </div>
-            )}
-
-            <div style={{ marginTop: 14 }}>
-              <label className="hdm-form-label">Reason (optional)</label>
-              <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. Maintenance, Personal use…" className="hdm-form-input" />
+          {selectedRange && (
+            <div className="mt-3.5 px-4 py-3 bg-white border-[1.5px] border-[#e8c547] rounded-[10px] text-[13px] font-semibold text-[#222]">
+              📅 {fmtDate(selectedRange.startDate)} → {fmtDate(selectedRange.endDate)}
             </div>
+          )}
 
-            {error && <div className="hdm-alert-err">{error}</div>}
-            {success && <div className="hdm-alert-ok">{success}</div>}
+          <div className="mt-3.5">
+            <label className="block text-[11px] font-bold tracking-[0.07em] uppercase text-[#717171] mb-2">
+              Reason (optional)
+            </label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Maintenance, Personal use…"
+              className="w-full px-3.5 py-2.5 bg-white border-[1.5px] border-[#e5e5e5] rounded-[10px] text-[14px] text-[#222] outline-none font-[inherit] transition-colors focus:border-[#e8c547]"
+            />
+          </div>
 
-            <div className="hdm-form-actions">
-              <button className="hdm-btn-cancel" onClick={() => { setShowBlockForm(false); setSelectedRange(null); setReason(''); }}>Cancel</button>
-              <button className="hdm-btn-submit" disabled={loading || !selectedRange} onClick={handleBlockSubmit}>
-                {loading ? 'Blocking…' : 'Block Selected Dates'}
+          {error && (
+            <div className="bg-[#FCEBEB] border-[1.5px] border-[#A32D2D]/20 rounded-[10px] px-3.5 py-2.5 text-[13px] text-[#791F1F] mt-2.5">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-[#EAF3DE] border-[1.5px] border-[#27500A]/15 rounded-[10px] px-3.5 py-2.5 text-[13px] text-[#27500A] mt-2.5">
+              {success}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2.5 mt-4">
+            <button
+              className="bg-white text-[#717171] border-[1.5px] border-[#e5e5e5] rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer font-[inherit] hover:border-[#aaa] transition-colors"
+              onClick={() => { setShowBlockForm(false); setSelectedRange(null); setReason(''); }}
+            >
+              Cancel
+            </button>
+            <button
+              className="bg-[#1a1a2e] text-[#e8c547] border-0 rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer font-[inherit] transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={loading || !selectedRange}
+              onClick={handleBlockSubmit}
+            >
+              {loading ? 'Blocking…' : 'Block Selected Dates'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && !showBlockForm && (
+        <div className="bg-[#EAF3DE] border-[1.5px] border-[#27500A]/15 rounded-[10px] px-3.5 py-2.5 text-[13px] text-[#27500A] mt-2.5">
+          {success}
+        </div>
+      )}
+      {error && !showBlockForm && (
+        <div className="bg-[#FCEBEB] border-[1.5px] border-[#A32D2D]/20 rounded-[10px] px-3.5 py-2.5 text-[13px] text-[#791F1F] mt-2.5">
+          {error}
+        </div>
+      )}
+
+      {/* Blocked date list */}
+      {blockedDates?.length > 0 && (
+        <div className="flex flex-col gap-2 mt-4">
+          <div className="text-[12px] font-bold tracking-[0.06em] uppercase text-[#999] mb-2.5">
+            Currently blocked
+          </div>
+          {blockedDates.map((block, i) => (
+            <div
+              key={i}
+              className="bg-[#FCEBEB] border-[1.5px] border-[#A32D2D]/12 rounded-xl px-4 py-3 flex justify-between items-start gap-2.5"
+            >
+              <div>
+                <div className="text-[13px] text-[#791F1F] font-semibold">
+                  {fmtDate(block.startDate)} → {fmtDate(block.endDate)}
+                </div>
+                {block.reason && (
+                  <div className="text-[12px] text-[#A32D2D] mt-0.5 opacity-75">{block.reason}</div>
+                )}
+              </div>
+              <button
+                className="bg-none border-none text-[#A32D2D] text-[12px] cursor-pointer font-semibold underline flex-shrink-0"
+                onClick={() => handleRemoveBlock(block.id)}
+              >
+                Remove
               </button>
             </div>
-          </div>
-        )}
-
-        {success && !showBlockForm && <div className="hdm-alert-ok">{success}</div>}
-        {error && !showBlockForm && <div className="hdm-alert-err">{error}</div>}
-
-        {blockedDates?.length > 0 && (
-          <div className="hdm-blocks">
-            <div className="hdm-blocks-title">Currently blocked</div>
-            {blockedDates.map((block, i) => (
-              <div key={i} className="hdm-block-item">
-                <div>
-                  <div className="hdm-block-dates">{fmtDate(block.startDate)} → {fmtDate(block.endDate)}</div>
-                  {block.reason && <div className="hdm-block-reason">{block.reason}</div>}
-                </div>
-                <button className="hdm-remove-btn" onClick={() => handleRemoveBlock(block.id)}>Remove</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

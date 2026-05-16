@@ -1,4 +1,3 @@
-// components/BookingCalendar.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,12 +5,6 @@ import { useEffect, useState } from "react";
 const toDateString = (date) => {
   if (!date) return "";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
-const fromDateString = (dateString) => {
-  if (!dateString) return null;
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
 };
 
 export default function BookingCalendar({ bookedDates, onDateSelect, checkIn, checkOut, isHost = false }) {
@@ -112,143 +105,114 @@ export default function BookingCalendar({ bookedDates, onDateSelect, checkIn, ch
   const WEEK_DAYS = ["Mo","Tu","We","Th","Fr","Sa","Su"];
   const days = getDaysInMonth(currentMonth);
 
+  const getDayClasses = (date, isCurrentMonth) => {
+    const status = getDateStatus(date);
+    const isPast = isDateInPast(date);
+    const isStart = isStartDate(date);
+    const isEnd = isEndDate(date);
+    const inRange = isDateInRange(date);
+    const hasEnd = !!selectedEndDate;
+
+    const base = "relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer font-[inherit]";
+
+    if (!isCurrentMonth) return `${base} opacity-30 cursor-default`;
+    if (isStart && hasEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-l-full`;
+    if (isEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-r-full`;
+    if (isStart) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-full`;
+    if (inRange) return `${base} bg-[#e8c547]/15 text-[#222] rounded-none`;
+    if (!isHost && status === "pending") return `${base} bg-[#FAEEDA] text-[#633806] cursor-not-allowed line-through rounded-full`;
+    if (!isHost && status === "confirmed") return `${base} bg-[#FCEBEB] text-[#791F1F] cursor-not-allowed line-through rounded-full`;
+    if (!isHost && status === "blocked") return `${base} bg-[#ebebeb] text-[#999] cursor-not-allowed line-through rounded-full`;
+    if (isPast) return `${base} text-[#ccc] cursor-not-allowed`;
+    return `${base} hover:bg-[#f0f0f0] text-[#222] rounded-full`;
+  };
+
+  const legendItems = isHost ? [
+    { bg: "bg-white border border-[#ddd]", label: "Available" },
+    { bg: "bg-[#1a1a2e]", label: "Selected" },
+    { bg: "bg-[#e8c547]/15", label: "Range" },
+    { bg: "bg-[#FAEEDA]", label: "Pending", dot: "bg-[#e8c547]" },
+    { bg: "bg-[#FCEBEB]", label: "Confirmed", dot: "bg-[#A32D2D]" },
+    { bg: "bg-[#ebebeb]", label: "Blocked" },
+  ] : [
+    { bg: "bg-white border border-[#ddd]", label: "Available" },
+    { bg: "bg-[#1a1a2e]", label: "Selected" },
+    { bg: "bg-[#e8c547]/15", label: "Range" },
+    { bg: "bg-[#FAEEDA]", label: "Pending" },
+    { bg: "bg-[#FCEBEB]", label: "Confirmed" },
+    { bg: "bg-[#ebebeb]", label: "Blocked" },
+  ];
+
   return (
-    <>
-      <style jsx>{`
-        .bc-wrap {
-          background: #fff;
-          border-radius: 16px;
-          border: 1.5px solid #e5e5e5;
-          padding: 20px;
-          user-select: none;
-        }
-        .bc-nav {
-          display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-        }
-        .bc-nav-btn {
-          width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #e5e5e5;
-          background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-          font-size: 14px; color: #222; transition: border-color 0.15s, background 0.15s;
-        }
-        .bc-nav-btn:hover { border-color: #222; background: #f7f7f7; }
-        .bc-month-label { font-size: 15px; font-weight: 700; color: #222; }
-        .bc-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
-        .bc-weekday { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #717171; padding: 4px 0; }
-        .bc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .bc-day {
-          position: relative; aspect-ratio: 1; border-radius: 50%; border: none;
-          font-size: 13px; cursor: pointer; font-family: inherit;
-          display: flex; align-items: center; justify-content: center;
-          transition: background 0.1s, color 0.1s;
-        }
-        .bc-day.available:hover { background: #f0f0f0; }
-        .bc-day.selected-start, .bc-day.selected-end { background: #1a1a2e !important; color: #e8c547 !important; font-weight: 700; border-radius: 50%; }
-        .bc-day.in-range { background: rgba(232, 197, 71, 0.15); border-radius: 0; color: #222; }
-        .bc-day.range-start { border-radius: 50% 0 0 50%; }
-        .bc-day.range-end { border-radius: 0 50% 50% 0; }
-        .bc-day.single-selected { border-radius: 50%; }
-        .bc-day.pending { background: #FAEEDA; color: #633806; cursor: not-allowed; text-decoration: line-through; border-radius: 50%; }
-        .bc-day.confirmed { background: #FCEBEB; color: #791F1F; cursor: not-allowed; text-decoration: line-through; border-radius: 50%; }
-        .bc-day.blocked { background: #ebebeb; color: #999; cursor: not-allowed; text-decoration: line-through; border-radius: 50%; }
-        .bc-day.past { color: #ccc; cursor: not-allowed; background: transparent; }
-        .bc-day.other-month { color: #ddd; cursor: default; }
-        .bc-dot {
-          position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
-          width: 4px; height: 4px; border-radius: 50%;
-        }
-        .bc-legend { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; gap: 10px 18px; }
-        .bc-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #717171; }
-        .bc-legend-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; position: relative; }
-      `}</style>
-
-      <div className="bc-wrap">
-        {/* Month nav */}
-        <div className="bc-nav">
-          <button className="bc-nav-btn" onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth() - 1); setCurrentMonth(d); }}>←</button>
-          <span className="bc-month-label">{MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
-          <button className="bc-nav-btn" onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth() + 1); setCurrentMonth(d); }}>→</button>
-        </div>
-
-        {/* Weekday headers */}
-        <div className="bc-weekdays">
-          {WEEK_DAYS.map((d) => <div key={d} className="bc-weekday">{d}</div>)}
-        </div>
-
-        {/* Day grid */}
-        <div className="bc-days">
-          {days.map(({ date, isCurrentMonth }, i) => {
-            const status = getDateStatus(date);
-            const isPast = isDateInPast(date);
-            const isSelected = isDateSelected(date);
-            const isInRange = isDateInRange(date);
-            const isStart = isStartDate(date);
-            const isEnd = isEndDate(date);
-
-            let isDisabled = isPast;
-            if (!isHost) isDisabled = isDisabled || status === "pending" || status === "confirmed" || status === "blocked";
-
-            let cls = "bc-day";
-            if (!isCurrentMonth) cls += " other-month";
-            else if (isStart && selectedEndDate) cls += " selected-start in-range range-start";
-            else if (isEnd) cls += " selected-end in-range range-end";
-            else if (isStart) cls += " selected-start single-selected";
-            else if (isInRange) cls += " in-range";
-            else if (status === "pending" && !isHost) cls += " pending";
-            else if (status === "confirmed" && !isHost) cls += " confirmed";
-            else if (status === "blocked" && !isHost) cls += " blocked";
-            else if (isPast) cls += " past";
-            else if (isCurrentMonth && !isDisabled) cls += " available";
-
-            return (
-              <button
-                key={i}
-                type="button"
-                className={cls}
-                disabled={isDisabled && !isHost}
-                onClick={() => !isDisabled && isCurrentMonth && handleDateClick(date)}
-                onMouseEnter={() => {
-                  if (!isDisabled && selectedStartDate && !selectedEndDate && isCurrentMonth) {
-                    const s = getDateStr(date);
-                    if (s > selectedStartDate) setHoverDate(s);
-                  }
-                }}
-                onMouseLeave={() => setHoverDate(null)}
-                style={{ opacity: !isCurrentMonth ? 0.3 : 1 }}
-              >
-                {date.getUTCDate()}
-                {status === "pending" && <span className="bc-dot" style={{ background: "#e8c547" }} />}
-                {status === "confirmed" && <span className="bc-dot" style={{ background: "#A32D2D" }} />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Legend */}
-        <div className="bc-legend">
-          {(isHost ? [
-            { swatch: "#fff", border: "1.5px solid #ddd", label: "Available" },
-            { swatch: "#1a1a2e", label: "Selected", textColor: "#e8c547" },
-            { swatch: "rgba(232,197,71,0.15)", label: "Range" },
-            { swatch: "#FAEEDA", label: "Pending", dot: "#e8c547" },
-            { swatch: "#FCEBEB", label: "Confirmed", dot: "#A32D2D" },
-            { swatch: "#ebebeb", label: "Blocked" },
-          ] : [
-            { swatch: "#fff", border: "1.5px solid #ddd", label: "Available" },
-            { swatch: "#1a1a2e", label: "Selected", textColor: "#e8c547" },
-            { swatch: "rgba(232,197,71,0.15)", label: "Range" },
-            { swatch: "#FAEEDA", label: "Pending" },
-            { swatch: "#FCEBEB", label: "Confirmed" },
-            { swatch: "#ebebeb", label: "Blocked" },
-          ]).map(({ swatch, border, label, textColor, dot }) => (
-            <div key={label} className="bc-legend-item">
-              <span className="bc-legend-swatch" style={{ background: swatch, border: border || "none" }}>
-                {dot && <span style={{ position: "absolute", bottom: 1, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: dot, display: "block" }} />}
-              </span>
-              <span style={{ color: textColor || "#717171" }}>{label}</span>
-            </div>
-          ))}
-        </div>
+    <div className="bg-white rounded-2xl border-[1.5px] border-[#e5e5e5] p-5 select-none">
+      {/* Month nav */}
+      <div className="flex justify-between items-center mb-5">
+        <button
+          className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] hover:bg-[#f7f7f7] transition-colors"
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth() - 1); setCurrentMonth(d); }}
+        >←</button>
+        <span className="text-[15px] font-bold text-[#222]">
+          {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </span>
+        <button
+          className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] hover:bg-[#f7f7f7] transition-colors"
+          onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth() + 1); setCurrentMonth(d); }}
+        >→</button>
       </div>
-    </>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 mb-2">
+        {WEEK_DAYS.map((d) => (
+          <div key={d} className="text-center text-[11px] font-bold tracking-[0.05em] text-[#717171] py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 gap-0.5">
+        {days.map(({ date, isCurrentMonth }, i) => {
+          const status = getDateStatus(date);
+          const isPast = isDateInPast(date);
+          const isDisabled = !isHost && (isPast || status === "pending" || status === "confirmed" || status === "blocked");
+
+          return (
+            <button
+              key={i}
+              type="button"
+              className={getDayClasses(date, isCurrentMonth)}
+              style={{ opacity: !isCurrentMonth ? 0.3 : 1 }}
+              disabled={isDisabled && !isHost}
+              onClick={() => !isDisabled && isCurrentMonth && handleDateClick(date)}
+              onMouseEnter={() => {
+                if (!isDisabled && selectedStartDate && !selectedEndDate && isCurrentMonth) {
+                  const s = getDateStr(date);
+                  if (s > selectedStartDate) setHoverDate(s);
+                }
+              }}
+              onMouseLeave={() => setHoverDate(null)}
+            >
+              {date.getUTCDate()}
+              {status === "pending" && (
+                <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#e8c547]" />
+              )}
+              {status === "confirmed" && (
+                <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#A32D2D]" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 pt-4 border-t border-[#f0f0f0] flex flex-wrap gap-x-[18px] gap-y-2.5">
+        {legendItems.map(({ bg, label, dot }) => (
+          <div key={label} className="flex items-center gap-1.5 text-[11px] text-[#717171]">
+            <span className={`w-3.5 h-3.5 rounded-full flex-shrink-0 relative ${bg}`}>
+              {dot && <span className={`absolute bottom-px left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${dot}`} />}
+            </span>
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
