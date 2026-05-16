@@ -876,7 +876,7 @@ console.log(data);
                           </div>
                         )}
                         <Link
-                          href={`/listings/${booking.listing?.id}`}
+                          href={`/listings/${booking.listing_id}`}
                           style={{
                             background: "rgba(0,0,0,0.04)",
                             color: "#555",
