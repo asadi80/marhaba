@@ -998,7 +998,7 @@ const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_ad
 
             {/* RIGHT: Booking / Host panel */}
             <div className="sidebar">
-              {!isHost && !isAdmin? (
+              {isHost  (
                 <div
                   className="fu fu2 section-card"
                   style={{ borderTop: "3px solid #e8c547" }}
