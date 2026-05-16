@@ -1599,7 +1599,7 @@ export default function ListingDetail({ params }) {
                       isHost={true}
                     />
                     <HostDateManager
-                      listingId={listing._id}
+                      listingId={listing.id}
                       blockedDates={blockedDatesArr}
                       onDatesUpdated={fetchListing}
                     />

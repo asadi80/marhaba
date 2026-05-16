@@ -228,7 +228,7 @@ useEffect(() => {
 
   const handleEdit = (listing) => {
     const coords = listing.coordinates?.lat && listing.coordinates?.lng ? listing.coordinates : null;
-    setIsEditing(true); setEditingId(listing._id);
+    setIsEditing(true); setEditingId(listing.id);
     setFormData({
       title: listing.title ?? "", description: listing.description ?? "",
       price: listing.price ?? "", location: listing.location ?? "",
@@ -625,7 +625,7 @@ useEffect(() => {
                 {listings.map((listing) => {
                   const category = CATEGORIES.find((c) => c.id === listing.category);
                   return (
-                    <div key={listing._id} className="listing-card">
+                    <div key={listing.id} className="listing-card">
                       <div style={{ height: 200, overflow: "hidden", position: "relative" }}>
                         <img src={listing.images[0]} alt={listing.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,46,0.92)", color: "#e8c547", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 500 }}>
@@ -639,7 +639,7 @@ useEffect(() => {
                         <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111118", marginBottom: 6 }}>{listing.title}</h3>
                         <p style={{ fontSize: 12, color: "#888", marginBottom: "0.5rem" }}>📍 {listing.location}</p>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: "0.875rem" }}>
-                          <Link href={`/listings/${listing._id}`} style={{ fontSize: 12, color: "#1a1a2e", textDecoration: "none" }}>{t.viewDetails} →</Link>
+                          <Link href={`/listings/${listing.id}`} style={{ fontSize: 12, color: "#1a1a2e", textDecoration: "none" }}>{t.viewDetails} →</Link>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => handleEdit(listing)}       style={{ fontSize: 12, color: "#185FA5", background: "none", border: "none", cursor: "pointer" }}>{t.edit}</button>
                             <button onClick={() => handleDelete(listing.id)} style={{ fontSize: 12, color: "#e05a5a", background: "none", border: "none", cursor: "pointer" }}>{t.delete}</button>
