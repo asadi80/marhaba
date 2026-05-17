@@ -9,7 +9,6 @@ import { useLanguage } from "@/hooks/useLanguage";
 import HostDateManager from '@/components/HostDateManager';
 import { trackListingView } from '@/lib/analytics';
 
-
 import "leaflet/dist/leaflet.css";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
@@ -62,14 +61,6 @@ const fixLeafletIcons = () => {
     });
   }
 };
-export default function ListingPage({ params }) {
-  useEffect(() => {
-    // Track when someone views the listing
-    trackListingView(params.id);
-  }, [params.id]);
-  
-  return <div>Listing content...</div>;
-}
 
 export default function ListingDetail({ params }) {
   const router = useRouter();
@@ -89,15 +80,39 @@ export default function ListingDetail({ params }) {
   const [activeImage, setActiveImage] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Fix Leaflet icons
   useEffect(() => { fixLeafletIcons(); setLeafletFixed(true); }, []);
-  useEffect(() => { params.then ? params.then(setUnwrappedParams) : setUnwrappedParams(params); }, [params]);
+  
+  // Unwrap params
+  useEffect(() => { 
+    params.then ? params.then(setUnwrappedParams) : setUnwrappedParams(params); 
+  }, [params]);
+  
+  // Track listing view when we have the ID
+  useEffect(() => {
+    if (unwrappedParams?.id) {
+      trackListingView(unwrappedParams.id);
+    }
+  }, [unwrappedParams?.id]);
+  
+  // Fetch current user
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { setCurrentUser(d?.user); });
   }, []);
-  useEffect(() => { if (unwrappedParams?.id) fetchListing(); }, [unwrappedParams]);
-  useEffect(() => { if (currentUser && listing) setIsHost(currentUser.id === listing.host?.id); }, [currentUser, listing]);
+  
+  // Fetch listing
+  useEffect(() => { 
+    if (unwrappedParams?.id) fetchListing(); 
+  }, [unwrappedParams]);
+  
+  // Check if current user is host
+  useEffect(() => { 
+    if (currentUser && listing) setIsHost(currentUser.id === listing.host?.id); 
+  }, [currentUser, listing]);
+  
+  // Calculate total price
   useEffect(() => {
     if (!listing || !booking.checkIn || !booking.checkOut) return;
     const nights = Math.ceil((createLocalDate(booking.checkOut) - createLocalDate(booking.checkIn)) / 86400000);
@@ -170,7 +185,7 @@ export default function ListingDetail({ params }) {
   if (!listing) return (
     <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2] flex-col gap-4">
       <div className="text-5xl">🏠</div>
-      <div className="font-[Fraunces,serif] italic font-light text-[26px] text-[#111118]">{t.listingNotFound}</div>
+      <div className="font-['Fraunces',serif] italic font-light text-[26px] text-[#111118]">{t.listingNotFound}</div>
       <Link href="/listings" className="text-[13px] text-[#185FA5] no-underline">{t.backToListings}</Link>
     </div>
   );
@@ -254,7 +269,7 @@ export default function ListingDetail({ params }) {
         {/* Back + Title */}
         <div className="mb-5">
           <Link href="/listings" className="text-[12px] text-[#888] no-underline inline-flex items-center gap-1 mb-2.5">
-            {t.backToListings}
+            ← {t.backToListings}
           </Link>
           {categoryInfo && (
             <div className="inline-flex items-center gap-1.5 bg-[#f7f6f2] px-3.5 py-1.5 rounded-3xl text-[13px] text-[#555] mb-4 border border-black/7">
