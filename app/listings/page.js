@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export default function ListingsPage() {
   const router = useRouter();
+  const { lang, t, toggleLanguage } = useLanguage();
+  const isAr = lang === 'ar';
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -40,15 +43,20 @@ export default function ListingsPage() {
   const avi = (name) => AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
   const NAV_LINKS = [
-    { href: '/dashboard', label: 'dashboard' },
-    { href: '/listings', label: 'browse', active: true },
+    { href: '/dashboard', label: t.dashboard },
+    { href: '/listings', label: t.browse, active: true },
   ];
 
   const inputClass =
     'w-full py-2.5 px-3 bg-[#fafaf8] border border-black/10 rounded-lg text-[13px] text-[#111118] font-[\'DM_Mono\',monospace] outline-none transition-all placeholder:text-[#c0bfbb] hover:border-black/18 focus:border-[#185FA5] focus:shadow-[0_0_0_3px_rgba(24,95,165,0.08)] focus:bg-white';
 
+  const handleLogout = async () => {
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
+    router.push("/login");
+  };
+
   return (
-    <div className="min-h-screen bg-[#f7f6f2]">
+    <div className="min-h-screen bg-[#f7f6f2]" dir={isAr ? 'rtl' : 'ltr'} style={{ fontFamily: isAr ? "'Cairo', 'Tajawal', sans-serif" : "'DM Mono', monospace" }}>
 
       {/* NAV */}
       <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
@@ -69,8 +77,20 @@ export default function ListingsPage() {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
-          <Link href="/dashboard" className="text-xs text-white/45 no-underline">← dashboard</Link>
+        <div className="hidden md:flex items-center gap-2.5">
+          <button
+            onClick={toggleLanguage}
+            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
+          >
+            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+          </button>
+          <Link href="/dashboard" className="text-xs text-white/45 no-underline">← {t.dashboard}</Link>
+          <button
+            onClick={handleLogout}
+            className="bg-transparent border border-[#e8c547] rounded-md px-2.5 py-[5px] text-[11px] text-[#e8c547] cursor-pointer hover:border-[#e64949] transition-colors font-[inherit]"
+          >
+            {t.logout || "Logout"}
+          </button>
         </div>
 
         {/* Hamburger */}
@@ -84,6 +104,18 @@ export default function ListingsPage() {
       {/* Mobile nav */}
       {mobileNavOpen && (
         <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-4 z-40 flex flex-col gap-1">
+          <button
+            onClick={toggleLanguage}
+            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
+          >
+            {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="bg-transparent border border-white/20 rounded-md px-3 py-2 text-[12px] text-white cursor-pointer font-[inherit] w-full"
+          >
+            {t.logout || "Logout"}
+          </button>
           {NAV_LINKS.map(({ href, label }) => (
             <Link key={href} href={href} onClick={() => setMobileNavOpen(false)}
               className="text-[13px] text-white/60 no-underline py-2.5 border-b border-white/[0.06] last:border-b-0 block">
@@ -97,9 +129,9 @@ export default function ListingsPage() {
 
         {/* HEADER */}
         <div className="mb-6 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-          <div className="text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5">explore</div>
+          <div className="text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5">{t.explore}</div>
           <h1 className="font-['Fraunces',serif] italic font-light text-[clamp(24px,4vw,36px)] text-[#111118] leading-tight">
-            Browse listings
+            {t.browseListings}
           </h1>
         </div>
 
@@ -110,7 +142,7 @@ export default function ListingsPage() {
 
               {/* Location */}
               <div className="flex-[2_1_180px] min-w-0">
-                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">location</label>
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">{t.location}</label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -119,7 +151,7 @@ export default function ListingsPage() {
                   </span>
                   <input
                     type="text"
-                    placeholder="Anywhere"
+                    placeholder={t.anywhere}
                     value={filters.location}
                     onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                     className={`${inputClass} pl-7`}
@@ -129,7 +161,7 @@ export default function ListingsPage() {
 
               {/* Min price */}
               <div className="flex-[1_1_110px] min-w-0">
-                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">min price</label>
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">{t.minPrice}</label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#bbb] pointer-events-none">$</span>
                   <input
@@ -144,7 +176,7 @@ export default function ListingsPage() {
 
               {/* Max price */}
               <div className="flex-[1_1_110px] min-w-0">
-                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">max price</label>
+                <label className="block text-[10px] tracking-[0.09em] uppercase text-[#999] mb-1.5">{t.maxPrice}</label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#bbb] pointer-events-none">$</span>
                   <input
@@ -165,7 +197,7 @@ export default function ListingsPage() {
                     <circle cx="5" cy="5" r="3.5" stroke="#e8c547" strokeWidth="1.2"/>
                     <path d="M7.5 7.5L10 10" stroke="#e8c547" strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
-                  search
+                  {t.search}
                 </button>
               </div>
             </div>
@@ -175,8 +207,8 @@ export default function ListingsPage() {
         {/* Results count */}
         {!loading && listings.length > 0 && (
           <div className="text-xs text-[#999] mb-4 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.07s_both]">
-            {listings.length} {listings.length === 1 ? 'listing' : 'listings'} found
-            {filters.location && <> in <span className="text-[#111118]">{filters.location}</span></>}
+            {listings.length} {listings.length === 1 ? t.listing : t.listings} {t.found}
+            {filters.location && <> {t.in} <span className="text-[#111118]">{filters.location}</span></>}
           </div>
         )}
 
@@ -202,8 +234,8 @@ export default function ListingsPage() {
               const hostInitial = listing.host?.name?.charAt(0)?.toUpperCase() || 'H';
               return (
                 <Link
-                  href={`/listings/${listing._id}`}
-                  key={listing._id}
+                  href={`/listings/${listing.id}`}
+                  key={listing.id}
                   className="bg-white rounded-[14px] border border-black/7 overflow-hidden no-underline block transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.09)] group"
                 >
                   <div className="overflow-hidden h-[200px]">
@@ -227,7 +259,7 @@ export default function ListingsPage() {
                     <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
                       <div className="inline-flex items-baseline gap-0.5">
                         <span className="text-base font-medium text-[#111118]">${listing.price}</span>
-                        <span className="text-[11px] text-[#999]">&nbsp;/ night</span>
+                        <span className="text-[11px] text-[#999]">&nbsp;/ {t.night}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className={`w-[22px] h-[22px] rounded-full flex items-center justify-center text-[10px] font-medium shrink-0 ${hostAvi.bg} ${hostAvi.color}`}>
@@ -252,14 +284,14 @@ export default function ListingsPage() {
               </svg>
             </div>
             <div className="font-['Fraunces',serif] italic font-light text-[22px] text-[#111118] mb-2">
-              No listings found
+              {t.noListingsFound}
             </div>
-            <p className="text-[13px] text-[#999] mb-5">Try adjusting your search filters.</p>
+            <p className="text-[13px] text-[#999] mb-5">{t.tryAdjustingFilters}</p>
             <button
               onClick={() => { setFilters({ location: '', minPrice: '', maxPrice: '' }); fetchListings(); }}
               className="bg-transparent border border-black/10 rounded-lg py-2 px-[18px] text-xs font-[inherit] text-[#555] cursor-pointer hover:border-black/20 transition-colors"
             >
-              clear filters
+              {t.clearFilters}
             </button>
           </div>
         )}

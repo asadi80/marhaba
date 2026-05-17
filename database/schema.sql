@@ -1,15 +1,15 @@
--- database/schema_fixed.sql
+-- database/schema.sql
 -- Drop tables if they exist (in reverse order of dependencies)
-DROP TABLE IF EXISTS analytics_yearly CASCADE;
-DROP TABLE IF EXISTS analytics_monthly CASCADE;
-DROP TABLE IF EXISTS analytics_daily CASCADE;
-DROP TABLE IF EXISTS analytics_events CASCADE;
-DROP TABLE IF EXISTS listing_analytics_daily CASCADE;
-DROP TABLE IF EXISTS listing_analytics_monthly CASCADE;
-DROP TABLE IF EXISTS listing_analytics_yearly CASCADE;
-DROP TABLE IF EXISTS bookings CASCADE;
-DROP TABLE IF EXISTS listings CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+-- DROP TABLE IF EXISTS analytics_yearly CASCADE;
+-- DROP TABLE IF EXISTS analytics_monthly CASCADE;
+-- DROP TABLE IF EXISTS analytics_daily CASCADE;
+-- DROP TABLE IF EXISTS analytics_events CASCADE;
+-- DROP TABLE IF EXISTS listing_analytics_daily CASCADE;
+-- DROP TABLE IF EXISTS listing_analytics_monthly CASCADE;
+-- DROP TABLE IF EXISTS listing_analytics_yearly CASCADE;
+-- DROP TABLE IF EXISTS bookings CASCADE;
+-- DROP TABLE IF EXISTS listings CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
 
 -- =====================================================
 -- USERS TABLE
@@ -479,23 +479,23 @@ $$ LANGUAGE plpgsql;
 -- =====================================================
 -- INSERT ADMIN
 -- =====================================================
-INSERT INTO users (
-  name, 
-  email, 
-  password_hash, 
-  phone_number, 
-  role, 
-  status, 
-  email_verified
-) VALUES (
-  'Abdurraouf Sadi',
-  'abdurraouf@mar-haba.ly',
-  '$2b$10$FVWuK/Bzg8zbNisWc86Ja.4kXGPqdGe0jxxp/fm.Y0HJYxFpKKkcS',
-  '+218910000001',
-  'super_admin',
-  'confirmed',
-  true
-);
+-- INSERT INTO users (
+--   name, 
+--   email, 
+--   password_hash, 
+--   phone_number, 
+--   role, 
+--   status, 
+--   email_verified
+-- ) VALUES (
+--   'Abdurraouf Sadi',
+--   'abdurraouf@mar-haba.ly',
+--   '$2b$10$FVWuK/Bzg8zbNisWc86Ja.4kXGPqdGe0jxxp/fm.Y0HJYxFpKKkcS',
+--   '+218910000001',
+--   'super_admin',
+--   'confirmed',
+--   true
+-- );
 
 -- =====================================================
 -- SAMPLE QUERIES FOR ANALYTICS
