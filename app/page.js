@@ -551,14 +551,14 @@ export default function Home() {
                         listing.title?.slice(0, 30)}
                     </span>
                     <span className="flex items-center gap-1 text-[13px] font-medium">
-                      <svg
+                      {/* <svg
                         width="12"
                         height="12"
                         viewBox="0 0 12 12"
                         fill="#e8c547"
                       >
                         <path d="M6 1l1.4 2.8L11 4.3l-2.5 2.4.6 3.3L6 8.5 2.9 10l.6-3.3L1 4.3l3.6-.5L6 1z" />
-                      </svg>
+                      </svg> */}
                       {/* {listing.rating || "4.9"} */}
                     </span>
                   </div>
