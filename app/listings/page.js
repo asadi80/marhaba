@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
+import PublicAnalytics from '@/components/PublicAnalytics'; // Add this import
 
 export default function ListingsPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [filters, setFilters] = useState({ location: '', minPrice: '', maxPrice: '' });
+  const [showAnalytics, setShowAnalytics] = useState(false); // Add this for toggle
 
   useEffect(() => { fetchListings(); }, []);
 
@@ -45,6 +47,7 @@ export default function ListingsPage() {
   const NAV_LINKS = [
     { href: '/dashboard', label: t.dashboard },
     { href: '/listings', label: t.browse, active: true },
+    { href: '/analytics', label: 'Analytics' }, // Add this if you want a link
   ];
 
   const inputClass =
@@ -78,6 +81,13 @@ export default function ListingsPage() {
         </div>
 
         <div className="hidden md:flex items-center gap-2.5">
+          {/* Add Analytics Toggle Button */}
+          <button
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
+          >
+            {showAnalytics ? 'Hide Stats' : 'Show Stats'} 📊
+          </button>
           <button
             onClick={toggleLanguage}
             className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
@@ -105,6 +115,12 @@ export default function ListingsPage() {
       {mobileNavOpen && (
         <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-4 z-40 flex flex-col gap-1">
           <button
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
+          >
+            {showAnalytics ? 'Hide Stats' : 'Show Stats'} 📊
+          </button>
+          <button
             onClick={toggleLanguage}
             className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
           >
@@ -126,6 +142,13 @@ export default function ListingsPage() {
       )}
 
       <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-7">
+
+        {/* ANALYTICS SECTION - Toggleable */}
+        {showAnalytics && (
+          <div className="mb-8 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
+            <PublicAnalytics />
+          </div>
+        )}
 
         {/* HEADER */}
         <div className="mb-6 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">

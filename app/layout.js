@@ -1,4 +1,9 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
+import { trackPageView } from '@/lib/analytics';
 
 import "./globals.css";
 
@@ -32,6 +37,12 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+   const pathname = usePathname();
+  
+  useEffect(() => {
+    // Track all page views automatically
+    trackPageView(pathname);
+  }, [pathname]);
   return (
     <html
       lang="en"

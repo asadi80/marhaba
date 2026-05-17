@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import BookingCalendar from "@/components/BookingCalendar";
 import { useLanguage } from "@/hooks/useLanguage";
 import HostDateManager from '@/components/HostDateManager';
+import { trackListingView } from '@/lib/analytics';
+
 
 import "leaflet/dist/leaflet.css";
 
@@ -60,6 +62,14 @@ const fixLeafletIcons = () => {
     });
   }
 };
+export default function ListingPage({ params }) {
+  useEffect(() => {
+    // Track when someone views the listing
+    trackListingView(params.id);
+  }, [params.id]);
+  
+  return <div>Listing content...</div>;
+}
 
 export default function ListingDetail({ params }) {
   const router = useRouter();
