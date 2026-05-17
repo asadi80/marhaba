@@ -258,7 +258,7 @@ export default function ListingsPage() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
                       <div className="inline-flex items-baseline gap-0.5">
-                        <span className="text-base font-medium text-[#111118]">${listing.price}</span>
+                        <span className="text-base font-medium text-[#111118]">{listing.price} {isAr ? "دينار" : "LYD"}</span>
                         <span className="text-[11px] text-[#999]">&nbsp;/ {t.night}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
