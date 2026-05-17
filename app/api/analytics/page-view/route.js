@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import pool from '@/lib/postgres'; // Change this line
 import { verifyToken } from '@/lib/auth';
 
 export async function POST(request) {
@@ -19,7 +19,7 @@ export async function POST(request) {
     }
     
     // Alternative: Check cookie directly
-    const cookieToken = request.cookies.get('auth_token')?.value;
+    const cookieToken = request.cookies.get('token')?.value; // Changed from 'auth_token' to 'token' to match your login route
     if (!userId && cookieToken) {
       const decoded = verifyToken(cookieToken);
       if (decoded) {
@@ -48,15 +48,13 @@ export async function POST(request) {
       else if (userAgent.includes('Edge')) browser = 'Edge';
     }
     
-    // Insert analytics event
-    await query(
+    // Insert analytics event using pool.query
+    await pool.query(
       `INSERT INTO analytics_events (
         session_id, user_id, event_type, page_url, referrer_url,
-        user_agent, ip_address, device_type, browser, created_at,
-        metadata
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)`,
-      [sessionId, userId, 'page_view', path, referrer, userAgent, ip, deviceType, browser, 
-       JSON.stringify({ screenWidth, screenHeight })]
+        user_agent, ip_address, device_type, browser, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+      [sessionId, userId, 'page_view', path, referrer, userAgent, ip, deviceType, browser]
     );
     
     return NextResponse.json({ success: true });

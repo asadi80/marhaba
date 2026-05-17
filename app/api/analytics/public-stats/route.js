@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import pool from '@/lib/postgres'; // Change this line
 
 export async function GET(request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request) {
     
     // Get daily stats (last 30 days)
     if (period === 'daily') {
-      const result = await query(`
+      const result = await pool.query(`
         SELECT 
           date,
           total_visits,
@@ -26,7 +26,7 @@ export async function GET(request) {
     
     // Get monthly stats (current year)
     if (period === 'monthly') {
-      const result = await query(`
+      const result = await pool.query(`
         SELECT 
           year,
           month,
@@ -42,7 +42,7 @@ export async function GET(request) {
     
     // Get yearly stats (last 5 years)
     if (period === 'yearly') {
-      const result = await query(`
+      const result = await pool.query(`
         SELECT 
           year,
           total_visits,
@@ -56,7 +56,7 @@ export async function GET(request) {
     }
     
     // Get summary for everyone
-    const summaryResult = await query(`
+    const summaryResult = await pool.query(`
       SELECT 
         (SELECT COUNT(*) FROM analytics_events WHERE event_type = 'page_view' AND created_at >= CURRENT_DATE) as today_views,
         (SELECT COUNT(DISTINCT session_id) FROM analytics_events WHERE created_at >= CURRENT_DATE) as today_visitors,

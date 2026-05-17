@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import pool from '@/lib/postgres'; // Change this line
+import jwt from 'jsonwebtoken'; // Add this for token verification
 
 export async function GET(request) {
   try {
-    // Get token from cookie
-    const token = request.cookies.get('auth_token')?.value;
+    // Get token from cookie (matches your login route)
+    const token = request.cookies.get('token')?.value;
     
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized - Please login' }, { status: 401 });
     }
     
-    // Verify token and get user
-    const decoded = verifyToken(token);
-    if (!decoded) {
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
     
     // Get user details with role
-    const userResult = await query(
+    const userResult = await pool.query(
       `SELECT id, role FROM users WHERE id = $1`,
       [decoded.userId]
     );
@@ -34,16 +36,17 @@ export async function GET(request) {
     const listingId = searchParams.get('listingId');
     const period = searchParams.get('period') || 'daily';
     
-    let query_text = '';
+    let queryText = '';
     let params = [];
     
     // If admin, can see all listings or specific one
     // If host, only see their own listings
     if (user.role === 'admin' && listingId) {
       params = [listingId];
+      queryText = `WHERE lad.listing_id = $1`;
     } else if (user.role === 'host') {
       // Get host's listings first
-      const listingsResult = await query(
+      const listingsResult = await pool.query(
         `SELECT id FROM listings WHERE host_id = $1`,
         [user.id]
       );
@@ -52,19 +55,20 @@ export async function GET(request) {
       if (listingIds.length === 0) {
         return NextResponse.json({ 
           message: 'No listings found',
-          stats: [] 
+          stats: [],
+          summary: { total_views: 0, total_unique_views: 0, total_bookings: 0, total_revenue: 0 }
         });
       }
       
       params = [listingIds];
-      query_text = `WHERE listing_id = ANY($1::uuid[])`;
+      queryText = `WHERE lad.listing_id = ANY($1::uuid[])`;
     }
     
     // Get analytics based on period
     let stats = [];
     
     if (period === 'daily') {
-      const result = await query(`
+      const result = await pool.query(`
         SELECT 
           l.title,
           lad.date,
@@ -74,13 +78,13 @@ export async function GET(request) {
           lad.booking_value
         FROM listing_analytics_daily lad
         JOIN listings l ON l.id = lad.listing_id
-        ${query_text}
+        ${queryText}
         AND lad.date >= CURRENT_DATE - INTERVAL '30 days'
         ORDER BY lad.date DESC
       `, params);
       stats = result.rows;
     } else if (period === 'monthly') {
-      const result = await query(`
+      const result = await pool.query(`
         SELECT 
           l.title,
           lam.year,
@@ -92,7 +96,7 @@ export async function GET(request) {
           lam.occupancy_rate
         FROM listing_analytics_monthly lam
         JOIN listings l ON l.id = lam.listing_id
-        ${query_text}
+        ${queryText}
         AND lam.year = EXTRACT(YEAR FROM CURRENT_DATE)
         ORDER BY lam.year DESC, lam.month DESC
       `, params);
@@ -100,17 +104,22 @@ export async function GET(request) {
     }
     
     // Get summary for host's listings
-    const summaryResult = await query(`
-      SELECT 
-        SUM(lad.views) as total_views,
-        SUM(lad.unique_views) as total_unique_views,
-        SUM(lad.bookings_count) as total_bookings,
-        SUM(lad.booking_value) as total_revenue
-      FROM listing_analytics_daily lad
-      JOIN listings l ON l.id = lad.listing_id
-      ${query_text}
-      AND lad.date >= CURRENT_DATE - INTERVAL '30 days'
-    `, params);
+    let summaryResult;
+    if (queryText) {
+      summaryResult = await pool.query(`
+        SELECT 
+          COALESCE(SUM(lad.views), 0) as total_views,
+          COALESCE(SUM(lad.unique_views), 0) as total_unique_views,
+          COALESCE(SUM(lad.bookings_count), 0) as total_bookings,
+          COALESCE(SUM(lad.booking_value), 0) as total_revenue
+        FROM listing_analytics_daily lad
+        JOIN listings l ON l.id = lad.listing_id
+        ${queryText}
+        AND lad.date >= CURRENT_DATE - INTERVAL '30 days'
+      `, params);
+    } else {
+      summaryResult = { rows: [{ total_views: 0, total_unique_views: 0, total_bookings: 0, total_revenue: 0 }] };
+    }
     
     return NextResponse.json({
       stats,
