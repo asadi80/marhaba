@@ -1,45 +1,35 @@
+// app/api/analytics/page-view/route.js
 import { NextResponse } from 'next/server';
-import pool from '@/lib/postgres'; // Change this line
-import { verifyToken } from '@/lib/auth';
+import pool from '@/lib/postgres';
+import jwt from 'jsonwebtoken';
 
 export async function POST(request) {
   try {
     const { sessionId, path, referrer, userAgent, screenWidth, screenHeight } = await request.json();
     
-    // Get token from Authorization header or cookie
-    const authHeader = request.headers.get('authorization');
+    // ✅ READ 'token' cookie (not 'auth_token')
+    const token = request.cookies.get('token')?.value;
+    
     let userId = null;
-    
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const decoded = verifyToken(token);
-      if (decoded) {
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.userId;
+      } catch (err) {
+        console.error('Token verification failed:', err.message);
       }
     }
     
-    // Alternative: Check cookie directly
-    const cookieToken = request.cookies.get('token')?.value; // Changed from 'auth_token' to 'token' to match your login route
-    if (!userId && cookieToken) {
-      const decoded = verifyToken(cookieToken);
-      if (decoded) {
-        userId = decoded.userId;
-      }
-    }
-    
-    // Get IP address
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
                request.headers.get('x-real-ip') || 
                'unknown';
     
-    // Device detection
     let deviceType = 'desktop';
     if (userAgent) {
       if (/(mobile|android|iphone)/i.test(userAgent)) deviceType = 'mobile';
       if (/(tablet|ipad)/i.test(userAgent)) deviceType = 'tablet';
     }
     
-    // Browser detection
     let browser = 'unknown';
     if (userAgent) {
       if (userAgent.includes('Chrome')) browser = 'Chrome';
@@ -48,7 +38,6 @@ export async function POST(request) {
       else if (userAgent.includes('Edge')) browser = 'Edge';
     }
     
-    // Insert analytics event using pool.query
     await pool.query(
       `INSERT INTO analytics_events (
         session_id, user_id, event_type, page_url, referrer_url,
