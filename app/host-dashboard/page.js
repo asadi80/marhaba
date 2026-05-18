@@ -311,7 +311,6 @@ export default function HostDashboard() {
     { href: "/host-dashboard", label: t.dashboard },
     { href: "/host/listings", label: t.myListings },
     { href: "/host/bookings", label: t.bookings },
-    { href: "/host/analytics", label: t.analytics },
   ];
 
   const STAT_CARDS = [

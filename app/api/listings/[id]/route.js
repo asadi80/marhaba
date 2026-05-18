@@ -11,6 +11,7 @@ function isValidUUID(uuid) {
 
 // GET - Fetch single listing with its booked and blocked dates (public)
 export async function GET(request, { params }) {
+  
   try {
     console.log('=== GET Listing API Called ===');
     const { id } = await params;
@@ -116,6 +117,7 @@ export async function GET(request, { params }) {
         email: listing.host_email,
         hostDetails: listing.host_details,
       },
+       view_count: listing.view_count,
       blocked_dates: listing.blocked_dates,
     };
     

@@ -196,6 +196,157 @@ function ListingCard({ listing }) {
   );
 }
 
+function SessionCard({ session }) {
+  return (
+    <div className="border border-black/[0.06] rounded-lg p-3 hover:bg-[#fafaf8] transition-all">
+
+      {/* Header */}
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-[#111118] mb-1">Device</p>
+          <p className="text-sm font-medium text-[#185FA5]">
+            {session.device || "Unknown Device"}
+          </p>
+        </div>
+
+        <span
+          className={`text-[11px] px-2 py-0.5 rounded-full ${
+            session.isActive
+              ? "bg-[#EAF3DE] text-[#27500A]"
+              : "bg-[#F1EFE8] text-[#444441]"
+          }`}
+        >
+          {session.isActive ? "Active" : "Ended"}
+        </span>
+      </div>
+
+      {/* Details */}
+      <div className="grid grid-cols-2 gap-2 text-xs text-[#666] mt-2">
+
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Browser</span>
+          <p className="text-[#111118] mt-0.5">
+            {session.browser || "Unknown"}
+          </p>
+        </div>
+
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">OS</span>
+          <p className="text-[#111118] mt-0.5">
+            {session.os || "Unknown"}
+          </p>
+        </div>
+
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">IP</span>
+          <p className="text-[#111118] mt-0.5 font-mono">
+            {session.ipAddress || "Unknown"}
+          </p>
+        </div>
+
+        <div>
+          <span className="text-[10px] uppercase tracking-wider">Login</span>
+          <p className="text-[#111118] mt-0.5">
+            {session.loggedInAt
+              ? new Date(session.loggedInAt).toLocaleString()
+              : "-"}
+          </p>
+        </div>
+
+        {session.loggedOutAt && (
+          <div className="col-span-2">
+            <span className="text-[10px] uppercase tracking-wider">
+              Logout
+            </span>
+            <p className="text-[#111118] mt-0.5">
+              {new Date(session.loggedOutAt).toLocaleString()}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* UA */}
+      {session.userAgent && (
+        <p className="text-[10px] text-[#999] mt-2 truncate">
+          {session.userAgent}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Events Card Component
+function EventsCard({ event }) {
+  return (
+    <div className="border border-black/[0.06] rounded-lg p-3 hover:bg-[#fafaf8] transition-all">
+      
+      {/* Header */}
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-[#111118] mb-1">Event Type</p>
+          <p className="text-sm font-medium text-[#185FA5] capitalize">
+            {event.type}
+          </p>
+        </div>
+
+        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#E6F1FB] text-[#0C447C]">
+          {new Date(event.createdAt).toLocaleDateString()}
+        </span>
+      </div>
+
+      {/* Metadata */}
+      <div className="text-xs text-[#666] space-y-2 mt-2">
+
+        {/* Device */}
+        {event.metadata?.device?.type && (
+          <div className="flex justify-between">
+            <span className="text-[10px] uppercase tracking-wider">Device</span>
+            <span className="text-[#111118]">
+              {event.metadata.device.type}
+            </span>
+          </div>
+        )}
+
+        {/* Browser */}
+        {event.metadata?.browser?.name && (
+          <div className="flex justify-between">
+            <span className="text-[10px] uppercase tracking-wider">Browser</span>
+            <span className="text-[#111118]">
+              {event.metadata.browser.name}
+            </span>
+          </div>
+        )}
+
+        {/* OS */}
+        {event.metadata?.os?.name && (
+          <div className="flex justify-between">
+            <span className="text-[10px] uppercase tracking-wider">OS</span>
+            <span className="text-[#111118]">
+              {event.metadata.os.name}
+            </span>
+          </div>
+        )}
+
+        {/* IP */}
+        {event.metadata?.ip && (
+          <div className="flex justify-between">
+            <span className="text-[10px] uppercase tracking-wider">IP</span>
+            <span className="text-[#111118] font-mono">
+              {event.metadata.ip}
+            </span>
+          </div>
+        )}
+
+        {/* fallback */}
+        {!event.metadata && (
+          <p className="text-[#bbb] text-xs">No metadata available</p>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function UserDetailPage() {
   const router = useRouter();
@@ -214,8 +365,20 @@ export default function UserDetailPage() {
   const [notification, setNotification] = useState(null);
   const [lightboxImg, setLightboxImg] = useState(null);
   const [activeTab, setActiveTab] = useState("info"); // info, listings, bookings
+  const [userSession, setUserSession] = useState([]);
+  const [userEvents, setUserEvents] = useState([]);
 
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const tabs = [
+    { key: "info", label: "Account Info" },
+    { key: "listings", label: `Listings (${userListings.length})` },
+    {
+      key: "bookings",
+      label: `Bookings (${userBookings.length + listingsBookings.length})`,
+    },
+    { key: "session", label: `Session (${userSession.length})` },
+    { key: "events", label: `Events (${userEvents.length})` },
+  ];
 
   useEffect(() => {
     fetchCurrentUser();
@@ -259,6 +422,8 @@ export default function UserDetailPage() {
       // Fetch user's listings and bookings
       await fetchUserListings();
       await fetchUserBookings();
+      await fetchUserSession();
+      await fetchUserEvents();
     } catch (err) {
       showNotification(err.message || "Failed to load user", "error");
     } finally {
@@ -290,6 +455,34 @@ export default function UserDetailPage() {
       console.error("Failed to fetch bookings:", err);
     }
   };
+
+  const fetchUserSession = async () => {
+  try {
+    const res = await authFetch(`/api/admin/users/${userId}/session`);
+    if (res && res.ok) {
+      const data = await res.json();
+      console.log("session", data);
+
+      setUserSession(data.sessions || []); 
+    }
+  } catch (err) {
+    console.error("Failed to fetch session:", err);
+  }
+};
+
+const fetchUserEvents = async () => {
+  try {
+    const res = await authFetch(`/api/admin/users/${userId}/events`);
+    if (res && res.ok) {
+      const data = await res.json();
+      console.log("events", data);
+
+      setUserEvents(data.events || []); 
+    }
+  } catch (err) {
+    console.error("Failed to fetch events:", err);
+  }
+};
 
   const handleSave = async () => {
     setSaving(true);
@@ -524,36 +717,19 @@ export default function UserDetailPage() {
         {/* Tabs */}
         <div className="border-b border-black/[0.06] mb-6">
           <div className="flex gap-4">
-            <button
-              onClick={() => setActiveTab("info")}
-              className={`px-4 py-2 text-sm font-medium transition-all ${
-                activeTab === "info"
-                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
-                  : "text-[#666] hover:text-[#111118]"
-              }`}
-            >
-              Account Info
-            </button>
-            <button
-              onClick={() => setActiveTab("listings")}
-              className={`px-4 py-2 text-sm font-medium transition-all ${
-                activeTab === "listings"
-                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
-                  : "text-[#666] hover:text-[#111118]"
-              }`}
-            >
-              Listings ({userListings.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("bookings")}
-              className={`px-4 py-2 text-sm font-medium transition-all ${
-                activeTab === "bookings"
-                  ? "text-[#185FA5] border-b-2 border-[#185FA5]"
-                  : "text-[#666] hover:text-[#111118]"
-              }`}
-            >
-              Bookings ({userBookings.length + listingsBookings.length})
-            </button>
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 text-sm font-medium transition-all ${
+                  activeTab === tab.key
+                    ? "text-[#185FA5] border-b-2 border-[#185FA5]"
+                    : "text-[#666] hover:text-[#111118]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -894,6 +1070,53 @@ export default function UserDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+        {/* session Tab */}
+        {activeTab === "session" && (
+          <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+            <SectionTitle>
+              user sessions
+              <span className="text-sm not-italic font-normal text-[#999]">
+                ({userSession.length})
+              </span>
+            </SectionTitle>
+
+            {userSession.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
+                This user has no sessions yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userSession.map((session) => (
+                  <SessionCard key={session._id} session={session} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* events Tab */}
+        {activeTab === "events" && (
+          <div className="bg-white rounded-xl border border-black/[0.06] p-4 sm:p-6">
+            <SectionTitle>
+              user events
+              <span className="text-sm not-italic font-normal text-[#999]">
+                ({userEvents.length})
+              </span>
+            </SectionTitle>
+
+            {userEvents.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-[#bbb] text-sm">
+                This user has no events yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userEvents.map((event) => (
+                  <EventsCard key={event._id} event={event} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
