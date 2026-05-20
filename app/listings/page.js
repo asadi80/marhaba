@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
-import PublicAnalytics from '@/components/PublicAnalytics'; // Add this import
 
 export default function ListingsPage() {
   const router = useRouter();
@@ -143,12 +142,7 @@ export default function ListingsPage() {
 
       <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-7">
 
-        {/* ANALYTICS SECTION - Toggleable */}
-        {showAnalytics && (
-          <div className="mb-8 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-            <PublicAnalytics />
-          </div>
-        )}
+       
 
         {/* HEADER */}
         <div className="mb-6 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
