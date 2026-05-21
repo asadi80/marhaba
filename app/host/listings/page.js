@@ -260,31 +260,36 @@ export default function HostListings() {
     if (showForm && !isEditing && !mapCenter && !isGettingLocation) setMapCenter(DEFAULT_CENTER);
   }, [showForm, isEditing, mapCenter, isGettingLocation]);
 
-  // Shared input/textarea classes
-  const fieldInput = "w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none transition-all focus:border-[#e8c547] focus:shadow-[0_0_0_3px_rgba(232,197,71,0.12)] focus:bg-white";
+  // Font classes based on language
+  const arabicFontClass = "font-['Cairo','Tajawal',sans-serif]";
+  const displayFontClass = isAr ? "font-['Cairo','Tajawal',sans-serif]" : "font-['Fraunces',serif]";
+  const bodyFontClass = isAr ? "font-['Cairo','Tajawal',sans-serif]" : "font-['DM_Mono',monospace]";
+
+  // Shared input/textarea classes with font
+  const fieldInput = `w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none transition-all focus:border-[#e8c547] focus:shadow-[0_0_0_3px_rgba(232,197,71,0.12)] focus:bg-white ${bodyFontClass}`;
 
   if (loading) return (
     <LoadingScreen />
   );
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2]" dir={isAr ? "rtl" : "ltr"}>
+    <div className={`min-h-screen bg-[#f7f6f2] ${bodyFontClass}`} dir={isAr ? "rtl" : "ltr"}>
 
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-[rgba(26,26,46,0.97)] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between backdrop-blur-md">
-        <Link href="/" className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide">
+        <Link href="/" className={`no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide ${arabicFontClass}`}>
           مر<span className="font-bold text-[#e8c547]">حبا</span>
         </Link>
 
         <div className="hidden sm:flex items-center gap-1">
-          <Link href="/host-dashboard" className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors">{t.overview}</Link>
-          <Link href="/host/listings"  className="text-xs text-[#e8c547] no-underline px-3 py-1.5 rounded-md">{t.myListings}</Link>
-          <Link href="/host/bookings"  className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors">{t.bookings}</Link>
-          <button onClick={toggleLanguage} className="ms-2 bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]">
+          <Link href="/host-dashboard" className={`text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors ${bodyFontClass}`}>{t.overview}</Link>
+          <Link href="/host/listings"  className={`text-xs text-[#e8c547] no-underline px-3 py-1.5 rounded-md ${bodyFontClass}`}>{t.myListings}</Link>
+          <Link href="/host/bookings"  className={`text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors ${bodyFontClass}`}>{t.bookings}</Link>
+          <button onClick={toggleLanguage} className={`ms-2 bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] ${bodyFontClass}`}>
             {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
           </button>
           <div className="w-px h-4 bg-white/12 mx-1.5" />
-          <button onClick={() => router.push("/host-dashboard")} className="bg-[#e8c547] text-[#1a1a2e] px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none hover:opacity-88 hover:-translate-y-px transition-all">
+          <button onClick={() => router.push("/host-dashboard")} className={`bg-[#e8c547] text-[#1a1a2e] px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none hover:opacity-88 hover:-translate-y-px transition-all ${bodyFontClass}`}>
             {t.dashboard} →
           </button>
         </div>
@@ -300,12 +305,12 @@ export default function HostListings() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="sm:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 py-4 z-40 flex flex-col gap-2.5">
-          <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] font-[inherit] w-full mb-2">
+          <button onClick={toggleLanguage} className={`bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] w-full mb-2 ${bodyFontClass}`}>
             {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
           </button>
-          <Link href="/host-dashboard" className="text-[13px] text-white/70 no-underline py-2">{t.overview}</Link>
-          <Link href="/host/listings"  className="text-[13px] text-[#e8c547] no-underline py-2">{t.myListings}</Link>
-          <Link href="/host/bookings"  className="text-[13px] text-white/70 no-underline py-2">{t.bookings}</Link>
+          <Link href="/host-dashboard" className={`text-[13px] text-white/70 no-underline py-2 ${bodyFontClass}`}>{t.overview}</Link>
+          <Link href="/host/listings"  className={`text-[13px] text-[#e8c547] no-underline py-2 ${bodyFontClass}`}>{t.myListings}</Link>
+          <Link href="/host/bookings"  className={`text-[13px] text-white/70 no-underline py-2 ${bodyFontClass}`}>{t.bookings}</Link>
         </div>
       )}
 
@@ -313,16 +318,16 @@ export default function HostListings() {
       <div className="bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-10 pb-8">
         <div className="max-w-[1100px] mx-auto flex justify-between items-end gap-4">
           <div>
-            <div className="text-[10px] tracking-[0.12em] uppercase text-[#e8c547]/60 mb-2">{t.hostPanel}</div>
-            <h1 className="font-['Fraunces',serif] italic font-light text-[clamp(28px,4vw,38px)] text-white">
-              {t.myListingsTitle} <span className="font-medium text-[#e8c547]">{t.listings}</span>
+            <div className={`text-[10px] tracking-[0.12em] uppercase text-[#e8c547]/60 mb-2 ${bodyFontClass}`}>{t.hostPanel}</div>
+            <h1 className={`${displayFontClass} italic font-light text-[clamp(28px,4vw,38px)] text-white`}>
+              {t.myListingsTitle1} <span className="font-medium text-[#e8c547]">{t.listings1}</span>
             </h1>
-            <p className="text-xs text-white/35 mt-1.5">
+            <p className={`text-xs text-white/35 mt-1.5 ${bodyFontClass}`}>
               {listings.length} {listings.length !== 1 ? t.listingsActive : t.listingActive}
             </p>
           </div>
           {!showForm && (
-            <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-[#e8c547] text-[#1a1a2e] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer shrink-0 hover:opacity-88 hover:-translate-y-px transition-all">
+            <button onClick={() => { resetForm(); setShowForm(true); }} className={`bg-[#e8c547] text-[#1a1a2e] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer shrink-0 hover:opacity-88 hover:-translate-y-px transition-all ${bodyFontClass}`}>
               + {t.addNewListing}
             </button>
           )}
@@ -336,37 +341,37 @@ export default function HostListings() {
         {showForm && (
           <div className="bg-white rounded-2xl border border-black/7 p-8 mb-8">
             <div className="mb-7">
-              <div className="text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5">
+              <div className={`text-[10px] tracking-[0.12em] uppercase text-[#999] mb-1.5 ${bodyFontClass}`}>
                 {isEditing ? t.editListing : t.newListing}
               </div>
-              <h2 className="font-['Fraunces',serif] italic font-light text-[26px] text-[#111118]">
+              <h2 className={`${displayFontClass} italic font-light text-[26px] text-[#111118]`}>
                 {isEditing ? t.edit : t.createA} <span className="font-medium">{t.listing}</span>
               </h2>
             </div>
 
-            <form onSubmit={isEditing ? handleUpdate : handleSubmit}>
+            <form onSubmit={isEditing ? handleUpdate : handleSubmit} className={bodyFontClass}>
 
               {/* Title */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.title} *</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.title} *</label>
                 <input type="text" name="title" required value={formData.title} onChange={handleInputChange} className={fieldInput} placeholder={t.titlePlaceholder} />
               </div>
 
               {/* Description */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.description} *</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.description} *</label>
                 <textarea name="description" required rows="4" value={formData.description} onChange={handleInputChange} className={`${fieldInput} resize-y`} placeholder={t.descriptionPlaceholder} />
               </div>
 
               {/* Price */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.pricePerNight} / {isAr ? "دينار" : "LYD"} *</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.pricePerNight} / {isAr ? "دينار" : "LYD"} *</label>
                 <input type="number" name="price" required min="0" step="0.01" value={formData.price} onChange={handleInputChange} className={fieldInput} placeholder="99" />
               </div>
 
               {/* Category */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{isAr ? "الفئة" : "Category"} *</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{isAr ? "الفئة" : "Category"} *</label>
                 <select name="category" required value={formData.category} onChange={handleInputChange} className={`${fieldInput} cursor-pointer`}>
                   <option value="">{isAr ? "اختر فئة" : "Select a category"}</option>
                   {CATEGORIES.map((cat) => (
@@ -374,7 +379,7 @@ export default function HostListings() {
                   ))}
                 </select>
                 {formData.category && (
-                  <div className="text-[11px] text-[#666] mt-1.5">
+                  <div className={`text-[11px] text-[#666] mt-1.5 ${bodyFontClass}`}>
                     {isAr ? CATEGORIES.find((c) => c.id === formData.category)?.descriptionAr : CATEGORIES.find((c) => c.id === formData.category)?.descriptionEn}
                   </div>
                 )}
@@ -384,7 +389,7 @@ export default function HostListings() {
 
               {/* Location */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.location} *</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.location} *</label>
 
                 {browserInfo && browserInfo !== "chrome" && (
                   <div className="bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 mb-3 text-xs text-orange-800">
@@ -397,7 +402,7 @@ export default function HostListings() {
                 <div className="flex gap-2 flex-wrap mb-2.5">
                   <input type="text" name="location" required value={formData.location} onChange={handleInputChange} className={`${fieldInput} flex-1 min-w-[180px]`} placeholder={t.addressWillAppear} readOnly />
                   <button type="button" onClick={useCurrentLocation} disabled={isGettingLocation}
-                    className={`px-4 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer whitespace-nowrap transition-all hover:opacity-88 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed ${isGettingLocation ? "bg-[#ccc] text-white" : "bg-[#1D9E75] text-white"}`}>
+                    className={`px-4 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer whitespace-nowrap transition-all hover:opacity-88 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed ${isGettingLocation ? "bg-[#ccc] text-white" : "bg-[#1D9E75] text-white"} ${bodyFontClass}`}>
                     {isGettingLocation ? t.gettingLocation : `📍 ${t.myLocation}`}
                   </button>
                 </div>
@@ -405,7 +410,7 @@ export default function HostListings() {
                 {/* Map wrapper */}
                 <div className="border border-black/10 rounded-xl overflow-hidden">
                   <div className="bg-[#1a1a2e] px-4 py-2.5 flex justify-between items-center flex-wrap gap-2">
-                    <span className="text-[11px] text-white/50">
+                    <span className={`text-[11px] text-white/50 ${bodyFontClass}`}>
                       💡 {isAr ? "حرك الخريطة لتحديد الموقع — العلامة ثابتة في المنتصف" : "Move the map to select location — marker stays fixed in center"}
                     </span>
                   </div>
@@ -415,10 +420,10 @@ export default function HostListings() {
                       {isGettingLocation ? (
                         <>
                           <div className="w-10 h-10 border-[3px] border-[#e8c547] border-t-transparent rounded-full animate-spin" />
-                          <p className="text-xs text-[#999]">{t.gettingLocation}</p>
+                          <p className={`text-xs text-[#999] ${bodyFontClass}`}>{t.gettingLocation}</p>
                         </>
                       ) : (
-                        <p className="text-xs text-[#999]">
+                        <p className={`text-xs text-[#999] ${bodyFontClass}`}>
                           {locationError || (isAr ? "انقر على 'موقعي' أو انتظر تحميل الخريطة" : "Click 'My Location' or wait for map to load")}
                         </p>
                       )}
@@ -446,11 +451,11 @@ export default function HostListings() {
 
                 {/* Location pill */}
                 <div className="bg-[#fdf8e7] border border-[#e8c547]/30 rounded-xl px-3.5 py-2.5 mt-2.5">
-                  <p className="text-xs text-[#7a6012] font-medium">
+                  <p className={`text-xs text-[#7a6012] font-medium ${bodyFontClass}`}>
                     📍 {selectedLocation?.address || (isAr ? "حرك الخريطة لاختيار الموقع" : "Move the map to select location")}
                   </p>
                   {selectedLocation && (
-                    <p className="text-[11px] text-[#a08020] mt-0.5">{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
+                    <p className={`text-[11px] text-[#a08020] mt-0.5 ${bodyFontClass}`}>{selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</p>
                   )}
                 </div>
               </div>
@@ -459,14 +464,14 @@ export default function HostListings() {
 
               {/* Images */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.imagesRequired}</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.imagesRequired}</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {formData.images.map((image, index) => (
                     <ImageUpload key={index} index={index} imageUrl={image} onImageUpload={handleImageUpload} onRemove={handleImageRemove} />
                   ))}
                   {formData.images.length < 6 && (
                     <button type="button" onClick={addImageSlot}
-                      className="border-2 border-dashed border-black/12 rounded-xl p-6 bg-transparent cursor-pointer w-full flex flex-col items-center gap-1.5 text-xs text-[#999] font-[inherit] hover:border-[#e8c547] hover:text-[#e8c547] transition-colors">
+                      className={`border-2 border-dashed border-black/12 rounded-xl p-6 bg-transparent cursor-pointer w-full flex flex-col items-center gap-1.5 text-xs text-[#999] transition-colors hover:border-[#e8c547] hover:text-[#e8c547] ${bodyFontClass}`}>
                       <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
@@ -480,32 +485,32 @@ export default function HostListings() {
 
               {/* Amenities */}
               <div className="mb-6">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.amenities}</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.amenities}</label>
                 {formData.amenities.map((amenity, index) => (
                   <div key={index} className="flex gap-2 mb-2 items-center">
                     <input type="text" value={amenity} onChange={(e) => handleArrayChange(index, "amenities", e.target.value)} placeholder={t.amenityPlaceholder} className={`${fieldInput} flex-1`} />
                     {index > 0 && (
-                      <button type="button" onClick={() => removeArrayField("amenities", index)} className="bg-red-100 text-red-800 border-none rounded-md px-3 py-1.5 text-[11px] cursor-pointer">
+                      <button type="button" onClick={() => removeArrayField("amenities", index)} className={`bg-red-100 text-red-800 border-none rounded-md px-3 py-1.5 text-[11px] cursor-pointer ${bodyFontClass}`}>
                         {t.remove}
                       </button>
                     )}
                   </div>
                 ))}
-                <button type="button" onClick={() => addArrayField("amenities")} className="text-xs text-[#e8c547] bg-transparent border-none cursor-pointer py-1 mt-1">
+                <button type="button" onClick={() => addArrayField("amenities")} className={`text-xs text-[#e8c547] bg-transparent border-none cursor-pointer py-1 mt-1 ${bodyFontClass}`}>
                   + {t.addAmenity}
                 </button>
               </div>
 
               {/* Rules */}
               <div className="mb-5">
-                <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">{t.houseRules}</label>
+                <label className={`block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5 ${bodyFontClass}`}>{t.houseRules}</label>
                 <div className="mb-3">
-                  <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2">{t.quickAdd}</div>
+                  <div className={`text-[10px] tracking-[0.08em] uppercase text-[#999] mb-2 ${bodyFontClass}`}>{t.quickAdd}</div>
                   <div className="flex flex-wrap gap-2">
                     {[t.ruleNoSmoking, t.ruleNoParties, t.ruleNoPets, t.ruleQuietHours, t.ruleSelfCheckIn, t.ruleNoShoes].map((suggestion) => (
                       <button key={suggestion} type="button"
                         onClick={() => { if (!formData.rules.includes(suggestion)) setFormData((p) => ({ ...p, rules: [...p.rules, suggestion] })); }}
-                        className={`border border-black/10 rounded-full px-3 py-1 text-[11px] cursor-pointer transition-colors ${formData.rules.includes(suggestion) ? "bg-[#e8c547] text-[#1a1a2e]" : "bg-[#fafaf8] text-[#888]"}`}>
+                        className={`border border-black/10 rounded-full px-3 py-1 text-[11px] cursor-pointer transition-colors ${bodyFontClass} ${formData.rules.includes(suggestion) ? "bg-[#e8c547] text-[#1a1a2e]" : "bg-[#fafaf8] text-[#888]"}`}>
                         + {suggestion}
                       </button>
                     ))}
@@ -526,7 +531,7 @@ export default function HostListings() {
                   </div>
                 ))}
                 <button type="button" onClick={() => setFormData((p) => ({ ...p, rules: [...p.rules, ""] }))}
-                  className="text-xs text-[#e8c547] bg-transparent border border-dashed border-[#e8c547]/50 rounded-lg cursor-pointer py-2 px-3 mt-2 w-full hover:border-[#e8c547] transition-colors">
+                  className={`text-xs text-[#e8c547] bg-transparent border border-dashed border-[#e8c547]/50 rounded-lg cursor-pointer py-2 px-3 mt-2 w-full hover:border-[#e8c547] transition-colors ${bodyFontClass}`}>
                   + {t.addCustomRule}
                 </button>
               </div>
@@ -534,10 +539,10 @@ export default function HostListings() {
               <hr className="border-none border-t border-black/7 my-6" />
 
               <div className="flex justify-end gap-2.5 pt-5 border-t border-black/7">
-                <button type="button" onClick={cancelEdit} className="bg-transparent text-[#555] px-3.5 py-2 rounded-lg text-xs font-[inherit] border border-black/12 cursor-pointer hover:border-black/30 hover:text-[#111118] transition-colors">
+                <button type="button" onClick={cancelEdit} className={`bg-transparent text-[#555] px-3.5 py-2 rounded-lg text-xs border border-black/12 cursor-pointer hover:border-black/30 hover:text-[#111118] transition-colors ${bodyFontClass}`}>
                   {t.cancel}
                 </button>
-                <button type="submit" className="bg-[#1a1a2e] text-[#e8c547] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer hover:opacity-88 hover:-translate-y-px transition-all">
+                <button type="submit" className={`bg-[#1a1a2e] text-[#e8c547] px-5 py-2.5 rounded-lg text-xs font-medium border-none cursor-pointer hover:opacity-88 hover:-translate-y-px transition-all ${bodyFontClass}`}>
                   {isEditing ? t.updateListing : t.createListing}
                 </button>
               </div>
@@ -550,8 +555,8 @@ export default function HostListings() {
           listings.length === 0 ? (
             <div className="bg-white rounded-2xl border border-black/7 py-20 px-6 text-center">
               <div className="text-5xl mb-3">🏠</div>
-              <p className="text-[13px] text-[#999] mb-4">{t.noListingsYet}</p>
-              <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-transparent border-none text-[#e8c547] text-[13px] cursor-pointer">
+              <p className={`text-[13px] text-[#999] mb-4 ${bodyFontClass}`}>{t.noListingsYet}</p>
+              <button onClick={() => { resetForm(); setShowForm(true); }} className={`bg-transparent border-none text-[#e8c547] text-[13px] cursor-pointer ${bodyFontClass}`}>
                 {t.createFirstListing} →
               </button>
             </div>
@@ -573,13 +578,13 @@ export default function HostListings() {
                       )}
                     </div>
                     <div className="p-5">
-                      <h3 className="text-[15px] font-medium text-[#111118] mb-1.5">{listing.title}</h3>
-                      <p className="text-xs text-[#888] mb-2">📍 {listing.location}</p>
+                      <h3 className={`text-[15px] font-medium text-[#111118] mb-1.5 ${bodyFontClass}`}>{listing.title}</h3>
+                      <p className={`text-xs text-[#888] mb-2 ${bodyFontClass}`}>📍 {listing.location}</p>
                       <div className="flex justify-between items-center border-t border-black/[0.06] pt-3.5">
-                        <Link href={`/listings/${listing.id}`} className="text-xs text-[#1a1a2e] no-underline">{t.viewDetails} →</Link>
+                        <Link href={`/listings/${listing.id}`} className={`text-xs text-[#1a1a2e] no-underline ${bodyFontClass}`}>{t.viewDetails} →</Link>
                         <div className="flex gap-2">
-                          <button onClick={() => handleEdit(listing)}       className="text-xs text-[#185FA5] bg-transparent border-none cursor-pointer">{t.edit}</button>
-                          <button onClick={() => handleDelete(listing.id)} className="text-xs text-[#e05a5a] bg-transparent border-none cursor-pointer">{t.delete}</button>
+                          <button onClick={() => handleEdit(listing)}       className={`text-xs text-[#185FA5] bg-transparent border-none cursor-pointer ${bodyFontClass}`}>{t.edit}</button>
+                          <button onClick={() => handleDelete(listing.id)} className={`text-xs text-[#e05a5a] bg-transparent border-none cursor-pointer ${bodyFontClass}`}>{t.delete}</button>
                         </div>
                       </div>
                     </div>
