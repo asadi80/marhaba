@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function Home() {
   const router = useRouter();
@@ -209,9 +210,7 @@ export default function Home() {
   // ── Loading screen ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-7 h-7 rounded-full border-[2.5px] border-yellow-400 border-t-transparent animate-spin" />
-      </div>
+    <LoadingScreen />
     );
   }
 

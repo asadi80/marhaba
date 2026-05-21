@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function HostDashboard() {
   const router = useRouter();
@@ -143,9 +144,7 @@ export default function HostDashboard() {
 
   // --- LOADING ---
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
-      <div className="w-7 h-7 rounded-full border-[2.5px] border-[#1a1a2e] border-t-transparent animate-spin" />
-    </div>
+   <LoadingScreen />
   );
 
   // --- PENDING STATE ---
@@ -308,7 +307,7 @@ export default function HostDashboard() {
   const formatCurrency = (amount) => isAr ? `${Math.round(amount).toLocaleString()} دينار` : `${Math.round(amount).toLocaleString()} LYD`;
 
   const NAV_LINKS = [
-    { href: "/host-dashboard", label: t.dashboard },
+    // { href: "/host-dashboard", label: t.dashboard },
     { href: "/host/listings", label: t.myListings },
     { href: "/host/bookings", label: t.bookings },
   ];
@@ -341,7 +340,7 @@ export default function HostDashboard() {
           </Link>
           <div className="hidden md:flex gap-0.5">
             {NAV_LINKS.map(({ href, label }) => (
-              <Link key={href} href={href} className="text-xs text-white/45 no-underline px-3 py-1.5 rounded-md hover:text-white/90 hover:bg-white/[0.06] transition-colors">
+              <Link key={href} href={href} className="text-xs text-white/45 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors">
                 {label}
               </Link>
             ))}
@@ -350,7 +349,7 @@ export default function HostDashboard() {
 
         <div className="hidden md:flex items-center gap-2.5">
           <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]">
-            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+            {lang === 'en' ? '🇱🇾 عربي' : '🇬🇧 English'}
           </button>
           <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-medium shrink-0 ${aviBg} ${aviColor}`}>
             {userInitials}
@@ -359,7 +358,7 @@ export default function HostDashboard() {
           <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2.5 py-0.5 rounded-full">
             {t.host}
           </span>
-          <button onClick={handleLogout} className="bg-none border border-white/12 rounded-md text-white/40 font-['DM_Mono',monospace] text-[11px] px-3 py-1 cursor-pointer hover:border-red-400/50 hover:text-red-400/90 transition-colors">
+          <button onClick={handleLogout} className="bg-none border border-[#e8c547] rounded-md text-[#e8c547] font-['DM_Mono',monospace] text-[11px] px-3 py-1 cursor-pointer hover:border-red-400/50 hover:text-red-400/90 transition-colors">
             {t.logout}
           </button>
         </div>

@@ -9,6 +9,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import HostDateManager from "@/components/HostDateManager";
 
 import "leaflet/dist/leaflet.css";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -99,6 +100,7 @@ export default function ListingDetail({ params }) {
   const [activeImage, setActiveImage] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [listingView, setListingView] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fix Leaflet icons
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function ListingDetail({ params }) {
       const res = await fetch(`/api/listings/${unwrappedParams.id}`);
       const data = await res.json();
       console.log(data);
-      
+
       if (!res.ok) throw new Error(data.message);
       setListing(data.listing);
       setBookedDates(data.bookedDates);
@@ -182,6 +184,7 @@ export default function ListingDetail({ params }) {
     e.preventDefault();
     setBookingError("");
     setBookingSuccess("");
+     setIsSubmitting(true);
     if (!booking.checkIn || !booking.checkOut) {
       setBookingError(t.pleaseSelectDates);
       return;
@@ -203,7 +206,9 @@ export default function ListingDetail({ params }) {
       setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err) {
       setBookingError(err.message);
-    }
+    }finally {
+    setIsSubmitting(false);
+  }
   };
 
   const nights =
@@ -252,9 +257,7 @@ export default function ListingDetail({ params }) {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
-        <div className="w-7 h-7 rounded-full border-[2.5px] border-[#1a1a2e] border-t-transparent animate-spin" />
-      </div>
+    <LoadingScreen/>
     );
 
   if (!listing)
@@ -699,10 +702,10 @@ export default function ListingDetail({ params }) {
 
                   <button
                     type="submit"
-                    disabled={!booking.checkIn || !booking.checkOut}
+                    disabled={!booking.checkIn || !booking.checkOut || isSubmitting}
                     className="bg-[#e8c547] text-[#1a1a2e] px-3 py-3 rounded-[10px] text-[13px] font-semibold border-none cursor-pointer font-[inherit] transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {t.bookNow} →
+                    {isSubmitting ? "Processing..." : `${t.bookNow} →`}
                   </button>
                 </form>
               </div>

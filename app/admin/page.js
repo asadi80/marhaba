@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const getAuthToken = () => localStorage.getItem("marhabaToken");
 
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => { fetchCurrentUser(); }, []);
 
@@ -185,9 +187,7 @@ export default function AdminDashboard() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#1a1a2e] border-t-transparent" />
-      </div>
+     <LoadingScreen />
     );
   }
 
@@ -204,93 +204,132 @@ export default function AdminDashboard() {
         .notif-animate { animation: slideIn 0.2s ease; }
         .user-name-link { color: #111118; text-decoration: none; font-weight: 500; font-size: 13px; transition: color 0.15s; }
         .user-name-link:hover { color: #185FA5; text-decoration: underline; }
+        /* Hide scrollbar for tab strip on mobile */
+        .tabs-scroll::-webkit-scrollbar { display: none; }
+        .tabs-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       <div className="min-h-screen bg-[#f7f6f2]">
         {notification && (
-          <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg text-sm text-white notif-animate bg-[#1a1a2e] border-l-4 ${notification.type === "success" ? "border-[#e8c547]" : "border-[#E24B4A]"}`}>
+          <div className={`fixed top-4 right-4 z-50 max-w-xs px-5 py-3 rounded-lg text-sm text-white notif-animate bg-[#1a1a2e] border-l-4 ${notification.type === "success" ? "border-[#e8c547]" : "border-[#E24B4A]"}`}>
             {notification.message}
           </div>
         )}
 
-        {/* Navbar */}
-        <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-8 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <div className="font-display italic font-light text-xl text-white tracking-tight">
-                 <Link
+        {/* ── Navbar ── */}
+        <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/20 px-4 sm:px-8">
+          {/* Top row: logo + user controls */}
+          <div className="h-14 flex items-center justify-between gap-4">
+            {/* Logo */}
+            <Link
               href="/"
               style={{
                 textDecoration: "none",
                 fontFamily: "'Cairo', 'Tajawal', sans-serif",
                 fontWeight: 500,
-                fontSize: "26px",
+                fontSize: "24px",
                 color: "#ffffff",
                 letterSpacing: "1px",
+                flexShrink: 0,
               }}
             >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+              مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
             </Link>
 
-            </div>
-            <div className="flex gap-0.5">
+            {/* Tabs — hidden on mobile, visible md+ */}
+            <div className="hidden md:flex gap-0.5 flex-1 justify-center">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-md text-xs transition-all ${
+                  className={`px-3.5 py-1.5 rounded-md text-xs transition-all whitespace-nowrap ${
                     activeTab === tab.id
                       ? "text-[#e8c547] bg-[#e8c547]/10"
-                      : "text-white/50 hover:text-white/80 hover:bg-white/5"
+                      : "text-white/50 hover:text-[#e8c547]"
                   }`}
                 >
                   {tab.label}
                 </button>
               ))}
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium" style={{ background: "#e8c547", color: "#1a1a2e" }}>
-              {initials}
+
+            {/* Right side: avatar + name + role + logout */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+                style={{ background: "#e8c547", color: "#1a1a2e" }}
+              >
+                {initials}
+              </div>
+              {/* Name: hidden on very small screens */}
+              <div className="hidden sm:block text-xs text-white/70 truncate max-w-[100px]">{currentUser.name}</div>
+              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full whitespace-nowrap">
+                {currentUser.role}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-[#e8c547] border border-[#e8c547] px-3 py-1 rounded hover:border-red-400/50 hover:text-red-400 transition-all whitespace-nowrap"
+              >
+                logout
+              </button>
             </div>
-            <div className="text-xs text-white/70">{currentUser.name}</div>
-            <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
-              {currentUser.role}
-            </span>
-            <button onClick={handleLogout} className="text-xs text-white/40 border border-white/10 px-3 py-1 rounded hover:border-red-400/50 hover:text-red-400 transition-all">
-              logout
-            </button>
+          </div>
+
+          {/* Mobile tab strip — scrollable, shown below md */}
+          <div className="md:hidden tabs-scroll overflow-x-auto flex gap-0.5 pb-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3.5 py-1.5 rounded-md text-xs transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === tab.id
+                    ? "text-[#e8c547] bg-[#e8c547]/10"
+                    : "text-white/50 hover:text-[#e8c547]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </nav>
 
-        <main className="max-w-7xl mx-auto px-6 py-8">
-          {/* Stats */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+          {/* ── Stats grid ── */}
           {stats && (
-            <div className="grid grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6 sm:mb-8">
               {STAT_CONFIG.map((s) => (
-                <div key={s.key} className="stat-card bg-white rounded-xl p-5 relative overflow-hidden border border-black/[0.06]" style={{ "--accent-color": s.accent }}>
-                  <div className="font-display italic font-light text-3xl text-[#111118] leading-none mb-1">
+                <div
+                  key={s.key}
+                  className="stat-card bg-white rounded-xl p-4 sm:p-5 relative overflow-hidden border border-black/[0.06]"
+                  style={{ "--accent-color": s.accent }}
+                >
+                  <div className="font-display italic font-light text-2xl sm:text-3xl text-[#111118] leading-none mb-1">
                     {s.format ? s.format(stats[s.key]) : stats[s.key]}
                   </div>
-                  <div className="text-[11px] uppercase tracking-widest text-[#999]">{s.label}</div>
+                  <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-[#999]">{s.label}</div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Section header */}
-          <div className="flex items-center justify-between mb-4">
+          {/* ── Section header ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="font-display italic font-light text-lg text-[#111118]">
               {TABS.find((t) => t.id === activeTab)?.label}
               <span className="ml-2 text-sm not-italic font-normal text-[#999]">({displayUsers.length})</span>
             </div>
             {currentUser.role === "super_admin" && (
-              <button onClick={() => setShowAddModal(true)} className="bg-[#1a1a2e] text-[#e8c547] text-xs px-4 py-2 rounded-md hover:bg-[#16213e] transition-all flex items-center gap-1.5">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-[#1a1a2e] text-[#e8c547] text-xs px-4 py-2 rounded-md hover:bg-[#16213e] transition-all flex items-center gap-1.5 whitespace-nowrap"
+              >
                 + add admin
               </button>
             )}
           </div>
 
-          {/* Table */}
+          {/* ── Table ── */}
           <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
             {loading ? (
               <div className="p-12 flex justify-center">
@@ -300,11 +339,16 @@ export default function AdminDashboard() {
               <div className="p-12 text-center text-[#999] text-sm">no users found</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b border-black/[0.06] bg-[#fafaf8]">
                       {["user", "contact", "role", "status", "joined", "id docs", "actions"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#999] font-normal">{h}</th>
+                        <th
+                          key={h}
+                          className="px-3 sm:px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[#999] font-normal"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -313,45 +357,52 @@ export default function AdminDashboard() {
                       const avi = getAvatarStyle(user.name);
                       const userInitials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
                       return (
-                        <tr key={user._id} className="border-b border-black/[0.04] hover:bg-[#fafaf8] transition-colors last:border-0">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0" style={{ background: avi.bg, color: avi.color }}>
+                        <tr
+                          key={user._id}
+                          className="border-b border-black/[0.04] hover:bg-[#fafaf8] transition-colors last:border-0"
+                        >
+                          <td className="px-3 sm:px-4 py-3">
+                            <div className="flex items-center gap-2 sm:gap-2.5">
+                              <div
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+                                style={{ background: avi.bg, color: avi.color }}
+                              >
                                 {userInitials}
                               </div>
-                              <div>
-                                {/* Clickable name → detail page */}
-                                <Link href={`/admin/user/${user._id}`} className="user-name-link">
+                              <div className="min-w-0">
+                                <Link href={`/admin/user/${user._id}`} className="user-name-link block truncate max-w-[120px] sm:max-w-none">
                                   {user.name}
                                 </Link>
                                 <div className="text-[11px] text-[#999]">#{user._id.slice(-6)}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="text-[13px] text-[#111118]">{user.email}</div>
+                          <td className="px-3 sm:px-4 py-3">
+                            <div className="text-[12px] sm:text-[13px] text-[#111118] truncate max-w-[140px] sm:max-w-none">{user.email}</div>
                             <div className="text-[11px] text-[#999]">{user.phoneNumber}</div>
                           </td>
-                          <td className="px-4 py-3">{roleBadge(user.role)}</td>
-                          <td className="px-4 py-3">{statusBadge(user.status)}</td>
-                          <td className="px-4 py-3 text-[12px] text-[#666]">
-                            {new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          <td className="px-3 sm:px-4 py-3">{roleBadge(user.role)}</td>
+                          <td className="px-3 sm:px-4 py-3">{statusBadge(user.status)}</td>
+                          <td className="px-3 sm:px-4 py-3 text-[11px] sm:text-[12px] text-[#666] whitespace-nowrap">
+                            {new Date(user.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
                           </td>
-                          {/* ID docs count */}
-                          <td className="px-4 py-3">
+                          <td className="px-3 sm:px-4 py-3">
                             {user.idImages?.length > 0 ? (
-                              <span className="text-[11px] bg-[#EAF3DE] text-[#27500A] px-2.5 py-0.5 rounded-full font-medium">
+                              <span className="text-[11px] bg-[#EAF3DE] text-[#27500A] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
                                 {user.idImages.length} uploaded
                               </span>
                             ) : (
                               <span className="text-[11px] text-[#bbb]">none</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            {/* View button → same detail page */}
+                          <td className="px-3 sm:px-4 py-3">
                             <Link
                               href={`/admin/user/${user._id}`}
-                              className="text-[11px] text-[#185FA5] border border-[#185FA5]/25 px-3 py-1 rounded hover:bg-[#E6F1FB] transition-all inline-block"
+                              className="text-[11px] text-[#185FA5] border border-[#185FA5]/25 px-3 py-1 rounded hover:bg-[#E6F1FB] transition-all inline-block whitespace-nowrap"
                             >
                               view
                             </Link>
@@ -368,7 +419,11 @@ export default function AdminDashboard() {
       </div>
 
       {showAddModal && (
-        <AdminModal onClose={() => setShowAddModal(false)} onSave={handleCreateAdmin} isSuperAdmin={currentUser.role === "super_admin"} />
+        <AdminModal
+          onClose={() => setShowAddModal(false)}
+          onSave={handleCreateAdmin}
+          isSuperAdmin={currentUser.role === "super_admin"}
+        />
       )}
     </>
   );
@@ -377,14 +432,24 @@ export default function AdminDashboard() {
 /* ─── Shared modal wrapper ─── */
 function ModalShell({ title, onClose, onSubmit, loading, submitLabel, children }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl border border-black/[0.06] p-8 w-[440px] max-w-[90vw]">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl border border-black/[0.06] p-6 sm:p-8 w-full sm:w-[440px] sm:max-w-[90vw] max-h-[90vh] overflow-y-auto">
         <div className="font-display italic font-light text-xl text-[#111118] mb-6">{title}</div>
         <form onSubmit={onSubmit}>
           <div className="space-y-4">{children}</div>
           <div className="flex justify-end gap-2 mt-6">
-            <button type="button" onClick={onClose} className="text-xs px-4 py-2 border border-black/10 rounded-md text-[#555] hover:bg-gray-50 transition-all">cancel</button>
-            <button type="submit" disabled={loading} className="text-xs px-4 py-2 bg-[#1a1a2e] text-[#e8c547] rounded-md hover:bg-[#16213e] disabled:opacity-50 transition-all">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs px-4 py-2 border border-black/10 rounded-md text-[#555] hover:bg-gray-50 transition-all"
+            >
+              cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="text-xs px-4 py-2 bg-[#1a1a2e] text-[#e8c547] rounded-md hover:bg-[#16213e] disabled:opacity-50 transition-all"
+            >
               {loading ? "saving..." : submitLabel}
             </button>
           </div>
@@ -403,7 +468,8 @@ function Field({ label, children }) {
   );
 }
 
-const inputCls = "w-full px-3 py-2 bg-[#fafaf8] border border-black/10 rounded-md text-[13px] text-[#111118] font-[inherit] outline-none focus:border-[#185FA5] focus:bg-white transition-all";
+const inputCls =
+  "w-full px-3 py-2 bg-[#fafaf8] border border-black/10 rounded-md text-[13px] text-[#111118] font-[inherit] outline-none focus:border-[#185FA5] focus:bg-white transition-all";
 
 function AdminModal({ onClose, onSave, isSuperAdmin }) {
   const [form, setForm] = useState({ name: "", email: "", password: "", phoneNumber: "", role: "admin" });
@@ -419,10 +485,18 @@ function AdminModal({ onClose, onSave, isSuperAdmin }) {
 
   return (
     <ModalShell title="Add new admin" onClose={onClose} onSubmit={handleSubmit} loading={loading} submitLabel="create">
-      <Field label="full name"><input required className={inputCls} value={form.name} onChange={set("name")} placeholder="Jane Smith" /></Field>
-      <Field label="email"><input required type="email" className={inputCls} value={form.email} onChange={set("email")} placeholder="jane@example.com" /></Field>
-      <Field label="password"><input required type="password" minLength={6} className={inputCls} value={form.password} onChange={set("password")} placeholder="min 6 characters" /></Field>
-      <Field label="phone number"><input required type="tel" className={inputCls} value={form.phoneNumber} onChange={set("phoneNumber")} placeholder="+1 555 000 0000" /></Field>
+      <Field label="full name">
+        <input required className={inputCls} value={form.name} onChange={set("name")} placeholder="Jane Smith" />
+      </Field>
+      <Field label="email">
+        <input required type="email" className={inputCls} value={form.email} onChange={set("email")} placeholder="jane@example.com" />
+      </Field>
+      <Field label="password">
+        <input required type="password" minLength={6} className={inputCls} value={form.password} onChange={set("password")} placeholder="min 6 characters" />
+      </Field>
+      <Field label="phone number">
+        <input required type="tel" className={inputCls} value={form.phoneNumber} onChange={set("phoneNumber")} placeholder="+1 555 000 0000" />
+      </Field>
       {isSuperAdmin && (
         <Field label="role">
           <select className={inputCls} value={form.role} onChange={set("role")}>

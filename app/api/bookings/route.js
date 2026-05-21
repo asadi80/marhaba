@@ -1,22 +1,33 @@
-// app/api/bookings/route.js - POSTGRESQL VERSION
+// app/api/bookings/route.js - POSTGRESQL VERSION WITH TIME HANDLING
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import pool from "@/lib/postgres";
 import { sendEmail } from "@/lib/sendEmail";
 
+// =====================================================
+// CONSTANTS
+// =====================================================
+const CHECK_IN_TIME = { hour: 13, minute: 30 };  // 1:30 PM
+const CHECK_OUT_TIME = { hour: 11, minute: 0 };   // 11:00 AM
+const TIMEZONE = 'Africa/Tripoli';  // Libya timezone
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
 // Helper function to get user from cookie
 async function getUserFromCookie(request) {
   const token = request.cookies.get("token")?.value;
-  
+
   if (!token) {
     return null;
   }
-  
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
       `SELECT id, name, email, phone_number, role, status FROM users WHERE id = $1`,
-      [decoded.userId]
+      [decoded.userId],
     );
     return result.rows[0] || null;
   } catch (error) {
@@ -25,21 +36,54 @@ async function getUserFromCookie(request) {
   }
 }
 
-// Helper function to format date for email (English format only)
-const formatDateForEmail = (date) => {
-  return new Date(date).toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric',
-    timeZone: 'UTC'
+// Helper function to create timestamp with specific time
+function createTimestampWithTime(dateString, time) {
+  // dateString: '2026-05-26'
+  // time: { hour: 13, minute: 30 }
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, time.hour, time.minute, 0, 0));
+}
+
+// Helper function to format date for email with check-in/out times
+const formatDateForEmail = (dateString, type) => {
+  const date = new Date(dateString);
+  const formattedDate = date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: TIMEZONE,
   });
+  
+  if (type === 'checkin') {
+    return `${formattedDate} at 1:30 PM`;
+  } else if (type === 'checkout') {
+    return `${formattedDate} at 11:00 AM`;
+  }
+  return formattedDate;
 };
+
+// Helper function to format date for display
+function formatBookingDate(dateString, type) {
+  const date = new Date(dateString);
+  const formattedDate = date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: TIMEZONE
+  });
+  
+  if (type === 'checkin') {
+    return `${formattedDate} at 1:30 PM`;
+  } else {
+    return `${formattedDate} at 11:00 AM`;
+  }
+}
 
 // Helper function to check if user is host of a listing
 async function isUserHostOfListing(userId, listingId) {
   const result = await pool.query(
     `SELECT id FROM listings WHERE id = $1 AND host_id = $2`,
-    [listingId, userId]
+    [listingId, userId],
   );
   return result.rows.length > 0;
 }
@@ -48,16 +92,72 @@ async function isUserHostOfListing(userId, listingId) {
 async function getHostListings(hostId) {
   const result = await pool.query(
     `SELECT id FROM listings WHERE host_id = $1`,
-    [hostId]
+    [hostId],
   );
-  return result.rows.map(row => row.id);
+  return result.rows.map((row) => row.id);
 }
 
-// Bilingual email template for new booking request to host
-function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC, nights, totalPrice, guests) {
-  const formattedCheckIn = formatDateForEmail(checkInUTC);
-  const formattedCheckOut = formatDateForEmail(checkOutUTC);
+// Helper function to check date overlap with times
+async function checkDateOverlap(listingId, checkInTimestamp, checkOutTimestamp, excludeBookingId = null) {
+  // Get all active bookings for this listing
+  let query = `
+    SELECT id, check_in, check_out, status 
+    FROM bookings 
+    WHERE listing_id = $1 
+    AND status IN ('pending', 'confirmed')
+  `;
   
+  const params = [listingId];
+  
+  if (excludeBookingId) {
+    query += ` AND id != $2`;
+    params.push(excludeBookingId);
+  }
+  
+  const existingBookings = await pool.query(query, params);
+  
+  // Manual overlap check with proper times
+  for (const booking of existingBookings.rows) {
+    const existingCheckIn = new Date(booking.check_in);
+    const existingCheckOut = new Date(booking.check_out);
+    
+    // Create timestamps with proper check-in/out times
+    const existingStart = createTimestampWithTime(
+      existingCheckIn.toISOString().split('T')[0], 
+      CHECK_IN_TIME
+    );
+    const existingEnd = createTimestampWithTime(
+      existingCheckOut.toISOString().split('T')[0], 
+      CHECK_OUT_TIME
+    );
+    
+    // Check for overlap
+    if (checkInTimestamp < existingEnd && checkOutTimestamp > existingStart) {
+      return { hasConflict: true, conflictingBooking: booking.id };
+    }
+  }
+  
+  return { hasConflict: false };
+}
+
+// =====================================================
+// EMAIL TEMPLATES
+// =====================================================
+
+// Bilingual email template for new booking request to host
+function getNewBookingEmailContent(
+  host,
+  guest,
+  listing,
+  checkInDate,
+  checkOutDate,
+  nights,
+  totalPrice,
+  guests,
+) {
+  const formattedCheckIn = formatDateForEmail(checkInDate, 'checkin');
+  const formattedCheckOut = formatDateForEmail(checkOutDate, 'checkout');
+
   return {
     subject: `New Booking Request / طلب حجز جديد - ${listing.title}`,
     text: `English: New booking request from ${guest.name} for ${listing.title}. Check-in: ${formattedCheckIn}, Check-out: ${formattedCheckOut}, Total: ${totalPrice} LYD\n\nالعربية: طلب حجز جديد من ${guest.name} لـ ${listing.title}. تسجيل الوصول: ${formattedCheckIn}، تسجيل المغادرة: ${formattedCheckOut}، السعر الإجمالي: ${totalPrice} دينار`,
@@ -87,10 +187,10 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
     <div style="margin: 20px 0; background: #e0e7ff; padding: 15px; border-radius: 8px;">
       <p><strong>👤 Guest Contact Information:</strong></p>
       <p>📧 Email: ${guest.email}</p>
-      <p>📞 Phone: ${guest.phone_number || 'Not provided'}</p>
+      <p>📞 Phone: ${guest.phone_number || "Not provided"}</p>
     </div>
     
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/bookings" 
+    <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/host/bookings" 
        style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
       Review Booking Request →
     </a>
@@ -125,10 +225,10 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
     <div style="margin: 20px 0; background: #e0e7ff; padding: 15px; border-radius: 8px;">
       <p><strong>👤 معلومات الاتصال بالضيف:</strong></p>
       <p>📧 البريد الإلكتروني: ${guest.email}</p>
-      <p>📞 رقم الهاتف: ${guest.phone_number || 'غير متوفر'}</p>
+      <p>📞 رقم الهاتف: ${guest.phone_number || "غير متوفر"}</p>
     </div>
     
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/host/bookings" 
+    <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/host/bookings" 
        style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
       مراجعة طلب الحجز ←
     </a>
@@ -143,19 +243,19 @@ function getNewBookingEmailContent(host, guest, listing, checkInUTC, checkOutUTC
     Thank you for hosting with Marhaba! / شكراً لاستضافتك مع مرحبا!
   </p>
 </div>
-    `
+    `,
   };
 }
 
 // Bilingual email template for booking status update to guest
 function getStatusUpdateEmailContent(guest, listing, booking, status) {
-  const formattedCheckIn = formatDateForEmail(booking.check_in);
-  const formattedCheckOut = formatDateForEmail(booking.check_out);
-  const isConfirmed = status === 'confirmed';
-  const statusColor = isConfirmed ? '#22c55e' : '#ef4444';
-  const statusText = isConfirmed ? 'Confirmed' : 'Updated';
-  const statusTextAr = isConfirmed ? 'تم التأكيد' : 'تم التحديث';
-  
+  const formattedCheckIn = formatDateForEmail(booking.check_in, 'checkin');
+  const formattedCheckOut = formatDateForEmail(booking.check_out, 'checkout');
+  const isConfirmed = status === "confirmed";
+  const statusColor = isConfirmed ? "#22c55e" : "#ef4444";
+  const statusText = isConfirmed ? "Confirmed" : "Updated";
+  const statusTextAr = isConfirmed ? "تم التأكيد" : "تم التحديث";
+
   return {
     subject: `Booking ${statusText} / الحجز ${statusTextAr} - ${listing.title}`,
     text: `English: Your booking for ${listing.title} has been ${status}. Check-in: ${formattedCheckIn}, Check-out: ${formattedCheckOut}, Total: ${booking.total_price} LYD\n\nالعربية: تم ${statusTextAr} حجزك لـ ${listing.title}. تسجيل الوصول: ${formattedCheckIn}، تسجيل المغادرة: ${formattedCheckOut}، السعر الإجمالي: ${booking.total_price} دينار`,
@@ -164,7 +264,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
   
   <!-- English Section -->
   <div style="margin-bottom: 30px;">
-    <h2 style="color: ${statusColor};">${isConfirmed ? '✅ Booking Confirmed' : '📝 Booking Updated'}</h2>
+    <h2 style="color: ${statusColor};">${isConfirmed ? "✅ Booking Confirmed" : "📝 Booking Updated"}</h2>
     
     <p>Dear ${guest.name},</p>
     
@@ -180,7 +280,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
       <p><strong>📊 Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${status.toUpperCase()}</span></p>
     </div>
     
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard" 
+    <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/dashboard" 
        style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
       View My Bookings →
     </a>
@@ -190,7 +290,7 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
   
   <!-- Arabic Section -->
   <div style="direction: rtl; text-align: right;">
-    <h2 style="color: ${statusColor};">${isConfirmed ? '✅ تم تأكيد الحجز' : '📝 تم تحديث الحجز'}</h2>
+    <h2 style="color: ${statusColor};">${isConfirmed ? "✅ تم تأكيد الحجز" : "📝 تم تحديث الحجز"}</h2>
     
     <p>عزيزي ${guest.name}،</p>
     
@@ -203,10 +303,10 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
       <p><strong>📅 تسجيل الوصول:</strong> ${formattedCheckIn}</p>
       <p><strong>📅 تسجيل المغادرة:</strong> ${formattedCheckOut}</p>
       <p><strong>💰 السعر الإجمالي:</strong> ${booking.total_price} دينار</p>
-      <p><strong>📊 الحالة:</strong> <span style="color: ${statusColor}; font-weight: bold;">${status === 'confirmed' ? 'مؤكد' : 'محدث'}</span></p>
+      <p><strong>📊 الحالة:</strong> <span style="color: ${statusColor}; font-weight: bold;">${status === "confirmed" ? "مؤكد" : "محدث"}</span></p>
     </div>
     
-    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard" 
+    <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/dashboard" 
        style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
       عرض حجوزاتي ←
     </a>
@@ -217,15 +317,17 @@ function getStatusUpdateEmailContent(guest, listing, booking, status) {
     Thank you for choosing Marhaba! / شكراً لاختيارك مرحبا!
   </p>
 </div>
-    `
+    `,
   };
 }
 
+// =====================================================
 // GET - Fetch bookings (for users and hosts)
+// =====================================================
 export async function GET(request) {
   try {
     const user = await getUserFromCookie(request);
-    
+
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -235,11 +337,11 @@ export async function GET(request) {
     if (user.role === "host") {
       // Host sees bookings for their listings
       const hostListings = await getHostListings(user.id);
-      
+
       if (hostListings.length === 0) {
         return NextResponse.json({ bookings: [] });
       }
-      
+
       const result = await pool.query(
         `SELECT b.*, 
                 l.title as listing_title, l.location as listing_location, l.price as listing_price, l.images as listing_images,
@@ -249,7 +351,7 @@ export async function GET(request) {
          JOIN users u ON b.user_id = u.id
          WHERE l.id = ANY($1::UUID[])
          ORDER BY b.created_at DESC`,
-        [hostListings]
+        [hostListings],
       );
       bookings = result.rows;
     } else {
@@ -264,18 +366,20 @@ export async function GET(request) {
          JOIN users h ON l.host_id = h.id
          WHERE b.user_id = $1
          ORDER BY b.created_at DESC`,
-        [user.id]
+        [user.id],
       );
       bookings = result.rows;
     }
 
-    // Format response
-    const formattedBookings = bookings.map(booking => ({
+    // Format response with display dates
+    const formattedBookings = bookings.map((booking) => ({
       id: booking.id,
       listing_id: booking.listing_id,
       user_id: booking.user_id,
       check_in: booking.check_in,
       check_out: booking.check_out,
+      check_in_display: formatBookingDate(booking.check_in, 'checkin'),
+      check_out_display: formatBookingDate(booking.check_out, 'checkout'),
       total_price: booking.total_price,
       guests: booking.guests,
       status: booking.status,
@@ -289,14 +393,14 @@ export async function GET(request) {
         host: user.role !== "host" ? {
           name: booking.host_name,
           email: booking.host_email,
-          phoneNumber: booking.host_phone
-        } : undefined
+          phoneNumber: booking.host_phone,
+        } : undefined,
       },
       user: user.role === "host" ? {
         name: booking.user_name,
         email: booking.user_email,
-        phoneNumber: booking.user_phone
-      } : undefined
+        phoneNumber: booking.user_phone,
+      } : undefined,
     }));
 
     return NextResponse.json({ bookings: formattedBookings });
@@ -309,11 +413,13 @@ export async function GET(request) {
   }
 }
 
+// =====================================================
 // POST - Create new booking
+// =====================================================
 export async function POST(request) {
   try {
     const user = await getUserFromCookie(request);
-    
+
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -334,7 +440,7 @@ export async function POST(request) {
        FROM listings l
        JOIN users u ON l.host_id = u.id
        WHERE l.id = $1`,
-      [listingId]
+      [listingId],
     );
 
     if (listingResult.rows.length === 0) {
@@ -354,38 +460,48 @@ export async function POST(request) {
       );
     }
 
-    // Parse dates
-    const checkInUTC = new Date(checkIn);
-    const checkOutUTC = new Date(checkOut);
-    const todayUTC = new Date();
-    todayUTC.setUTCHours(0, 0, 0, 0);
+    // Create timestamps with check-in/out times
+    const checkInTimestamp = createTimestampWithTime(checkIn, CHECK_IN_TIME);
+    const checkOutTimestamp = createTimestampWithTime(checkOut, CHECK_OUT_TIME);
+    
+    // Get today's date with check-in time for comparison
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const todayCheckIn = createTimestampWithTime(todayStr, CHECK_IN_TIME);
     
     // Validate dates
-    if (checkInUTC >= checkOutUTC) {
+    if (checkInTimestamp >= checkOutTimestamp) {
       return NextResponse.json(
         { message: "Check-out date must be after check-in date" },
         { status: 400 },
       );
     }
 
-    if (checkInUTC < todayUTC) {
+    if (checkInTimestamp < todayCheckIn) {
       return NextResponse.json(
         { message: "Cannot book dates in the past" },
         { status: 400 },
       );
     }
 
-    // Check for date conflicts
-    const conflictResult = await pool.query(
-      `SELECT id FROM bookings 
-       WHERE listing_id = $1 
-       AND status IN ('pending', 'confirmed')
-       AND check_in < $2 
-       AND check_out > $3`,
-      [listingId, checkOutUTC, checkInUTC]
+    // Calculate nights (based on full days)
+    const nights = Math.round((checkOutTimestamp - checkInTimestamp) / (1000 * 60 * 60 * 24));
+    if (nights < 1) {
+      return NextResponse.json(
+        { message: "Minimum stay is 1 night" },
+        { status: 400 },
+      );
+    }
+
+    // Check for date conflicts with proper time handling
+    const { hasConflict, conflictingBooking } = await checkDateOverlap(
+      listingId, 
+      checkInTimestamp, 
+      checkOutTimestamp
     );
 
-    if (conflictResult.rows.length > 0) {
+    if (hasConflict) {
+      console.log(`Conflict detected with booking ${conflictingBooking}`);
       return NextResponse.json(
         { message: "Selected dates are not available" },
         { status: 400 },
@@ -393,15 +509,14 @@ export async function POST(request) {
     }
 
     // Calculate total price
-    const nights = Math.ceil((checkOutUTC - checkInUTC) / (1000 * 60 * 60 * 24));
     const totalPrice = parseFloat(listing.price) * nights;
 
-    // Create booking
+    // Create booking (store only the date part, no time)
     const bookingResult = await pool.query(
       `INSERT INTO bookings (listing_id, user_id, check_in, check_out, total_price, guests, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
        RETURNING *`,
-      [listingId, user.id, checkInUTC, checkOutUTC, totalPrice, guests || 1]
+      [listingId, user.id, checkIn, checkOut, totalPrice, guests || 1],
     );
 
     const booking = bookingResult.rows[0];
@@ -410,19 +525,19 @@ export async function POST(request) {
     const host = {
       name: listing.host_name,
       email: listing.host_email,
-      phone_number: listing.host_phone
+      phone_number: listing.host_phone,
     };
 
     // Send email to host
     const emailContent = getNewBookingEmailContent(
-      host, 
-      user, 
-      listing, 
-      checkInUTC, 
-      checkOutUTC, 
-      nights, 
-      totalPrice, 
-      guests
+      host,
+      user,
+      listing,
+      checkIn,
+      checkOut,
+      nights,
+      totalPrice,
+      guests,
     );
 
     try {
@@ -432,18 +547,20 @@ export async function POST(request) {
         text: emailContent.text,
         html: emailContent.html,
       });
-      console.log('Email sent to host:', host.email);
+      console.log("Email sent to host:", host.email);
     } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
+      console.error("Failed to send email notification:", emailError);
     }
 
-    // Format response
+    // Format response with display dates
     const formattedBooking = {
       id: booking.id,
       listing_id: booking.listing_id,
       user_id: booking.user_id,
       check_in: booking.check_in,
       check_out: booking.check_out,
+      check_in_display: formatBookingDate(booking.check_in, 'checkin'),
+      check_out_display: formatBookingDate(booking.check_out, 'checkout'),
       total_price: booking.total_price,
       guests: booking.guests,
       status: booking.status,
@@ -454,7 +571,7 @@ export async function POST(request) {
         location: listing.location,
         price: listing.price,
         images: listing.images,
-      }
+      },
     };
 
     return NextResponse.json(
@@ -473,11 +590,13 @@ export async function POST(request) {
   }
 }
 
+// =====================================================
 // PATCH - Update booking status (for hosts)
+// =====================================================
 export async function PATCH(request) {
   try {
     const user = await getUserFromCookie(request);
-    
+
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -491,7 +610,7 @@ export async function PATCH(request) {
       );
     }
 
-    if (!['confirmed', 'cancelled'].includes(status)) {
+    if (!["confirmed", "cancelled"].includes(status)) {
       return NextResponse.json(
         { message: "Invalid status. Use 'confirmed' or 'cancelled'" },
         { status: 400 },
@@ -507,7 +626,7 @@ export async function PATCH(request) {
        JOIN listings l ON b.listing_id = l.id
        JOIN users u ON b.user_id = u.id
        WHERE b.id = $1`,
-      [bookingId]
+      [bookingId],
     );
 
     if (bookingResult.rows.length === 0) {
@@ -530,7 +649,7 @@ export async function PATCH(request) {
     // Update status
     await pool.query(
       `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [status, bookingId]
+      [status, bookingId],
     );
 
     // Get updated booking
@@ -541,7 +660,7 @@ export async function PATCH(request) {
       { name: booking.guest_name, email: booking.guest_email },
       { title: booking.listing_title, location: booking.listing_location },
       updatedBooking,
-      status
+      status,
     );
 
     try {
@@ -551,9 +670,9 @@ export async function PATCH(request) {
         text: emailContent.text,
         html: emailContent.html,
       });
-      console.log('Email sent to guest:', booking.guest_email);
+      console.log("Email sent to guest:", booking.guest_email);
     } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
+      console.error("Failed to send email notification:", emailError);
     }
 
     return NextResponse.json({
@@ -563,11 +682,13 @@ export async function PATCH(request) {
         status: status,
         check_in: booking.check_in,
         check_out: booking.check_out,
+        check_in_display: formatBookingDate(booking.check_in, 'checkin'),
+        check_out_display: formatBookingDate(booking.check_out, 'checkout'),
         total_price: booking.total_price,
         listing: {
           title: booking.listing_title,
-          location: booking.listing_location
-        }
+          location: booking.listing_location,
+        },
       },
     });
   } catch (error) {

@@ -105,8 +105,8 @@ CREATE TABLE bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   listing_id UUID REFERENCES listings(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  check_in DATE NOT NULL,
-  check_out DATE NOT NULL,
+  check_in TIMESTAMP NOT NULL,  -- Now includes time
+  check_out TIMESTAMP NOT NULL, -- Now includes time
   total_price DECIMAL(10, 2) NOT NULL,
   guests INTEGER NOT NULL DEFAULT 1,
   status VARCHAR(20) DEFAULT 'pending',
@@ -132,7 +132,7 @@ CREATE INDEX idx_listings_category ON listings(category);
 
 -- Bookings indexes
 CREATE INDEX idx_bookings_user ON bookings(user_id);
-CREATE INDEX idx_bookings_listing ON bookings(listing_id);
+CREATE INDEX idx_bookings_listing_dates ON bookings(listing_id, check_in, check_out);
 CREATE INDEX idx_bookings_dates ON bookings(check_in, check_out);
 CREATE INDEX idx_bookings_status ON bookings(status);
 

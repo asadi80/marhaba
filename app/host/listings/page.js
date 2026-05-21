@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 import ImageUpload from "@/components/ImageUpload";
 import { useLanguage } from "@/hooks/useLanguage";
+import LoadingScreen from "@/components/LoadingScreen";
 
 
 const MapContainer     = dynamic(() => import("react-leaflet").then((m) => m.MapContainer),     { ssr: false });
@@ -263,9 +264,7 @@ export default function HostListings() {
   const fieldInput = "w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none transition-all focus:border-[#e8c547] focus:shadow-[0_0_0_3px_rgba(232,197,71,0.12)] focus:bg-white";
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f7f6f2]">
-      <div className="w-10 h-10 border-[3px] border-[#e8c547] border-t-transparent rounded-full animate-spin" />
-    </div>
+    <LoadingScreen />
   );
 
   return (
@@ -278,11 +277,11 @@ export default function HostListings() {
         </Link>
 
         <div className="hidden sm:flex items-center gap-1">
-          <Link href="/host-dashboard" className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-white hover:bg-white/[0.06] transition-colors">{t.overview}</Link>
+          <Link href="/host-dashboard" className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors">{t.overview}</Link>
           <Link href="/host/listings"  className="text-xs text-[#e8c547] no-underline px-3 py-1.5 rounded-md">{t.myListings}</Link>
-          <Link href="/host/bookings"  className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-white hover:bg-white/[0.06] transition-colors">{t.bookings}</Link>
+          <Link href="/host/bookings"  className="text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors">{t.bookings}</Link>
           <button onClick={toggleLanguage} className="ms-2 bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]">
-            {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
+            {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
           </button>
           <div className="w-px h-4 bg-white/12 mx-1.5" />
           <button onClick={() => router.push("/host-dashboard")} className="bg-[#e8c547] text-[#1a1a2e] px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none hover:opacity-88 hover:-translate-y-px transition-all">
@@ -302,7 +301,7 @@ export default function HostListings() {
       {menuOpen && (
         <div className="sm:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 py-4 z-40 flex flex-col gap-2.5">
           <button onClick={toggleLanguage} className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] font-[inherit] w-full mb-2">
-            {isAr ? "🇬🇧 English" : "🇸🇦 عربي"}
+            {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
           </button>
           <Link href="/host-dashboard" className="text-[13px] text-white/70 no-underline py-2">{t.overview}</Link>
           <Link href="/host/listings"  className="text-[13px] text-[#e8c547] no-underline py-2">{t.myListings}</Link>

@@ -5,20 +5,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const stats = [
-  { val: "Secure",    label: "password encryption",   border: "#378ADD" },
-  { val: "Protected", label: "account recovery",       border: "#e8c547" },
-  { val: "Trusted",   label: "authentication system",  border: "#1D9E75" },
+  { val: "Secure", label: "password encryption", border: "#378ADD" },
+  { val: "Protected", label: "account recovery", border: "#e8c547" },
+  { val: "Trusted", label: "authentication system", border: "#1D9E75" },
 ];
 
 /* ─── Shared pieces ─────────────────────────────────────── */
 
 function Logo({ dark = false }) {
   return (
-    <span
-      className={`font-light text-[22px] [font-family:'Fraunces',serif] ${dark ? "text-[#111118] italic" : "text-white"}`}
+    <Link
+      href="/"
+      className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-[1px]"
     >
-      mar<span className={`font-medium ${dark ? "not-italic" : ""} text-[#e8c547]`}>haba</span>
-    </span>
+      مر<span className="font-bold text-[#e8c547]">حبا</span>
+    </Link>
   );
 }
 
@@ -41,9 +42,17 @@ function LeftPanel({ headline, sub }) {
 
       <div className="relative z-10 flex flex-col gap-5">
         {stats.map(({ val, label, border }) => (
-          <div key={label} className="pt-3" style={{ borderTop: `3px solid ${border}` }}>
-            <p className="italic font-light text-[26px] leading-none text-white [font-family:'Fraunces',serif]">{val}</p>
-            <p className="text-[10px] uppercase tracking-[0.08em] text-white/30 mt-1">{label}</p>
+          <div
+            key={label}
+            className="pt-3"
+            style={{ borderTop: `3px solid ${border}` }}
+          >
+            <p className="italic font-light text-[26px] leading-none text-white [font-family:'Fraunces',serif]">
+              {val}
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.08em] text-white/30 mt-1">
+              {label}
+            </p>
           </div>
         ))}
       </div>
@@ -66,10 +75,13 @@ function InvalidToken() {
 
         <div className="relative z-10">
           <p className="italic font-light text-[38px] leading-[1.15] text-white mb-4 [font-family:'Fraunces',serif]">
-            Reset link<br />expired.
+            Reset link
+            <br />
+            expired.
           </p>
           <p className="text-[13px] leading-[1.75] text-white/35">
-            Your password reset link is invalid or has expired. Request a new secure reset link.
+            Your password reset link is invalid or has expired. Request a new
+            secure reset link.
           </p>
         </div>
 
@@ -80,13 +92,26 @@ function InvalidToken() {
       <div className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-[360px]">
           <div className="lg:hidden mb-10">
-            <Link href="/" className="no-underline"><Logo dark /></Link>
+            <Link href="/" className="no-underline">
+              <Logo dark />
+            </Link>
           </div>
 
           <div className="flex items-center gap-2 bg-[#FCEBEB] border border-[#A32D2D]/15 rounded-[8px] px-3.5 py-2.5 text-[12px] text-[#791F1F] mb-5">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              className="shrink-0"
+            >
               <circle cx="7" cy="7" r="6" stroke="#A32D2D" strokeWidth="1.2" />
-              <path d="M7 4v3.5M7 9.5h.01" stroke="#A32D2D" strokeWidth="1.2" strokeLinecap="round" />
+              <path
+                d="M7 4v3.5M7 9.5h.01"
+                stroke="#A32D2D"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
             </svg>
             Invalid or expired reset link
           </div>
@@ -106,16 +131,16 @@ function InvalidToken() {
 /* ─── Main content ───────────────────────────────────────── */
 
 function ResetPasswordContent() {
-  const searchParams   = useSearchParams();
-  const token          = searchParams.get("token");
-  const router         = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  const router = useRouter();
 
-  const [password,        setPassword]        = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message,         setMessage]         = useState("");
-  const [error,           setError]           = useState("");
-  const [loading,         setLoading]         = useState(false);
-  const [isValidToken,    setIsValidToken]    = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isValidToken, setIsValidToken] = useState(true);
 
   useEffect(() => {
     if (!token) {
@@ -142,10 +167,10 @@ function ResetPasswordContent() {
     }
 
     try {
-      const res  = await fetch("/api/auth/reset-password", {
-        method:  "POST",
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ token, newPassword: password }),
+        body: JSON.stringify({ token, newPassword: password }),
       });
       const data = await res.json();
 
@@ -167,20 +192,26 @@ function ResetPasswordContent() {
 
   return (
     <div className="min-h-screen flex bg-[#f7f6f2]">
-
       {/* LEFT PANEL */}
       <LeftPanel
-        headline={<>Create a new<br />password.</>}
+        headline={
+          <>
+            Create a new
+            <br />
+            password.
+          </>
+        }
         sub="Choose a strong password to keep your account secure."
       />
 
       {/* RIGHT PANEL */}
       <div className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-[360px]">
-
           {/* Mobile logo */}
           <div className="lg:hidden mb-10">
-            <Link href="/" className="no-underline"><Logo dark /></Link>
+            <Link href="/" className="no-underline">
+              <Logo dark />
+            </Link>
           </div>
 
           {/* Header */}
@@ -190,7 +221,10 @@ function ResetPasswordContent() {
             </h1>
             <p className="text-[12px] text-[#999]">
               Remember your password?{" "}
-              <Link href="/login" className="text-[#185FA5] no-underline hover:underline">
+              <Link
+                href="/login"
+                className="text-[#185FA5] no-underline hover:underline"
+              >
                 Back to login
               </Link>
             </p>
@@ -199,9 +233,27 @@ function ResetPasswordContent() {
           {/* Success banner */}
           {message && (
             <div className="flex items-center gap-2 bg-[#eaf3de] border border-[#c5d9b1] rounded-[10px] px-3 py-2.5 text-[12px] text-[#27500A] mb-5 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-                <circle cx="7" cy="7" r="6" stroke="#27500A" strokeWidth="1.2" />
-                <path d="M4.5 7l2 2 3-4" stroke="#27500A" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className="shrink-0"
+              >
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="6"
+                  stroke="#27500A"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M4.5 7l2 2 3-4"
+                  stroke="#27500A"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
               {message}
             </div>
@@ -210,16 +262,36 @@ function ResetPasswordContent() {
           {/* Error banner */}
           {error && (
             <div className="flex items-center gap-2 bg-[#FCEBEB] border border-[#A32D2D]/15 rounded-[8px] px-3.5 py-2.5 text-[12px] text-[#791F1F] mb-5 animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-                <circle cx="7" cy="7" r="6" stroke="#A32D2D" strokeWidth="1.2" />
-                <path d="M7 4v3.5M7 9.5h.01" stroke="#A32D2D" strokeWidth="1.2" strokeLinecap="round" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className="shrink-0"
+              >
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="6"
+                  stroke="#A32D2D"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M7 4v3.5M7 9.5h.01"
+                  stroke="#A32D2D"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
               </svg>
               {error}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.16s_both]">
+          <form
+            onSubmit={handleSubmit}
+            className="animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.16s_both]"
+          >
             <div className="flex flex-col gap-3.5 mb-7">
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.09em] text-[#999] mb-1.5">
@@ -263,12 +335,16 @@ function ResetPasswordContent() {
           <div className="mt-7 text-center animate-[fadeUp_0.45s_cubic-bezier(0.22,1,0.36,1)_0.24s_both]">
             <div className="inline-flex items-center gap-1.5 bg-[#1D9E75]/10 border border-[#1D9E75]/20 rounded-full px-3 py-1 text-[11px] text-[#0F6E56]">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M5 1L1.5 2.5v3C1.5 7.4 3 8.8 5 9.5c2-0.7 3.5-2.1 3.5-4V2.5L5 1z" stroke="#0F6E56" strokeWidth="1" strokeLinejoin="round" />
+                <path
+                  d="M5 1L1.5 2.5v3C1.5 7.4 3 8.8 5 9.5c2-0.7 3.5-2.1 3.5-4V2.5L5 1z"
+                  stroke="#0F6E56"
+                  strokeWidth="1"
+                  strokeLinejoin="round"
+                />
               </svg>
               Protected by industry-standard encryption
             </div>
           </div>
-
         </div>
       </div>
 

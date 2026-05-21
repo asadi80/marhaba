@@ -5,56 +5,36 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import HostCalendar from "@/components/HostCalendar";
 import { useLanguage } from "@/hooks/useLanguage";
+import LoadingScreen from "@/components/LoadingScreen";
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function HostBookings() {
   const router = useRouter();
   const { lang, t, toggleLanguage } = useLanguage();
-  const isAr = lang === 'ar';
+  const isAr = lang === "ar";
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  // Font definitions
-  const arabicFont = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishFont = "'DM Mono', monospace";
-  const arabicDisplay = "'Cairo', 'Tajawal', 'Almarai', 'IBM Plex Sans Arabic', sans-serif";
-  const englishDisplay = "'Fraunces', serif";
-  const bodyFont = isAr ? arabicFont : englishFont;
-  const displayFont = isAr ? arabicDisplay : englishDisplay;
 
-  // Format currency function
-  const formatCurrency = (amount) => {
-    if (isAr) {
-      return `${Math.round(amount).toLocaleString()} دينار`;
-    }
-    return `${Math.round(amount).toLocaleString()} LYD`;
-  };
-  
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  const formatCurrency = (amount) =>
+    isAr
+      ? `${Math.round(amount).toLocaleString()} دينار`
+      : `${Math.round(amount).toLocaleString()} LYD`;
+
+  useEffect(() => { fetchBookings(); }, []);
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/bookings", {
-        credentials: "include",
-      });
-      const data = await response.json();
-console.log(data);
-
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-
+      const res = await fetch("/api/bookings", { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
       setBookings(data.bookings);
-    } catch (error) {
-      console.error("Error fetching bookings:", error);
-      setError(error.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -62,66 +42,36 @@ console.log(data);
 
   const handleConfirmBooking = async (bookingId) => {
     if (!confirm(t.confirmBooking)) return;
-
     setActionLoading(bookingId);
-
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "confirm" }),
       });
-
-      const data = await response.json();
-      console.log(data);
-      
-
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingConfirmedSuccess);
-    } catch (error) {
-      console.error("Error confirming booking:", error);
-      alert(error.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setActionLoading(null); }
   };
 
   const handleCancelBooking = async (bookingId) => {
     if (!confirm(t.confirmCancelBooking)) return;
-
     setActionLoading(bookingId);
-
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "cancel" }),
       });
-
-      const data = await response.json();
-      console.log(data);
-      
-
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingCancelledSuccess);
-    } catch (error) {
-      console.error("Error cancelling booking:", error);
-      alert(error.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setActionLoading(null); }
   };
 
   const getFiltered = () =>
@@ -129,409 +79,172 @@ console.log(data);
       ? bookings
       : bookings.filter((b) => b.status === filter);
 
-  const formatDate = (s) => {
-    const date = new Date(s);
-    // Always use English date format
-    return date.toLocaleDateString('en-US', {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone: "UTC",
+  const formatDate = (s) =>
+    new Date(s).toLocaleDateString("en-US", {
+      year: "numeric", month: "long", day: "numeric", timeZone: "UTC",
     });
-  };
 
   const calcNights = (ci, co) => {
-    const checkIn = new Date(ci);
-    const checkOut = new Date(co);
-    const checkInUTC = new Date(
-      Date.UTC(
-        checkIn.getUTCFullYear(),
-        checkIn.getUTCMonth(),
-        checkIn.getUTCDate(),
-      ),
+    const a = new Date(ci), b = new Date(co);
+    return Math.ceil(
+      (Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()) -
+       Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate())) / 86400000
     );
-    const checkOutUTC = new Date(
-      Date.UTC(
-        checkOut.getUTCFullYear(),
-        checkOut.getUTCMonth(),
-        checkOut.getUTCDate(),
-      ),
-    );
-    return Math.ceil((checkOutUTC - checkInUTC) / 86400000);
   };
 
-  const statusStyle = (s) =>
-    ({
-      confirmed: { bg: "#DCFCE7", color: "#166534" },
-      pending: { bg: "#FEF9C3", color: "#713f12" },
-      cancelled: { bg: "#FEE2E2", color: "#991b1b" },
-    })[s] || { bg: "#F3F4F6", color: "#374151" };
+  // exact colours from original
+  const statusBadgeCls = (s) => ({
+    confirmed: "bg-[#DCFCE7] text-[#166534]",
+    pending:   "bg-[#FEF9C3] text-[#713f12]",
+    cancelled: "bg-[#FEE2E2] text-[#991b1b]",
+  }[s] || "bg-[#F3F4F6] text-[#374151]");
+
+  const STAT_CARDS = [
+    { label: t.total,     val: bookings.length,                                        borderTop: "border-t-white/20" },
+    { label: t.confirmed, val: bookings.filter((b) => b.status === "confirmed").length, borderTop: "border-t-[#1D9E75]" },
+    { label: t.pending,   val: bookings.filter((b) => b.status === "pending").length,   borderTop: "border-t-[#e8c547]" },
+    { label: t.cancelled, val: bookings.filter((b) => b.status === "cancelled").length, borderTop: "border-t-[#e05a5a]" },
+  ];
+
+  const FILTER_TABS = [
+    { id: "all",       label: t.allBookings },
+    { id: "confirmed", label: t.confirmed },
+    { id: "pending",   label: t.pending },
+    { id: "cancelled", label: t.cancelled },
+    { id: "calendar",  label: `📅 ${t.calendarView}` },
+  ];
 
   if (loading)
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f7f6f2",
-        }}
-      >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            border: "3px solid #e8c547",
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-      </div>
+      <LoadingScreen />
     );
 
   return (
     <>
-      <style jsx global>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Almarai:wght@300;400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { 
-          font-family: ${bodyFont} !important; 
-          background: #f7f6f2; 
-          color: #111118; 
-          -webkit-font-smoothing: antialiased; 
-        }
-        .font-display { 
-          font-family: ${displayFont} !important; 
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-
-        .fu { animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-        .fu0 { animation-delay: 0s; }
-        .fu1 { animation-delay: 0.08s; }
-        .fu2 { animation-delay: 0.16s; }
-
-        .nav-blur { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-
-        .nav-link { font-size:12px; color:rgba(255,255,255,0.5); text-decoration:none; padding:6px 12px; border-radius:6px; transition:color 0.15s, background 0.15s; }
-        .nav-link:hover { color:#fff; background:rgba(255,255,255,0.06); }
-        .nav-link.active { color:#e8c547; }
-
-        .btn-primary {
-          background:#e8c547; color:#1a1a2e;
-          padding:9px 20px; border-radius:8px;
-          font-size:12px; font-family:inherit; font-weight:500;
-          text-decoration:none; display:inline-flex; align-items:center; gap:6px;
-          border:none; cursor:pointer;
-          transition:opacity 0.15s, transform 0.15s;
-        }
-        .btn-primary:hover { opacity:0.88; transform:translateY(-1px); }
-
-        .filter-tab {
-          padding:8px 16px; border:none; background:none;
-          font-family:inherit; font-size:12px; cursor:pointer;
-          color:#888; border-bottom:2px solid transparent;
-          transition:color 0.15s, border-color 0.15s;
-          display:inline-flex; align-items:center; gap:6px;
-          white-space:nowrap;
-        }
-        .filter-tab:hover { color:#111118; }
-        .filter-tab.active { color:#1a1a2e; border-bottom-color:#e8c547; }
-
-        .booking-card {
-          background:#fff; border:1px solid rgba(0,0,0,0.07); border-radius:14px;
-          padding:1.25rem 1.5rem; transition:box-shadow 0.2s, transform 0.2s;
-        }
-        .booking-card:hover { box-shadow:0 10px 32px rgba(0,0,0,0.07); transform:translateY(-2px); }
-
-        .action-btn {
-          padding:8px 16px; border-radius:8px; font-size:12px;
-          font-family:inherit; font-weight:500; cursor:pointer;
-          border:none; display:inline-flex; align-items:center; gap:5px;
-          transition:opacity 0.15s, transform 0.15s;
-        }
-        .action-btn:hover { opacity:0.85; transform:translateY(-1px); }
-        .action-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-
-        .hamburger { display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:4px; }
-        .hamburger span { display:block; width:20px; height:2px; background:rgba(255,255,255,0.7); border-radius:2px; transition:all 0.2s; }
-        .mobile-menu { display:none; position:fixed; top:56px; left:0; right:0; background:#1a1a2e; border-bottom:1px solid rgba(232,197,71,0.15); padding:1rem 1.5rem; z-index:40; flex-direction:column; gap:10px; }
-        .mobile-menu.open { display:flex; animation:fadeIn 0.2s ease; }
-        .stats-bar { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
-
-        button, select, input, textarea {
-          font-family: inherit;
-        }
-
-        @media (max-width: 900px) {
-          .stats-bar { grid-template-columns:repeat(2,1fr); }
-          .booking-inner { flex-direction:column !important; }
-          .action-col { flex-direction:row !important; margin-top:1rem; }
-        }
-        @media (max-width: 640px) {
-          .hamburger { display:flex; }
-          .desktop-nav { display:none !important; }
-          .stats-bar { grid-template-columns:1fr 1fr; }
-          .filter-tabs { overflow-x:auto; }
-          .meta-grid { grid-template-columns:1fr 1fr !important; }
-          .section-inner { padding:1.25rem !important; }
-        }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .fu  { animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+        .fu0 { animation-delay:0s; }
+        .fu1 { animation-delay:.08s; }
+        .fu2 { animation-delay:.16s; }
+        .display-font { font-family: ${isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif"} !important; }
+        .body-font    { font-family: ${isAr ? "'Cairo','Tajawal','Almarai','IBM Plex Sans Arabic',sans-serif" : "'DM Mono',monospace"} !important; }
+        .tabs-scroll::-webkit-scrollbar { display:none; }
+        .tabs-scroll { -ms-overflow-style:none; scrollbar-width:none; }
       `}</style>
 
-      <div style={{ minHeight: "100vh", background: "#f7f6f2", direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+      <div className="min-h-screen bg-[#f7f6f2] body-font" dir={isAr ? "rtl" : "ltr"}>
+
         {/* ── NAV ── */}
-        <nav
-          className="nav-blur"
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 50,
-            background: "rgba(26,26,46,0.97)",
-            borderBottom: "1px solid rgba(232,197,71,0.15)",
-            padding: "0 1.5rem",
-            height: 56,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-               <Link
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontFamily: "'Cairo', 'Tajawal', sans-serif",
-                fontWeight: 500,
-                fontSize: "26px",
-                color: "#fdfdfd",
-                letterSpacing: "1px",
-              }}
-            >
-             مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-            </Link>
+        <nav className="sticky top-0 z-50 bg-[rgba(26,26,46,0.97)] backdrop-blur-xl border-b border-[rgba(232,197,71,0.15)] px-6 h-14 flex items-center justify-between">
 
-
-          <div
-            className="desktop-nav"
-            style={{ display: "flex", alignItems: "center", gap: 4 }}
+          <Link
+            href="/"
+            className="no-underline flex-shrink-0"
+            style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: 26, color: "#fdfdfd", letterSpacing: 1 }}
           >
-            <Link href="/host-dashboard" className="nav-link">
-              {t.overview}
-            </Link>
-            <Link href="/host/listings" className="nav-link">
-              {t.myListings}
-            </Link>
-            <Link href="/host/bookings" className="nav-link active">
-              {t.bookings}
-            </Link>
-            
-            {/* Language Toggle Button */}
+            مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
+          </Link>
+
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-1">
+            {[
+              { href: "/host-dashboard", label: t.overview },
+              { href: "/host/listings",  label: t.myListings },
+              { href: "/host/bookings",  label: t.bookings, active: true },
+            ].map(({ href, label, active }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`text-xs no-underline px-3 py-1.5 rounded-md transition-all ${
+                  active
+                    ? "text-[#e8c547]"
+                    : "text-white/50 hover:text-[#e8c547] hover:bg-white/[0.06]"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+
             <button
               onClick={toggleLanguage}
-              style={{
-                background: "rgba(232,197,71,0.15)",
-                border: "1px solid rgba(232,197,71,0.3)",
-                borderRadius: 6,
-                padding: "4px 10px",
-                fontSize: 11,
-                cursor: "pointer",
-                color: "#e8c547",
-                fontFamily: "inherit",
-                marginLeft: 8,
-              }}
+              className="ml-2 bg-[rgba(232,197,71,0.15)] border border-[rgba(232,197,71,0.3)] rounded-md px-2.5 py-1 text-[11px] text-[#e8c547] cursor-pointer hover:opacity-80 transition-opacity"
             >
-              {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
-            </button>
-            
-            <div
-              style={{
-                width: 1,
-                height: 16,
-                background: "rgba(255,255,255,0.12)",
-                margin: "0 6px",
-              }}
-            />
+              {lang === 'en' ? '🇱🇾 عربي' : '🇬🇧 English'}            </button>
+
+            <div className="w-px h-4 bg-white/[0.12] mx-1.5" />
+
             <button
               onClick={() => router.push("/host-dashboard")}
-              className="btn-primary"
-              style={{ padding: "6px 14px" }}
+              className="bg-[#e8c547] text-[#1a1a2e] text-xs font-medium px-3.5 py-1.5 rounded-lg hover:opacity-[0.88] hover:-translate-y-px transition-all"
             >
               {t.dashboard} →
             </button>
           </div>
 
+          {/* Hamburger */}
           <button
-            className="hamburger"
             onClick={() => setMenuOpen(!menuOpen)}
+            className="md:hidden flex flex-col gap-[5px] p-1 bg-transparent border-none cursor-pointer"
             aria-label="Menu"
           >
-            <span
-              style={{
-                transform: menuOpen ? "rotate(45deg) translateY(7px)" : "none",
-              }}
-            />
-            <span style={{ opacity: menuOpen ? 0 : 1 }} />
-            <span
-              style={{
-                transform: menuOpen
-                  ? "rotate(-45deg) translateY(-7px)"
-                  : "none",
-              }}
-            />
+            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
+            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "opacity-0" : ""}`} />
+            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
           </button>
         </nav>
 
-        <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
-          {/* Language Toggle in Mobile Menu */}
-          <button
-            onClick={toggleLanguage}
-            style={{
-              background: "rgba(232,197,71,0.15)",
-              border: "1px solid rgba(232,197,71,0.3)",
-              borderRadius: 6,
-              padding: "8px 12px",
-              fontSize: 12,
-              cursor: "pointer",
-              color: "#e8c547",
-              fontFamily: "inherit",
-              width: "100%",
-              marginBottom: 8,
-            }}
-          >
-            {lang === 'en' ? '🇸🇦 عربي' : '🇬🇧 English'}
-          </button>
-          <Link
-            href="/host-dashboard"
-            style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,0.7)",
-              textDecoration: "none",
-              padding: "8px 0",
-            }}
-          >
-            {t.overview}
-          </Link>
-          <Link
-            href="/host/listings"
-            style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,0.7)",
-              textDecoration: "none",
-              padding: "8px 0",
-            }}
-          >
-            {t.myListings}
-          </Link>
-          <Link
-            href="/host/bookings"
-            style={{
-              fontSize: 13,
-              color: "#e8c547",
-              textDecoration: "none",
-              padding: "8px 0",
-            }}
-          >
-            {t.bookings}
-          </Link>
-        </div>
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden fixed top-14 inset-x-0 z-40 bg-[#1a1a2e] border-b border-[rgba(232,197,71,0.15)] px-6 py-4 flex flex-col gap-2.5" style={{ animation: "fadeIn 0.2s ease" }}>
+            <button
+              onClick={toggleLanguage}
+              className="w-full bg-[rgba(232,197,71,0.15)] border border-[rgba(232,197,71,0.3)] rounded-md px-3 py-2 text-xs text-[#e8c547] mb-1 cursor-pointer"
+            >
+              {lang === "en" ? "🇱🇾 عربي" : "🇬🇧 English"}
+            </button>
+            {[
+              { href: "/host-dashboard", label: t.overview },
+              { href: "/host/listings",  label: t.myListings },
+              { href: "/host/bookings",  label: t.bookings, active: true },
+            ].map(({ href, label, active }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`text-[13px] no-underline py-2 ${active ? "text-[#e8c547]" : "text-white/70"}`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* ── PAGE HEADER ── */}
-        <div
-          style={{
-            background: "#1a1a2e",
-            borderBottom: "1px solid rgba(232,197,71,0.12)",
-            padding: "2.5rem 1.5rem 2rem",
-          }}
-        >
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div
-              className="fu fu0"
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "rgba(232,197,71,0.6)",
-                marginBottom: 8,
-              }}
-            >
+        <div className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,0.12)] px-6 pt-10 pb-8">
+          <div className="max-w-[1100px] mx-auto">
+
+            <div className="fu fu0 text-[10px] tracking-[0.12em] uppercase text-[rgba(232,197,71,0.6)] mb-2">
               {t.hostPanel}
             </div>
-            <h1
-              className="fu fu1 font-display"
-              style={{
-                fontStyle: isAr ? "normal" : "italic",
-                fontWeight: 300,
-                fontSize: "clamp(28px,4vw,38px)",
-                color: "#fff",
-                marginBottom: "1.75rem",
-              }}
-            >
+
+            <h1 className={`fu fu1 display-font font-light text-[clamp(28px,4vw,38px)] text-white mb-7 ${isAr ? "" : "italic"}`}>
               {t.bookingsTitle}{" "}
-              <span style={{ fontWeight: 500, color: "#e8c547" }}>
-                {t.management}
-              </span>
+              <span className="font-medium text-[#e8c547]">{t.management}</span>
             </h1>
 
-            {/* Stats bar */}
-            <div className="fu fu2 stats-bar">
-              {[
-                {
-                  label: t.total,
-                  val: bookings.length,
-                  c: "rgba(255,255,255,0.2)",
-                },
-                {
-                  label: t.confirmed,
-                  val: bookings.filter((b) => b.status === "confirmed").length,
-                  c: "#1D9E75",
-                },
-                {
-                  label: t.pending,
-                  val: bookings.filter((b) => b.status === "pending").length,
-                  c: "#e8c547",
-                },
-                {
-                  label: t.cancelled,
-                  val: bookings.filter((b) => b.status === "cancelled").length,
-                  c: "#e05a5a",
-                },
-              ].map(({ label, val, c }) => (
+            {/* Stats */}
+            <div className="fu fu2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {STAT_CARDS.map(({ label, val, borderTop }) => (
                 <div
                   key={label}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    borderTop: `3px solid ${c}`,
-                    borderRadius: 10,
-                    padding: "0.875rem 1rem",
-                  }}
+                  className={`bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] border-t-[3px] ${borderTop} rounded-[10px] px-4 py-3.5`}
                 >
-                  <div
-                    className="font-display"
-                    style={{
-                      fontStyle: isAr ? "normal" : "italic",
-                      fontWeight: 300,
-                      fontSize: 28,
-                      color: "#fff",
-                      lineHeight: 1,
-                    }}
-                  >
+                  <div className={`display-font font-light text-[28px] text-white leading-none ${isAr ? "" : "italic"}`}>
                     {val}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.35)",
-                      marginTop: 4,
-                    }}
-                  >
+                  <div className="text-[10px] tracking-[0.08em] uppercase text-[rgba(255,255,255,0.35)] mt-1">
                     {label}
                   </div>
                 </div>
@@ -541,354 +254,165 @@ console.log(data);
         </div>
 
         {/* ── MAIN ── */}
-        <main
-          style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}
-        >
+        <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8">
+
           {/* Filter tabs */}
-          <div
-            className="filter-tabs"
-            style={{
-              display: "flex",
-              borderBottom: "1px solid rgba(0,0,0,0.08)",
-              marginBottom: "1.5rem",
-              overflowX: "auto",
-            }}
-          >
-            {[
-              { id: "all", label: t.allBookings },
-              { id: "confirmed", label: t.confirmed },
-              { id: "pending", label: t.pending },
-              { id: "cancelled", label: t.cancelled },
-              { id: "calendar", label: `📅 ${t.calendarView}` },
-            ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setFilter(id)}
-                className={`filter-tab ${filter === id ? "active" : ""}`}
-              >
-                {label}
-                {!["all", "calendar"].includes(id) && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      background:
-                        filter === id ? "#1a1a2e" : "rgba(0,0,0,0.06)",
-                      color: filter === id ? "#e8c547" : "#888",
-                      padding: "1px 7px",
-                      borderRadius: 20,
-                    }}
-                  >
-                    {bookings.filter((b) => b.status === id).length}
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="tabs-scroll overflow-x-auto border-b border-black/[0.08] mb-6">
+            <div className="flex min-w-max">
+              {FILTER_TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setFilter(id)}
+                  className={`px-4 py-2 border-none bg-transparent text-xs font-[inherit] cursor-pointer border-b-2 -mb-px transition-all whitespace-nowrap inline-flex items-center gap-1.5 ${
+                    filter === id
+                      ? "text-[#1a1a2e] border-b-[#e8c547]"
+                      : "text-[#888] border-b-transparent hover:text-[#111118]"
+                  }`}
+                >
+                  {label}
+                  {!["all", "calendar"].includes(id) && (
+                    <span
+                      className={`text-[10px] px-[7px] py-px rounded-[20px] ${
+                        filter === id
+                          ? "bg-[#1a1a2e] text-[#e8c547]"
+                          : "bg-black/[0.06] text-[#888]"
+                      }`}
+                    >
+                      {bookings.filter((b) => b.status === id).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (
-            <div
-              style={{
-                background: "#FEF2F2",
-                border: "1px solid #FCA5A5",
-                color: "#991B1B",
-                padding: "12px 16px",
-                borderRadius: 10,
-                marginBottom: "1rem",
-                fontSize: 13,
-              }}
-            >
+            <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] px-4 py-3 rounded-[10px] mb-4 text-[13px]">
               {error}
             </div>
           )}
 
-          {/* Calendar View */}
+          {/* Calendar */}
           {filter === "calendar" ? (
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                border: "1px solid rgba(0,0,0,0.07)",
-                padding: "1.5rem",
-              }}
-              className="section-inner"
-            >
+            <div className="bg-white rounded-2xl border border-black/[0.07] p-4 sm:p-6">
               <HostCalendar
                 bookings={bookings}
                 onConfirmBooking={handleConfirmBooking}
                 onCancelBooking={handleCancelBooking}
               />
             </div>
+
           ) : getFiltered().length === 0 ? (
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                border: "1px solid rgba(0,0,0,0.07)",
-                padding: "4rem",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
-              <p style={{ fontSize: 13, color: "#999" }}>{t.noBookingsFound}</p>
+            <div className="bg-white rounded-2xl border border-black/[0.07] p-16 text-center">
+              <div className="text-5xl mb-3">📅</div>
+              <p className="text-[13px] text-[#999]">{t.noBookingsFound}</p>
             </div>
+
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {getFiltered().map((booking, idx) => {
-                const ss = statusStyle(booking.status);
                 const nights = calcNights(booking.check_in, booking.check_out);
-                const isLoading = actionLoading === booking.id;
+                const isLoad = actionLoading === booking.id;
                 return (
                   <div
                     key={booking.id}
-                    className="booking-card fu"
+                    className="fu bg-white border border-black/[0.07] rounded-[14px] px-5 py-5 hover:shadow-[0_10px_32px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all"
                     style={{ animationDelay: `${idx * 0.05}s` }}
                   >
-                    <div
-                      className="booking-inner"
-                      style={{
-                        display: "flex",
-                        gap: "1.5rem",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      {/* Left: info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Title row */}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            marginBottom: "0.75rem",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <h3
-                            style={{
-                              fontSize: 15,
-                              fontWeight: 500,
-                              color: "#111118",
-                            }}
-                          >
+                    <div className="flex flex-col lg:flex-row gap-6 justify-between">
+
+                      {/* ── Info ── */}
+                      <div className="flex-1 min-w-0">
+
+                        {/* Title + status badge */}
+                        <div className="flex flex-wrap items-center gap-2.5 mb-3">
+                          <h3 className="text-[15px] font-medium text-[#111118]">
                             {booking.listing?.title || t.listing}
                           </h3>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              padding: "3px 10px",
-                              borderRadius: 20,
-                              background: ss.bg,
-                              color: ss.color,
-                              fontWeight: 500,
-                              letterSpacing: "0.05em",
-                              textTransform: "uppercase",
-                            }}
-                          >
+                          <span className={`text-[10px] px-2.5 py-px rounded-[20px] font-medium tracking-[0.05em] uppercase ${statusBadgeCls(booking.status)}`}>
                             {booking.status === "confirmed" && t.confirmed}
-                            {booking.status === "pending" && t.pending}
+                            {booking.status === "pending"   && t.pending}
                             {booking.status === "cancelled" && t.cancelled}
                           </span>
                         </div>
 
                         {/* Guest info */}
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "0.375rem 1.5rem",
-                            marginBottom: "1rem",
-                          }}
-                        >
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mb-4">
                           {[
-                            [t.guest, booking.user?.name || t.guestName],
-                            [t.email, booking.user?.email],
-                            [t.phone, booking.user?.phoneNumber],
+                            [t.guest,    booking.user?.name || t.guestName],
+                            [t.email,    booking.user?.email],
+                            [t.phone,    booking.user?.phoneNumber],
                             [t.location, booking.listing?.location],
                           ].map(([label, val]) => (
                             <div key={label}>
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.08em",
-                                  color: "#bbb",
-                                }}
-                              >
-                                {label}{" "}
-                              </span>
-                              <span style={{ fontSize: 12, color: "#555" }}>
-                                {val || "—"}
-                              </span>
+                              <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">{label} </span>
+                              <span className="text-[12px] text-[#555]">{val || "—"}</span>
                             </div>
                           ))}
                         </div>
 
-                        {/* Date / nights / guests / price */}
-                        <div
-                          className="meta-grid"
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(4,1fr)",
-                            gap: "0.75rem",
-                            borderTop: "1px solid rgba(0,0,0,0.05)",
-                            paddingTop: "0.875rem",
-                          }}
-                        >
+                        {/* Dates / nights / guests */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-black/[0.05] pt-3.5">
                           {[
-                            [t.checkIn, formatDate(booking.check_in)],
+                            [t.checkIn,  formatDate(booking.check_in)],
                             [t.checkOut, formatDate(booking.check_out)],
-                            [
-                              t.nights,
-                              `${nights} ${nights !== 1 ? t.nights : t.night}`,
-                            ],
-                            [
-                              t.guests,
-                              `${booking.guests} ${booking.guests !== 1 ? t.guests : t.guest}`,
-                            ],
+                            [t.nights,   `${nights} ${nights !== 1 ? t.nights : t.night}`],
+                            [t.guests,   `${booking.guests} ${booking.guests !== 1 ? t.guests : t.guest}`],
                           ].map(([label, val]) => (
                             <div key={label}>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.08em",
-                                  color: "#bbb",
-                                  marginBottom: 2,
-                                }}
-                              >
-                                {label}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  color: "#333",
-                                }}
-                              >
-                                {val}
-                              </div>
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[#bbb] mb-0.5">{label}</div>
+                              <div className="text-[12px] font-medium text-[#333]">{val}</div>
                             </div>
                           ))}
                         </div>
 
-                        <div
-                          style={{
-                            marginTop: "0.75rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 10,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.08em",
-                              color: "#bbb",
-                            }}
-                          >
-                            {t.total}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 16,
-                              fontWeight: 500,
-                              color: "#1a1a2e",
-                            }}
-                          >
-                            {formatCurrency(booking.total_price)}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: "#bbb",
-                              marginLeft: "auto",
-                            }}
-                          >
+                        {/* Total + booked date */}
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                          <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">{t.total}</span>
+                          <span className="text-base font-medium text-[#1a1a2e]">{formatCurrency(booking.total_price)}</span>
+                          <span className="text-[11px] text-[#bbb] sm:ml-auto">
                             {t.booked} {formatDate(booking.createdAt)}
                           </span>
                         </div>
                       </div>
 
-                      {/* Right: actions */}
-                      <div
-                        className="action-col"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                          flexShrink: 0,
-                          minWidth: 140,
-                        }}
-                      >
+                      {/* ── Actions ── */}
+                      <div className="flex flex-row lg:flex-col gap-2 lg:min-w-[140px] lg:flex-shrink-0 flex-wrap">
                         {booking.status === "pending" && (
                           <>
                             <button
                               onClick={() => handleConfirmBooking(booking.id)}
-                              disabled={isLoading}
-                              className="action-btn"
-                              style={{
-                                background: "#1a1a2e",
-                                color: "#e8c547",
-                                justifyContent: "center",
-                              }}
+                              disabled={isLoad}
+                              className="flex-1 lg:flex-none flex items-center justify-center gap-[5px] bg-[#1a1a2e] text-[#e8c547] text-xs font-medium font-[inherit] px-4 py-2 rounded-lg border-none cursor-pointer hover:opacity-85 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 transition-all"
                             >
-                              {isLoading ? <Spinner /> : `✓ ${t.confirm}`}
+                              {isLoad ? <Spinner /> : `✓ ${t.confirm}`}
                             </button>
                             <button
                               onClick={() => handleCancelBooking(booking.id)}
-                              disabled={isLoading}
-                              className="action-btn"
-                              style={{
-                                background: "#FEE2E2",
-                                color: "#991b1b",
-                                justifyContent: "center",
-                              }}
+                              disabled={isLoad}
+                              className="flex-1 lg:flex-none flex items-center justify-center gap-[5px] bg-[#FEE2E2] text-[#991b1b] text-xs font-medium font-[inherit] px-4 py-2 rounded-lg border-none cursor-pointer hover:opacity-85 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 transition-all"
                             >
-                              {isLoading ? <Spinner dark /> : `✗ ${t.cancel}`}
+                              {isLoad ? <Spinner dark /> : `✗ ${t.cancel}`}
                             </button>
                           </>
                         )}
                         {booking.status === "confirmed" && (
                           <button
                             onClick={() => handleCancelBooking(booking.id)}
-                            disabled={isLoading}
-                            className="action-btn"
-                            style={{
-                              background: "#FEE2E2",
-                              color: "#991b1b",
-                              justifyContent: "center",
-                            }}
+                            disabled={isLoad}
+                            className="flex-1 lg:flex-none flex items-center justify-center gap-[5px] bg-[#FEE2E2] text-[#991b1b] text-xs font-medium font-[inherit] px-4 py-2 rounded-lg border-none cursor-pointer hover:opacity-85 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 transition-all"
                           >
-                            {isLoading ? <Spinner dark /> : t.cancel}
+                            {isLoad ? <Spinner dark /> : t.cancel}
                           </button>
                         )}
                         {booking.status === "cancelled" && (
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "#bbb",
-                              textAlign: "center",
-                              padding: "8px 0",
-                            }}
-                          >
+                          <div className="text-[11px] text-[#bbb] text-center py-2 px-4">
                             {t.cancelled}
                           </div>
                         )}
                         <Link
                           href={`/listings/${booking.listing_id}`}
-                          style={{
-                            background: "rgba(0,0,0,0.04)",
-                            color: "#555",
-                            textDecoration: "none",
-                            textAlign: "center",
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontFamily: "inherit",
-                            border: "1px solid rgba(0,0,0,0.08)",
-                            transition: "background 0.15s",
-                          }}
+                          className="flex-1 lg:flex-none text-center bg-black/[0.04] text-[#555] no-underline text-xs font-[inherit] px-4 py-2 rounded-lg border border-black/[0.08] hover:bg-black/[0.08] transition-all"
                         >
                           {t.viewListing}
                         </Link>
@@ -908,15 +432,9 @@ console.log(data);
 function Spinner({ dark }) {
   return (
     <span
-      style={{
-        width: 12,
-        height: 12,
-        border: `2px solid ${dark ? "#991b1b" : "#e8c547"}`,
-        borderTopColor: "transparent",
-        borderRadius: "50%",
-        display: "inline-block",
-        animation: "spin 0.7s linear infinite",
-      }}
+      className={`inline-block w-3 h-3 rounded-full border-2 border-t-transparent animate-spin ${
+        dark ? "border-[#991b1b]" : "border-[#e8c547]"
+      }`}
     />
   );
 }
