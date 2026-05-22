@@ -3,26 +3,47 @@
 
 import { useState } from "react";
 
-export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooking }) {
+export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooking, language }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selected, setSelected] = useState(null);
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const isRTL = language === "ar";
+
+  // Translations
+  const translations = {
+    en: {
+      monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      weekDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      booking: "booking",
+      bookings: "bookings",
+      guest: "guest",
+      guests: "guests",
+      confirm: "confirm",
+      cancel: "cancel",
+      confirmed: "confirmed",
+      pending: "pending",
+      cancelled: "cancelled"
+    },
+    ar: {
+      monthNames: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+      weekDays: ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"],
+      booking: "حجز",
+      bookings: "حجوزات",
+      guest: "ضيف",
+      guests: "ضيوف",
+      confirm: "تأكيد",
+      cancel: "إلغاء",
+      confirmed: "مؤكد",
+      pending: "قيد الانتظار",
+      cancelled: "ملغي"
+    }
+  };
+
+  const t = translations[language];
+
+  const monthNames = t.monthNames;
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
 
@@ -74,21 +95,24 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
         : "#e05a5a";
   };
 
+  const getStatusText = (status) => {
+    if (status === "confirmed") return t.confirmed;
+    if (status === "pending") return t.pending;
+    return t.cancelled;
+  };
+
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div>
+    <div 
+      className={`${isRTL ? 'font-[\'Cairo\',\'Tajawal\',sans-serif] text-right' : ''}`}
+      style={isRTL ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
+      dir={isRTL ? "rtl" : "ltr"}
+    >
       {/* Month Nav */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "1.5rem",
-        }}
-      >
+      <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => {
             if (currentMonth === 0) {
@@ -96,29 +120,13 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
               setCurrentYear((y) => y - 1);
             } else setCurrentMonth((m) => m - 1);
           }}
-          style={{
-            background: "none",
-            border: "1px solid rgba(0,0,0,0.1)",
-            borderRadius: 8,
-            padding: "6px 14px",
-            fontSize: 13,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
+          className="bg-none border border-black/10 rounded-lg px-3.5 py-1.5 text-[13px] cursor-pointer font-inherit hover:bg-gray-50 transition-colors"
         >
-          ←
+          {isRTL ? "→" : "←"}
         </button>
-        <span
-          className="font-display"
-          style={{
-            fontStyle: "italic",
-            fontWeight: 300,
-            fontSize: 22,
-            color: "#111118",
-          }}
-        >
+        <span className="italic font-light text-[22px] text-[#111118]">
           {monthNames[currentMonth]}{" "}
-          <span style={{ fontWeight: 500 }}>{currentYear}</span>
+          <span className="font-medium">{currentYear}</span>
         </span>
         <button
           onClick={() => {
@@ -127,40 +135,18 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
               setCurrentYear((y) => y + 1);
             } else setCurrentMonth((m) => m + 1);
           }}
-          style={{
-            background: "none",
-            border: "1px solid rgba(0,0,0,0.1)",
-            borderRadius: 8,
-            padding: "6px 14px",
-            fontSize: 13,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
+          className="bg-none border border-black/10 rounded-lg px-3.5 py-1.5 text-[13px] cursor-pointer font-inherit hover:bg-gray-50 transition-colors"
         >
-          →
+          {isRTL ? "←" : "→"}
         </button>
       </div>
 
       {/* Day labels */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 4,
-          marginBottom: 4,
-        }}
-      >
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {t.weekDays.map((d) => (
           <div
             key={d}
-            style={{
-              textAlign: "center",
-              fontSize: 10,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "#999",
-              padding: "4px 0",
-            }}
+            className="text-center text-[10px] tracking-wider uppercase text-gray-400 py-1"
           >
             {d}
           </div>
@@ -168,13 +154,7 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
       </div>
 
       {/* Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 4,
-        }}
-      >
+      <div className="grid grid-cols-7 gap-1">
         {cells.map((day, i) => {
           if (!day) return <div key={`e${i}`} />;
           const dayBookings = getBookingsForDay(day);
@@ -183,7 +163,6 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
             currentMonth === today.getMonth() &&
             currentYear === today.getFullYear();
 
-          // Get the first booking's user name (or show multiple if needed)
           const firstBooking = dayBookings[0];
           const hasMultipleBookings = dayBookings.length > 1;
 
@@ -191,38 +170,24 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
             <div
               key={day}
               onClick={() => setSelected(selected === day ? null : day)}
+              className={`min-h-16 rounded-lg border p-1.5 transition-all cursor-${
+                dayBookings.length ? "pointer" : "default"
+              }`}
               style={{
-                minHeight: 64,
-                borderRadius: 10,
                 border: `1px solid ${selected === day ? "#e8c547" : "rgba(0,0,0,0.07)"}`,
                 background: isToday
                   ? "#1a1a2e"
                   : selected === day
                     ? "#fdf8e7"
                     : "#fff",
-                padding: "6px 8px",
-                cursor: dayBookings.length ? "pointer" : "default",
-                transition: "border-color 0.15s, box-shadow 0.15s",
                 boxShadow:
                   selected === day ? "0 0 0 2px rgba(232,197,71,0.3)" : "none",
-                position: "relative",
               }}
             >
               {/* Day number with user name */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="flex items-center gap-1 flex-wrap">
                 <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: isToday ? 600 : 400,
-                    color: isToday ? "#e8c547" : "#111118",
-                  }}
+                  className={`text-xs ${isToday ? "font-semibold text-[#e8c547]" : "font-normal text-[#111118]"}`}
                 >
                   {day}
                 </span>
@@ -230,9 +195,8 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
                 {/* Display user name(s) on the calendar cell */}
                 {dayBookings.length > 0 && (
                   <span
+                    className="text-[9px] font-normal px-1 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-20px)]"
                     style={{
-                      fontSize: 9,
-                      fontWeight: 400,
                       color:
                         dayBookings[0]?.status === "confirmed"
                           ? "#1D9E75"
@@ -240,15 +204,9 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
                             ? "#e8c547"
                             : "#e05a5a",
                       background: "rgba(0,0,0,0.05)",
-                      padding: "1px 4px",
-                      borderRadius: 4,
-                      maxWidth: "calc(100% - 20px)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
                     }}
                     title={dayBookings
-                      .map((b) => `${b.user?.name} (${b.status})`)
+                      .map((b) => `${b.user?.name} (${getStatusText(b.status)})`)
                       .join(", ")}
                   >
                     {hasMultipleBookings
@@ -259,33 +217,24 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
               </div>
 
               {/* Status indicator bars */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  marginTop: 4,
-                }}
-              >
+              <div className="flex flex-col gap-0.5 mt-1">
                 {dayBookings.slice(0, 2).map((b) => (
                   <div
                     key={b.id}
+                    className="h-0.5 rounded-sm opacity-85"
                     style={{
-                      height: 3,
-                      borderRadius: 2,
                       background:
                         b.status === "confirmed"
                           ? "#1D9E75"
                           : b.status === "pending"
                             ? "#e8c547"
                             : "#e05a5a",
-                      opacity: 0.85,
                     }}
-                    title={`${b.user?.name} - ${b.status}`}
+                    title={`${b.user?.name} - ${getStatusText(b.status)}`}
                   />
                 ))}
                 {dayBookings.length > 2 && (
-                  <div style={{ fontSize: 9, color: "#999" }}>
+                  <div className="text-[9px] text-gray-400">
                     +{dayBookings.length - 2}
                   </div>
                 )}
@@ -297,18 +246,12 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
 
       {/* Selected day details - with colored user names */}
       {selected && getBookingsForDay(selected).length > 0 && (
-        <div
-          style={{
-            marginTop: "1.5rem",
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.07)",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ background: "#1a1a2e", padding: "0.75rem 1rem" }}>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+        <div className="mt-6 rounded-xl border border-black/5 overflow-hidden">
+          <div className="bg-[#1a1a2e] px-4 py-3">
+            <span className="text-xs text-white/60">
               {monthNames[currentMonth]} {selected} —{" "}
-              {getBookingsForDay(selected).length} booking(s)
+              {getBookingsForDay(selected).length}{" "}
+              {getBookingsForDay(selected).length === 1 ? t.booking : t.bookings}
             </span>
           </div>
           {getBookingsForDay(selected).map((b) => {
@@ -316,51 +259,30 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
             return (
               <div
                 key={b.id}
-                style={{
-                  padding: "1rem",
-                  borderBottom: "1px solid rgba(0,0,0,0.06)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
+                className="p-4 border-b border-black/5 flex justify-between items-center flex-wrap gap-2"
               >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: 500,
-                      fontSize: 13,
-                      color: "#111118",
-                      marginBottom: 2,
-                    }}
-                  >
+                <div className="flex-1">
+                  <div className="font-medium text-[13px] text-[#111118] mb-0.5">
                     {b.listing?.title}
                   </div>
-                  <div style={{ fontSize: 12, color: "#777" }}>
+                  <div className="text-xs text-gray-500">
                     <span
+                      className="inline-block px-2 py-0.5 rounded-full font-medium mr-1.5"
                       style={{
-                        display: "inline-block",
                         background: userColor.bg,
                         color: userColor.color,
-                        padding: "2px 8px",
-                        borderRadius: 12,
-                        fontWeight: 500,
-                        marginRight: 6,
                       }}
                     >
                       {b.user?.name || "Guest"}
                     </span>
-                    · {b.user?.email} · {b.user?.phoneNumber} · {b.guests} guest
-                    {b.guests !== 1 ? "s" : ""}
+                    · {b.user?.email} · {b.user?.phoneNumber} · {b.guests}{" "}
+                    {b.guests !== 1 ? t.guests : t.guest}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div className="flex gap-1.5 items-center">
                   <span
+                    className="text-[11px] px-2.5 py-0.5 rounded-full"
                     style={{
-                      fontSize: 11,
-                      padding: "2px 10px",
-                      borderRadius: 20,
                       background:
                         b.status === "confirmed"
                           ? "#DCFCE7"
@@ -375,40 +297,22 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
                             : "#991b1b",
                     }}
                   >
-                    {b.status}
+                    {getStatusText(b.status)}
                   </span>
                   {b.status === "pending" && (
                     <button
                       onClick={() => onConfirmBooking(b.id)}
-                      style={{
-                        background: "#1D9E75",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 6,
-                        padding: "4px 10px",
-                        fontSize: 11,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
+                      className="bg-[#1D9E75] text-white border-none rounded-md px-2.5 py-1 text-[11px] cursor-pointer font-inherit hover:opacity-90 transition-opacity"
                     >
-                      confirm
+                      {t.confirm}
                     </button>
                   )}
                   {b.status !== "cancelled" && (
                     <button
                       onClick={() => onCancelBooking(b.id)}
-                      style={{
-                        background: "#fee2e2",
-                        color: "#991b1b",
-                        border: "none",
-                        borderRadius: 6,
-                        padding: "4px 10px",
-                        fontSize: 11,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
+                      className="bg-[#fee2e2] text-[#991b1b] border-none rounded-md px-2.5 py-1 text-[11px] cursor-pointer font-inherit hover:opacity-80 transition-opacity"
                     >
-                      cancel
+                      {t.cancel}
                     </button>
                   )}
                 </div>
@@ -419,32 +323,17 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
       )}
 
       {/* Legend */}
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          marginTop: "1.5rem",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex gap-4 mt-6 flex-wrap">
         {[
-          ["confirmed", "#1D9E75"],
-          ["pending", "#e8c547"],
-          ["cancelled", "#e05a5a"],
+          [t.confirmed, "#1D9E75"],
+          [t.pending, "#e8c547"],
+          [t.cancelled, "#e05a5a"],
         ].map(([s, c]) => (
           <div
             key={s}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: "#777",
-            }}
+            className="flex items-center gap-1.5 text-xs text-gray-500"
           >
-            <div
-              style={{ width: 12, height: 4, borderRadius: 2, background: c }}
-            />
+            <div className="w-3 h-1 rounded-sm" style={{ background: c }} />
             {s}
           </div>
         ))}

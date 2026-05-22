@@ -184,9 +184,10 @@ export default function ListingDetail({ params }) {
     e.preventDefault();
     setBookingError("");
     setBookingSuccess("");
-     setIsSubmitting(true);
+    setIsSubmitting(true); // ✅ FIX: moved before the early return so it always resets
     if (!booking.checkIn || !booking.checkOut) {
       setBookingError(t.pleaseSelectDates);
+      setIsSubmitting(false); // ✅ FIX: reset spinner on early return
       return;
     }
     try {
@@ -206,9 +207,9 @@ export default function ListingDetail({ params }) {
       setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err) {
       setBookingError(err.message);
-    }finally {
-    setIsSubmitting(false);
-  }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nights =
@@ -322,7 +323,7 @@ export default function ListingDetail({ params }) {
             onClick={toggleLanguage}
             className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
           >
-            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+            {lang === "en" ? "🇱🇾" : "🇬🇧"}
           </button>
           <Link
             href="/listings"
@@ -363,7 +364,7 @@ export default function ListingDetail({ params }) {
             onClick={toggleLanguage}
             className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
           >
-            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
+            {lang === "en" ? "🇱🇾" : "🇬🇧"}
           </button>
           <button
             onClick={handleLogout}
@@ -618,11 +619,15 @@ export default function ListingDetail({ params }) {
                     <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">
                       {t.selectDates}
                     </label>
+                    {/* ✅ FIX: clear the error as soon as both dates are selected */}
                     <BookingCalendar
                       bookedDates={bookedDates}
-                      onDateSelect={(dates) =>
-                        setBooking((prev) => ({ ...prev, ...dates }))
-                      }
+                      onDateSelect={(dates) => {
+                        setBooking((prev) => ({ ...prev, ...dates }));
+                        if (dates.checkIn && dates.checkOut) {
+                          setBookingError("");
+                        }
+                      }}
                       checkIn={booking.checkIn}
                       checkOut={booking.checkOut}
                     />
@@ -738,11 +743,13 @@ export default function ListingDetail({ params }) {
                     checkIn=""
                     checkOut=""
                     isHost={true}
+                    language={lang}
                   />
                   <HostDateManager
                     listingId={listing.id}
                     blockedDates={blockedDatesArr}
                     onDatesUpdated={fetchListing}
+                    language={lang}
                   />
                 </div>
                 <div className="mt-5 pt-4 border-t border-black/7 text-center">

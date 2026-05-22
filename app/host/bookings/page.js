@@ -172,7 +172,7 @@ export default function HostBookings() {
               onClick={toggleLanguage}
               className="ml-2 bg-[rgba(232,197,71,0.15)] border border-[rgba(232,197,71,0.3)] rounded-md px-2.5 py-1 text-[11px] text-[#e8c547] cursor-pointer hover:opacity-80 transition-opacity"
             >
-              {lang === 'en' ? '🇱🇾 عربي' : '🇬🇧 English'}            </button>
+              {lang === 'en' ? '🇱🇾' : '🇬🇧'}            </button>
 
             <div className="w-px h-4 bg-white/[0.12] mx-1.5" />
 

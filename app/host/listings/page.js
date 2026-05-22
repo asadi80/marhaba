@@ -286,7 +286,7 @@ export default function HostListings() {
           <Link href="/host/listings"  className={`text-xs text-[#e8c547] no-underline px-3 py-1.5 rounded-md ${bodyFontClass}`}>{t.myListings}</Link>
           <Link href="/host/bookings"  className={`text-xs text-white/50 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors ${bodyFontClass}`}>{t.bookings}</Link>
           <button onClick={toggleLanguage} className={`ms-2 bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] ${bodyFontClass}`}>
-            {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
+            {isAr ? "🇬🇧" : "🇱🇾"}
           </button>
           <div className="w-px h-4 bg-white/12 mx-1.5" />
           <button onClick={() => router.push("/host-dashboard")} className={`bg-[#e8c547] text-[#1a1a2e] px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none hover:opacity-88 hover:-translate-y-px transition-all ${bodyFontClass}`}>
@@ -306,7 +306,7 @@ export default function HostListings() {
       {menuOpen && (
         <div className="sm:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 py-4 z-40 flex flex-col gap-2.5">
           <button onClick={toggleLanguage} className={`bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md py-2 px-3 text-xs cursor-pointer text-[#e8c547] w-full mb-2 ${bodyFontClass}`}>
-            {isAr ? "🇬🇧 English" : "🇱🇾 عربي"}
+            {isAr ? "🇬🇧" : "🇱🇾"}
           </button>
           <Link href="/host-dashboard" className={`text-[13px] text-white/70 no-underline py-2 ${bodyFontClass}`}>{t.overview}</Link>
           <Link href="/host/listings"  className={`text-[13px] text-[#e8c547] no-underline py-2 ${bodyFontClass}`}>{t.myListings}</Link>

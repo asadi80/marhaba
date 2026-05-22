@@ -1,19 +1,53 @@
+//commponent/HostDateManger
 'use client';
 
 import { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+
+
 
 const getLocalDateString = (date) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
 // ─── HostCalendar ─────────────────────────────────────────────────────────────
-function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRanges }) {
+function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRanges, language = 'en' }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedStartDate, setSelectedStartDate] = useState(null);
   const [selectedEndDate, setSelectedEndDate] = useState(null);
   const [hoverDate, setHoverDate] = useState(null);
   const [blockedDatesSet, setBlockedDatesSet] = useState(new Set());
   const [bookedDatesMap, setBookedDatesMap] = useState(new Map());
+
+  const translations = {
+    en: {
+      monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      weekDays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+      clear: "Clear",
+      available: "Available",
+      selected: "Selected",
+      range: "Range",
+      blocked: "Blocked by you",
+      pending: "Pending",
+      confirmed: "Confirmed",
+      past: "Past"
+    },
+    ar: {
+      monthNames: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+      weekDays: ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"],
+      clear: "مسح",
+      available: "متاح",
+      selected: "محدد",
+      range: "نطاق",
+      blocked: "محظور بواسطتك",
+      pending: "قيد الانتظار",
+      confirmed: "مؤكد",
+      past: "ماضي"
+    }
+  };
+
+  const t = translations[language];
+  const isRTL = language === 'ar';
 
   useEffect(() => {
     const blocked = new Set();
@@ -34,9 +68,6 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
     });
     setBookedDatesMap(booked);
   }, [bookings]);
-
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const WEEK_DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
   const isBlocked = (d) => blockedDatesSet.has(getLocalDateString(d));
   const getBookingStatus = (d) => bookedDatesMap.get(getLocalDateString(d));
@@ -91,11 +122,11 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
     const inRange = isInRange(date);
     const hasEnd = !!selectedEndDate;
 
-    const base = "relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer font-[inherit]";
+    const base = `relative aspect-square border-0 text-[13px] flex items-center justify-center transition-all duration-100 cursor-pointer ${isRTL ? 'font-[\'Cairo\',\'Tajawal\',sans-serif]' : ''}`;
 
     if (!isCurrentMonth) return `${base} opacity-30 cursor-default`;
-    if (start && hasEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-l-full`;
-    if (end) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-r-full`;
+    if (start && hasEnd) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold ${isRTL ? 'rounded-r-full' : 'rounded-l-full'}`;
+    if (end) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold ${isRTL ? 'rounded-l-full' : 'rounded-r-full'}`;
     if (start) return `${base} !bg-[#1a1a2e] !text-[#e8c547] font-bold rounded-full`;
     if (inRange) return `${base} bg-[#e8c547]/15 text-[#222] rounded-none`;
     if (blocked) return `${base} bg-[#ebebeb] text-[#999] cursor-not-allowed line-through rounded-full`;
@@ -106,30 +137,31 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
   };
 
   return (
-    <div className="bg-white rounded-2xl border-[1.5px] border-[#e5e5e5] p-5 select-none">
-      {/* Month nav */}
+    <div 
+      className={`bg-white rounded-2xl border-[1.5px] border-[#e5e5e5] p-5 select-none ${isRTL ? 'text-right' : ''}`} 
+      dir={isRTL ? 'rtl' : 'ltr'}
+      style={isRTL ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
+    >
       <div className="flex justify-between items-center mb-5">
         <button
           className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
           onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); }}
-        >←</button>
+        >{isRTL ? '→' : '←'}</button>
         <span className="text-[15px] font-bold text-[#222]">
-          {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+          {t.monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </span>
         <button
           className="w-8 h-8 rounded-full border-[1.5px] border-[#e5e5e5] bg-white cursor-pointer flex items-center justify-center text-sm text-[#222] hover:border-[#222] transition-colors"
           onClick={() => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); }}
-        >→</button>
+        >{isRTL ? '←' : '→'}</button>
       </div>
 
-      {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-2">
-        {WEEK_DAYS.map(d => (
+        {t.weekDays.map(d => (
           <div key={d} className="text-center text-[11px] font-bold tracking-[0.05em] text-[#717171] py-1">{d}</div>
         ))}
       </div>
 
-      {/* Day grid */}
       <div className="grid grid-cols-7 gap-0.5">
         {days.map(({ date, isCurrentMonth }, i) => {
           const status = getBookingStatus(date);
@@ -153,26 +185,24 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
         })}
       </div>
 
-      {/* Selection display */}
       {(selectedStartDate || selectedEndDate) && (
         <div className="mt-3.5 px-3.5 py-3 bg-[#f7f7f7] rounded-[10px] flex justify-between items-center">
           <span className="text-[13px] text-[#222] font-medium">
-            {selectedStartDate?.toLocaleDateString()}{selectedEndDate ? ` → ${selectedEndDate.toLocaleDateString()}` : ""}
+            {selectedStartDate?.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}{selectedEndDate ? ` → ${selectedEndDate.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}` : ""}
           </span>
-          <button className="text-[12px] text-[#717171] bg-none border-none cursor-pointer font-medium underline" onClick={clearSelection}>Clear</button>
+          <button className="text-[12px] text-[#717171] bg-none border-none cursor-pointer font-medium underline" onClick={clearSelection}>{t.clear}</button>
         </div>
       )}
 
-      {/* Legend */}
       <div className="mt-4 pt-4 border-t border-[#f0f0f0] flex flex-wrap gap-x-4 gap-y-2">
         {[
-          { bg: "bg-white border border-[#ddd]", label: "Available" },
-          { bg: "bg-[#1a1a2e]", label: "Selected" },
-          { bg: "bg-[#e8c547]/15", label: "Range" },
-          { bg: "bg-[#ebebeb]", label: "Blocked by you" },
-          { bg: "bg-[#FAEEDA]", label: "Pending" },
-          { bg: "bg-[#FCEBEB]", label: "Confirmed" },
-          { bg: "bg-[#f0f0f0]", label: "Past" },
+          { bg: "bg-white border border-[#ddd]", label: t.available },
+          { bg: "bg-[#1a1a2e]", label: t.selected },
+          { bg: "bg-[#e8c547]/15", label: t.range },
+          { bg: "bg-[#ebebeb]", label: t.blocked },
+          { bg: "bg-[#FAEEDA]", label: t.pending },
+          { bg: "bg-[#FCEBEB]", label: t.confirmed },
+          { bg: "bg-[#f0f0f0]", label: t.past },
         ].map(({ bg, label }) => (
           <div key={label} className="flex items-center gap-1.5 text-[11px] text-[#717171]">
             <span className={`w-3 h-3 rounded-full flex-shrink-0 ${bg}`} />
@@ -185,7 +215,7 @@ function HostCalendar({ blockedDates, bookings, onRangeSelect, existingBlockedRa
 }
 
 // ─── HostDateManager ──────────────────────────────────────────────────────────
-export default function HostDateManager({ listingId, blockedDates, bookings, onDatesUpdated }) {
+export default function HostDateManager({ listingId, blockedDates, bookings, onDatesUpdated, language = "en" }) {
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
   const [reason, setReason] = useState('');
@@ -193,20 +223,80 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Get language from cookies on mount
+  useEffect(() => {
+    
+    // Optional: Listen for language changes
+    const handleLanguageChange = () => {
+      setLanguage(getLanguageFromCookies());
+    };
+    
+    window.addEventListener('languageChange', handleLanguageChange);
+    return () => window.removeEventListener('languageChange', handleLanguageChange);
+  }, []);
+
+  const translations = {
+    en: {
+      manageBlockedDates: "Manage Blocked Dates",
+      pending: "Pending",
+      confirmed: "Confirmed",
+      blocked: "Blocked",
+      blockDates: "Block Dates",
+      cancel: "Cancel",
+      selectDateRange: "Select date range to block",
+      reasonOptional: "Reason (optional)",
+      reasonPlaceholder: "e.g. Maintenance, Personal use…",
+      blockSelected: "Block Selected Dates",
+      blocking: "Blocking…",
+      currentlyBlocked: "Currently blocked",
+      remove: "Remove",
+      pleaseSelectRange: "Please select a date range on the calendar",
+      endDateAfterStart: "End date must be after start date",
+      cannotBlockPast: "Cannot block past dates",
+      datesBlocked: "Dates blocked successfully!",
+      removeConfirmation: "Remove this blocked date range?",
+      blockedRemoved: "Blocked dates removed!"
+    },
+    ar: {
+      manageBlockedDates: "إدارة التواريخ المحظورة",
+      pending: "قيد الانتظار",
+      confirmed: "مؤكد",
+      blocked: "محظور",
+      blockDates: "حظر التواريخ",
+      cancel: "إلغاء",
+      selectDateRange: "حدد نطاق التاريخ للحظر",
+      reasonOptional: "السبب (اختياري)",
+      reasonPlaceholder: "مثال: صيانة، استخدام شخصي...",
+      blockSelected: "حظر التواريخ المحددة",
+      blocking: "جاري الحظر...",
+      currentlyBlocked: "المحظور حالياً",
+      remove: "إزالة",
+      pleaseSelectRange: "الرجاء تحديد نطاق تاريخ على التقويم",
+      endDateAfterStart: "يجب أن يكون تاريخ الانتهاء بعد تاريخ البدء",
+      cannotBlockPast: "لا يمكن حظر التواريخ الماضية",
+      datesBlocked: "تم حظر التواريخ بنجاح!",
+      removeConfirmation: "هل تريد إزالة نطاق التاريخ المحظور؟",
+      blockedRemoved: "تم إزالة التواريخ المحظورة!"
+    }
+  };
+
+  const t = translations[language];
+  const isRTL = language === 'ar';
+
   const handleBlockSubmit = async () => {
-    if (!selectedRange) { setError('Please select a date range on the calendar'); return; }
+    if (!selectedRange) { setError(t.pleaseSelectRange); return; }
     setLoading(true); setError(''); setSuccess('');
     const start = new Date(selectedRange.startDate), end = new Date(selectedRange.endDate);
-    if (start >= end) { setError('End date must be after start date'); setLoading(false); return; }
-    if (start < new Date()) { setError('Cannot block past dates'); setLoading(false); return; }
+    if (start >= end) { setError(t.endDateAfterStart); setLoading(false); return; }
+    if (start < new Date()) { setError(t.cannotBlockPast); setLoading(false); return; }
     try {
       const res = await fetch(`/api/listings/${listingId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startDate: selectedRange.startDate, endDate: selectedRange.endDate, reason: reason || 'Blocked by host' }),
+        body: JSON.stringify({ startDate: selectedRange.startDate, endDate: selectedRange.endDate, reason: reason || (language === 'ar' ? 'محظور بواسطة المضيف' : 'Blocked by host') }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setSuccess('Dates blocked successfully!');
+      setSuccess(t.datesBlocked);
       setSelectedRange(null); setReason(''); setShowBlockForm(false);
       onDatesUpdated?.();
       setTimeout(() => setSuccess(''), 3000);
@@ -215,7 +305,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
   };
 
   const handleRemoveBlock = async (blockId) => {
-    if (!confirm('Remove this blocked date range?')) return;
+    if (!confirm(t.removeConfirmation)) return;
     try {
       const res = await fetch(`/api/listings/${listingId}`, {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -223,29 +313,32 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setSuccess('Blocked dates removed!');
+      setSuccess(t.blockedRemoved);
       onDatesUpdated?.();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) { setError(err.message); }
   };
 
-  const fmtDate = (s) => new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const fmtDate = (s) => new Date(s).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
   return (
-    <div className="mt-5">
-      {/* Header */}
+    <div 
+      className={`mt-5 ${isRTL ? 'font-[\'Cairo\',\'Tajawal\',sans-serif]' : ''}`} 
+      dir={isRTL ? 'rtl' : 'ltr'}
+      style={isRTL ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
+    >
       <div className="flex flex-col justify-between justify-center mb-4">
         <div>
-          <div className="text-[15px] font-bold text-[#222] mb-1">Manage Blocked Dates</div>
+          <div className="text-[15px] font-bold text-[#222] mb-1">{t.manageBlockedDates}</div>
           <div className="text-[12px] text-[#717171] flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" /> Pending
+              <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" /> {t.pending}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#A32D2D] flex-shrink-0" /> Confirmed
+              <span className="w-2 h-2 rounded-full bg-[#A32D2D] flex-shrink-0" /> {t.confirmed}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#ebebeb] border border-[#ddd] flex-shrink-0" /> Blocked
+              <span className="w-2 h-2 rounded-full bg-[#ebebeb] border border-[#ddd] flex-shrink-0" /> {t.blocked}
             </span>
           </div>
         </div>
@@ -255,21 +348,21 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
           }`}
           onClick={() => { setShowBlockForm(!showBlockForm); setSelectedRange(null); setReason(''); }}
         >
-          {showBlockForm ? 'Cancel' : '+ Block Dates'}
+          {showBlockForm ? t.cancel : `+ ${t.blockDates}`}
         </button>
       </div>
 
-      {/* Block form */}
       {showBlockForm && (
         <div className="bg-[#f7f7f7] rounded-2xl p-5 mb-4 border-[1.5px] border-[#f0f0f0]">
           <label className="block text-[11px] font-bold tracking-[0.07em] uppercase text-[#717171] mb-2">
-            Select date range to block
+            {t.selectDateRange}
           </label>
           <HostCalendar
             blockedDates={blockedDates}
             bookings={bookings}
             onRangeSelect={setSelectedRange}
             existingBlockedRanges={blockedDates}
+            language={language}
           />
 
           {selectedRange && (
@@ -280,14 +373,14 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
 
           <div className="mt-3.5">
             <label className="block text-[11px] font-bold tracking-[0.07em] uppercase text-[#717171] mb-2">
-              Reason (optional)
+              {t.reasonOptional}
             </label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Maintenance, Personal use…"
-              className="w-full px-3.5 py-2.5 bg-white border-[1.5px] border-[#e5e5e5] rounded-[10px] text-[14px] text-[#222] outline-none font-[inherit] transition-colors focus:border-[#e8c547]"
+              placeholder={t.reasonPlaceholder}
+              className="w-full px-3.5 py-2.5 bg-white border-[1.5px] border-[#e5e5e5] rounded-[10px] text-[14px] text-[#222] outline-none transition-colors focus:border-[#e8c547]"
             />
           </div>
 
@@ -304,17 +397,17 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
 
           <div className="flex justify-end gap-2.5 mt-4">
             <button
-              className="bg-white text-[#717171] border-[1.5px] border-[#e5e5e5] rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer font-[inherit] hover:border-[#aaa] transition-colors"
+              className="bg-white text-[#717171] border-[1.5px] border-[#e5e5e5] rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer hover:border-[#aaa] transition-colors"
               onClick={() => { setShowBlockForm(false); setSelectedRange(null); setReason(''); }}
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
-              className="bg-[#1a1a2e] text-[#e8c547] border-0 rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer font-[inherit] transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-[#1a1a2e] text-[#e8c547] border-0 rounded-[10px] px-5 py-2.5 text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               disabled={loading || !selectedRange}
               onClick={handleBlockSubmit}
             >
-              {loading ? 'Blocking…' : 'Block Selected Dates'}
+              {loading ? t.blocking : t.blockSelected}
             </button>
           </div>
         </div>
@@ -331,11 +424,10 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
         </div>
       )}
 
-      {/* Blocked date list */}
       {blockedDates?.length > 0 && (
         <div className="flex flex-col gap-2 mt-4">
           <div className="text-[12px] font-bold tracking-[0.06em] uppercase text-[#999] mb-2.5">
-            Currently blocked
+            {t.currentlyBlocked}
           </div>
           {blockedDates.map((block, i) => (
             <div
@@ -354,7 +446,7 @@ export default function HostDateManager({ listingId, blockedDates, bookings, onD
                 className="bg-none border-none text-[#A32D2D] text-[12px] cursor-pointer font-semibold underline flex-shrink-0"
                 onClick={() => handleRemoveBlock(block.id)}
               >
-                Remove
+                {t.remove}
               </button>
             </div>
           ))}

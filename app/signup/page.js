@@ -90,7 +90,7 @@ export default function Signup() {
     privacyLink:   isAr ? "سياسة الخصوصية"       : "Privacy Policy",
     pwMismatch:    isAr ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
     pwShort:       isAr ? "كلمة المرور يجب أن تكون ٦ أحرف على الأقل" : "Password must be at least 6 characters",
-    langToggle:    isAr ? "🇬🇧 English"           : "🇸🇦 عربي",
+    langToggle:  isAr ? "🇬🇧"      : "🇱🇾",
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────────

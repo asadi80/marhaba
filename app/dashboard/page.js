@@ -10,11 +10,11 @@ import LoadingScreen from "@/components/LoadingScreen";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
-  { ssr: false }
+  { ssr: false },
 );
 const TileLayer = dynamic(
   () => import("react-leaflet").then((m) => m.TileLayer),
-  { ssr: false }
+  { ssr: false },
 );
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
   ssr: false,
@@ -153,7 +153,7 @@ export default function UserDashboard() {
         setUserLocation({ lat, lng });
         setMapCenter({ lat, lng });
       },
-      () => setUserLocation({ lat: 51.505, lng: -0.09 })
+      () => setUserLocation({ lat: 51.505, lng: -0.09 }),
     );
   };
 
@@ -182,9 +182,9 @@ export default function UserDashboard() {
             userLocation.lat,
             userLocation.lng,
             l.coordinates.lat,
-            l.coordinates.lng
-          ) <= radius
-      )
+            l.coordinates.lng,
+          ) <= radius,
+      ),
     );
     setSearchRadius(radius);
   };
@@ -192,7 +192,7 @@ export default function UserDashboard() {
   const openMaps = (l) =>
     window.open(
       `https://www.google.com/maps/search/?api=1&query=${l.coordinates.lat},${l.coordinates.lng}`,
-      "_blank"
+      "_blank",
     );
 
   const getDirections = (l) => {
@@ -200,13 +200,13 @@ export default function UserDashboard() {
       alert(
         isAr
           ? "قم بتفعيل خدمات الموقع أولاً"
-          : "Enable location services first"
+          : "Enable location services first",
       );
       return;
     }
     window.open(
       `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${l.coordinates.lat},${l.coordinates.lng}`,
-      "_blank"
+      "_blank",
     );
   };
 
@@ -230,7 +230,7 @@ export default function UserDashboard() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       ["MarhabaToken", "userType", "userData"].forEach((k) =>
-        localStorage.removeItem(k)
+        localStorage.removeItem(k),
       );
       router.push("/login");
     } catch {}
@@ -253,11 +253,17 @@ export default function UserDashboard() {
   // Font classes based on language
   const arabicFontClass = "font-['Cairo','Tajawal',sans-serif]";
   const englishFontClass = "font-['DM_Mono',monospace]";
-  const displayFontClass = isAr ? "font-['Cairo','Tajawal',sans-serif]" : "font-['Fraunces',serif]";
-  const bodyFontClass = isAr ? "font-['Cairo','Tajawal',sans-serif]" : "font-['DM_Mono',monospace]";
+  const displayFontClass = isAr
+    ? "font-['Cairo','Tajawal',sans-serif]"
+    : "font-['Fraunces',serif]";
+  const bodyFontClass = isAr
+    ? "font-['Cairo','Tajawal',sans-serif]"
+    : "font-['DM_Mono',monospace]";
 
   return (
-    <div className={`min-h-screen bg-[#f7f6f2] ${isAr ? "rtl" : "ltr"} ${bodyFontClass}`}>
+    <div
+      className={`min-h-screen bg-[#f7f6f2] ${isAr ? "rtl" : "ltr"} ${bodyFontClass}`}
+    >
       {/* Navigation */}
       <nav className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,.15)] sticky top-0 z-40">
         <div className="px-4 h-14 flex items-center justify-between gap-2">
@@ -309,10 +315,7 @@ export default function UserDashboard() {
               onClick={handleLogout}
               className="border border-[#e8c547] rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] bg-none"
             >
-              <span className="hidden sm:inline">
-                {isAr ? "خروج" : "logout"}
-              </span>
-              <span className="sm:hidden">🚪</span>
+              <span>{isAr ? "خروج" : "logout"}</span>
             </button>
 
             {/* Mobile Menu Button */}
@@ -360,7 +363,9 @@ export default function UserDashboard() {
               {ini}
             </div>
             <div>
-              <div className={`${displayFontClass} font-light text-xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}>
+              <div
+                className={`${displayFontClass} font-light text-xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}
+              >
                 {user.name}
               </div>
               <div className="text-[11px] text-gray-400 mt-0.5">
@@ -374,7 +379,9 @@ export default function UserDashboard() {
               { l: isAr ? "القريبة" : "nearby", v: filtered.length },
             ].map(({ l, v }) => (
               <div key={l} className={isAr ? "text-left" : "text-right"}>
-                <div className={`${displayFontClass} font-light text-2xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}>
+                <div
+                  className={`${displayFontClass} font-light text-2xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}
+                >
                   {v}
                 </div>
                 <div className="text-[10px] tracking-wide uppercase text-gray-300 mt-0.5">
@@ -389,7 +396,9 @@ export default function UserDashboard() {
         {activeTab === "nearby" && (
           <div>
             <div className="flex items-center justify-between flex-wrap gap-2.5 mb-4">
-              <div className={`${displayFontClass} font-light text-xl text-[#111118] ${isAr ? "italic" : ""}`}>
+              <div
+                className={`${displayFontClass} font-light text-xl text-[#111118] ${isAr ? "italic" : ""}`}
+              >
                 {isAr ? "الأماكن القريبة" : "nearby places"}
                 <span className="text-[13px] font-normal not-italic text-gray-400 ml-2">
                   ({filtered.length})
@@ -480,7 +489,7 @@ export default function UserDashboard() {
                               </div>
                             </Popup>
                           </Marker>
-                        )
+                        ),
                     )}
                 </MapContainer>
               </div>
@@ -496,7 +505,7 @@ export default function UserDashboard() {
                           userLocation.lat,
                           userLocation.lng,
                           l.coordinates.lat,
-                          l.coordinates.lng
+                          l.coordinates.lng,
                         ).toFixed(1)
                       : null;
                   return (
@@ -533,7 +542,9 @@ export default function UserDashboard() {
                             </svg>
                             {l.location}
                           </div>
-                          <div className={`${displayFontClass} font-light text-2xl text-[#1a1a2e] mb-3 ${isAr ? "italic" : ""}`}>
+                          <div
+                            className={`${displayFontClass} font-light text-2xl text-[#1a1a2e] mb-3 ${isAr ? "italic" : ""}`}
+                          >
                             {l.price} {isAr ? " دينار" : "LYD"}
                             <span className="text-base font-normal not-italic text-[#242323]">
                               / {isAr ? "ليلة" : "night"}
@@ -589,7 +600,9 @@ export default function UserDashboard() {
               </div>
             ) : (
               <div className="text-center py-16 px-8 bg-white rounded-xl border border-black/7">
-                <div className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}>
+                <div
+                  className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}
+                >
                   {isAr ? "لا توجد أماكن قريبة" : "nothing nearby"}
                 </div>
                 <p className="text-sm text-gray-400 mb-4">
@@ -611,12 +624,16 @@ export default function UserDashboard() {
         {/* BOOKINGS TAB */}
         {activeTab === "bookings" && (
           <div>
-            <div className={`${displayFontClass} font-light text-xl text-[#111118] mb-4 ${isAr ? "italic" : ""}`}>
+            <div
+              className={`${displayFontClass} font-light text-xl text-[#111118] mb-4 ${isAr ? "italic" : ""}`}
+            >
               {isAr ? "حجوزاتي" : "my bookings"}
             </div>
             {bookings.length === 0 ? (
               <div className="text-center py-16 px-4 bg-white rounded-xl border border-black/7">
-                <div className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}>
+                <div
+                  className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}
+                >
                   {isAr ? "لا توجد حجوزات بعد" : "no bookings yet"}
                 </div>
                 <p className="text-[13px] text-gray-400 mb-4">
@@ -683,7 +700,14 @@ export default function UserDashboard() {
                             {isAr ? "الليالي" : "nights"}
                           </div>
                           <div className="text-xs text-[#111118]">
-                            {n} {n === 1 ? (isAr ? "ليلة" : "night") : isAr ? "ليالي" : "nights"}
+                            {n}{" "}
+                            {n === 1
+                              ? isAr
+                                ? "ليلة"
+                                : "night"
+                              : isAr
+                                ? "ليالي"
+                                : "nights"}
                           </div>
                         </div>
                         <div>
@@ -691,7 +715,14 @@ export default function UserDashboard() {
                             {isAr ? "الضيوف" : "guests"}
                           </div>
                           <div className="text-xs text-[#111118]">
-                            {b.guests} {b.guests === 1 ? (isAr ? "ضيف" : "guest") : isAr ? "ضيوف" : "guests"}
+                            {b.guests}{" "}
+                            {b.guests === 1
+                              ? isAr
+                                ? "ضيف"
+                                : "guest"
+                              : isAr
+                                ? "ضيوف"
+                                : "guests"}
                           </div>
                         </div>
                       </div>
@@ -700,7 +731,9 @@ export default function UserDashboard() {
                         <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
                           {isAr ? "المجموع" : "total"}
                         </div>
-                        <div className={`${displayFontClass} font-light text-xl text-[#1a1a2e] ${isAr ? "italic" : ""}`}>
+                        <div
+                          className={`${displayFontClass} font-light text-xl text-[#1a1a2e] ${isAr ? "italic" : ""}`}
+                        >
                           {b.total_price} {isAr ? " دينار" : "LYD"}
                         </div>
                       </div>

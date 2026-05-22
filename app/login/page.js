@@ -70,7 +70,7 @@ export default function LoginPage() {
     submit:      isAr ? "تسجيل الدخول ←"  : "sign in →",
     submitting:  isAr ? "جارٍ الدخول..."  : "signing in...",
     security:    isAr ? "محمي بتشفير معياري" : "Protected by industry-standard encryption",
-    langToggle:  isAr ? "🇬🇧 English"      : "🇸🇦 عربي",
+    langToggle:  isAr ? "🇬🇧"      : "🇱🇾",
     error:       isAr ? "حدث خطأ ما"      : "Something went wrong",
   };
 
