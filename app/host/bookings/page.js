@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import HostCalendar from "@/components/HostCalendar";
 import { useLanguage } from "@/hooks/useLanguage";
 import LoadingScreen from "@/components/LoadingScreen";
+import Navbar from "@/components/Navbar";
 
 export default function HostBookings() {
   const router = useRouter();
@@ -17,14 +18,24 @@ export default function HostBookings() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
   const formatCurrency = (amount) =>
     isAr
       ? `${Math.round(amount).toLocaleString()} دينار`
       : `${Math.round(amount).toLocaleString()} LYD`;
 
-  useEffect(() => { fetchBookings(); }, []);
+  useEffect(() => {
+    fetchBookings();
+    fetchUser();
+  }, []);
+  const fetchUser = async () => {
+  try {
+    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const data = await res.json();
+    if (data.user) setUser(data.user); // ← this line is correct, make sure it's there
+  } catch {}
+};
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -53,8 +64,11 @@ export default function HostBookings() {
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingConfirmedSuccess);
-    } catch (err) { alert(err.message); }
-    finally { setActionLoading(null); }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleCancelBooking = async (bookingId) => {
@@ -70,8 +84,11 @@ export default function HostBookings() {
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingCancelledSuccess);
-    } catch (err) { alert(err.message); }
-    finally { setActionLoading(null); }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const getFiltered = () =>
@@ -81,43 +98,67 @@ export default function HostBookings() {
 
   const formatDate = (s) =>
     new Date(s).toLocaleDateString("en-US", {
-      year: "numeric", month: "long", day: "numeric", timeZone: "UTC",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
     });
 
   const calcNights = (ci, co) => {
-    const a = new Date(ci), b = new Date(co);
+    const a = new Date(ci),
+      b = new Date(co);
     return Math.ceil(
       (Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()) -
-       Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate())) / 86400000
+        Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate())) /
+        86400000,
     );
   };
 
   // exact colours from original
-  const statusBadgeCls = (s) => ({
-    confirmed: "bg-[#DCFCE7] text-[#166534]",
-    pending:   "bg-[#FEF9C3] text-[#713f12]",
-    cancelled: "bg-[#FEE2E2] text-[#991b1b]",
-  }[s] || "bg-[#F3F4F6] text-[#374151]");
+  const statusBadgeCls = (s) =>
+    ({
+      confirmed: "bg-[#DCFCE7] text-[#166534]",
+      pending: "bg-[#FEF9C3] text-[#713f12]",
+      cancelled: "bg-[#FEE2E2] text-[#991b1b]",
+    })[s] || "bg-[#F3F4F6] text-[#374151]";
 
   const STAT_CARDS = [
-    { label: t.total,     val: bookings.length,                                        borderTop: "border-t-white/20" },
-    { label: t.confirmed, val: bookings.filter((b) => b.status === "confirmed").length, borderTop: "border-t-[#1D9E75]" },
-    { label: t.pending,   val: bookings.filter((b) => b.status === "pending").length,   borderTop: "border-t-[#e8c547]" },
-    { label: t.cancelled, val: bookings.filter((b) => b.status === "cancelled").length, borderTop: "border-t-[#e05a5a]" },
+    { label: t.total, val: bookings.length, borderTop: "border-t-white/20" },
+    {
+      label: t.confirmed,
+      val: bookings.filter((b) => b.status === "confirmed").length,
+      borderTop: "border-t-[#1D9E75]",
+    },
+    {
+      label: t.pending,
+      val: bookings.filter((b) => b.status === "pending").length,
+      borderTop: "border-t-[#e8c547]",
+    },
+    {
+      label: t.cancelled,
+      val: bookings.filter((b) => b.status === "cancelled").length,
+      borderTop: "border-t-[#e05a5a]",
+    },
   ];
 
   const FILTER_TABS = [
-    { id: "all",       label: t.allBookings },
+    { id: "all", label: t.allBookings },
     { id: "confirmed", label: t.confirmed },
-    { id: "pending",   label: t.pending },
+    { id: "pending", label: t.pending },
     { id: "cancelled", label: t.cancelled },
-    { id: "calendar",  label: `📅 ${t.calendarView}` },
+    { id: "calendar", label: `📅 ${t.calendarView}` },
   ];
+const userInitials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "H";
+      console.log(userInitials);
+      
 
-  if (loading)
-    return (
-      <LoadingScreen />
-    );
+  if (loading) return <LoadingScreen />;
 
   return (
     <>
@@ -135,101 +176,34 @@ export default function HostBookings() {
         .tabs-scroll { -ms-overflow-style:none; scrollbar-width:none; }
       `}</style>
 
-      <div className="min-h-screen bg-[#f7f6f2] body-font" dir={isAr ? "rtl" : "ltr"}>
-
+      <div
+        className="min-h-screen bg-[#f7f6f2] body-font"
+        dir={isAr ? "rtl" : "ltr"}
+      >
         {/* ── NAV ── */}
-        <nav className="sticky top-0 z-50 bg-[rgba(26,26,46,0.97)] backdrop-blur-xl border-b border-[rgba(232,197,71,0.15)] px-6 h-14 flex items-center justify-between">
-
-          <Link
-            href="/"
-            className="no-underline flex-shrink-0"
-            style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500, fontSize: 26, color: "#fdfdfd", letterSpacing: 1 }}
-          >
-            مر<span style={{ fontWeight: 700, color: "#e8c547" }}>حبا</span>
-          </Link>
-
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-1">
-            {[
-              { href: "/host-dashboard", label: t.overview },
-              { href: "/host/listings",  label: t.myListings },
-              { href: "/host/bookings",  label: t.bookings, active: true },
-            ].map(({ href, label, active }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`text-xs no-underline px-3 py-1.5 rounded-md transition-all ${
-                  active
-                    ? "text-[#e8c547]"
-                    : "text-white/50 hover:text-[#e8c547] hover:bg-white/[0.06]"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-
-            <button
-              onClick={toggleLanguage}
-              className="ml-2 bg-[rgba(232,197,71,0.15)] border border-[rgba(232,197,71,0.3)] rounded-md px-2.5 py-1 text-[11px] text-[#e8c547] cursor-pointer hover:opacity-80 transition-opacity"
-            >
-              {lang === 'en' ? '🇱🇾' : '🇬🇧'}            </button>
-
-            <div className="w-px h-4 bg-white/[0.12] mx-1.5" />
-
-            <button
-              onClick={() => router.push("/host-dashboard")}
-              className="bg-[#e8c547] text-[#1a1a2e] text-xs font-medium px-3.5 py-1.5 rounded-lg hover:opacity-[0.88] hover:-translate-y-px transition-all"
-            >
-              {t.dashboard} →
-            </button>
-          </div>
-
-          {/* Hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden flex flex-col gap-[5px] p-1 bg-transparent border-none cursor-pointer"
-            aria-label="Menu"
-          >
-            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
-            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "opacity-0" : ""}`} />
-            <span className={`block w-5 h-0.5 bg-white/70 rounded-sm transition-all duration-200 ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
-          </button>
-        </nav>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div className="md:hidden fixed top-14 inset-x-0 z-40 bg-[#1a1a2e] border-b border-[rgba(232,197,71,0.15)] px-6 py-4 flex flex-col gap-2.5" style={{ animation: "fadeIn 0.2s ease" }}>
-            <button
-              onClick={toggleLanguage}
-              className="w-full bg-[rgba(232,197,71,0.15)] border border-[rgba(232,197,71,0.3)] rounded-md px-3 py-2 text-xs text-[#e8c547] mb-1 cursor-pointer"
-            >
-              {lang === "en" ? "🇱🇾 عربي" : "🇬🇧 English"}
-            </button>
-            {[
-              { href: "/host-dashboard", label: t.overview },
-              { href: "/host/listings",  label: t.myListings },
-              { href: "/host/bookings",  label: t.bookings, active: true },
-            ].map(({ href, label, active }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`text-[13px] no-underline py-2 ${active ? "text-[#e8c547]" : "text-white/70"}`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        )}
+        <Navbar
+          NAV_LINKS={[
+            { id: "overview", label: t.overview, href: "/host-dashboard" },
+            { id: "listings", label: t.myListings, href: "/host/listings" },
+            { id: "bookings", label: t.bookings, href: "/host/bookings" },
+          ]}
+          user={user}
+          ini={userInitials}
+          lang={lang}
+          toggleLanguage={toggleLanguage}
+          defaultActiveId="bookings"
+        />
 
         {/* ── PAGE HEADER ── */}
         <div className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,0.12)] px-6 pt-10 pb-8">
           <div className="max-w-[1100px] mx-auto">
-
             <div className="fu fu0 text-[10px] tracking-[0.12em] uppercase text-[rgba(232,197,71,0.6)] mb-2">
               {t.hostPanel}
             </div>
 
-            <h1 className={`fu fu1 display-font font-light text-[clamp(28px,4vw,38px)] text-white mb-7 ${isAr ? "" : "italic"}`}>
+            <h1
+              className={`fu fu1 display-font font-light text-[clamp(28px,4vw,38px)] text-white mb-7 ${isAr ? "" : "italic"}`}
+            >
               {t.bookingsTitle}{" "}
               <span className="font-medium text-[#e8c547]">{t.management}</span>
             </h1>
@@ -241,7 +215,9 @@ export default function HostBookings() {
                   key={label}
                   className={`bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] border-t-[3px] ${borderTop} rounded-[10px] px-4 py-3.5`}
                 >
-                  <div className={`display-font font-light text-[28px] text-white leading-none ${isAr ? "" : "italic"}`}>
+                  <div
+                    className={`display-font font-light text-[28px] text-white leading-none ${isAr ? "" : "italic"}`}
+                  >
                     {val}
                   </div>
                   <div className="text-[10px] tracking-[0.08em] uppercase text-[rgba(255,255,255,0.35)] mt-1">
@@ -255,7 +231,6 @@ export default function HostBookings() {
 
         {/* ── MAIN ── */}
         <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8">
-
           {/* Filter tabs */}
           <div className="tabs-scroll overflow-x-auto border-b border-black/[0.08] mb-6">
             <div className="flex min-w-max">
@@ -301,13 +276,11 @@ export default function HostBookings() {
                 onCancelBooking={handleCancelBooking}
               />
             </div>
-
           ) : getFiltered().length === 0 ? (
             <div className="bg-white rounded-2xl border border-black/[0.07] p-16 text-center">
               <div className="text-5xl mb-3">📅</div>
               <p className="text-[13px] text-[#999]">{t.noBookingsFound}</p>
             </div>
-
           ) : (
             <div className="flex flex-col gap-3">
               {getFiltered().map((booking, idx) => {
@@ -320,18 +293,18 @@ export default function HostBookings() {
                     style={{ animationDelay: `${idx * 0.05}s` }}
                   >
                     <div className="flex flex-col lg:flex-row gap-6 justify-between">
-
                       {/* ── Info ── */}
                       <div className="flex-1 min-w-0">
-
                         {/* Title + status badge */}
                         <div className="flex flex-wrap items-center gap-2.5 mb-3">
                           <h3 className="text-[15px] font-medium text-[#111118]">
                             {booking.listing?.title || t.listing}
                           </h3>
-                          <span className={`text-[10px] px-2.5 py-px rounded-[20px] font-medium tracking-[0.05em] uppercase ${statusBadgeCls(booking.status)}`}>
+                          <span
+                            className={`text-[10px] px-2.5 py-px rounded-[20px] font-medium tracking-[0.05em] uppercase ${statusBadgeCls(booking.status)}`}
+                          >
                             {booking.status === "confirmed" && t.confirmed}
-                            {booking.status === "pending"   && t.pending}
+                            {booking.status === "pending" && t.pending}
                             {booking.status === "cancelled" && t.cancelled}
                           </span>
                         </div>
@@ -339,14 +312,18 @@ export default function HostBookings() {
                         {/* Guest info */}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mb-4">
                           {[
-                            [t.guest,    booking.user?.name || t.guestName],
-                            [t.email,    booking.user?.email],
-                            [t.phone,    booking.user?.phoneNumber],
+                            [t.guest, booking.user?.name || t.guestName],
+                            [t.email, booking.user?.email],
+                            [t.phone, booking.user?.phoneNumber],
                             [t.location, booking.listing?.location],
                           ].map(([label, val]) => (
                             <div key={label}>
-                              <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">{label} </span>
-                              <span className="text-[12px] text-[#555]">{val || "—"}</span>
+                              <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">
+                                {label}{" "}
+                              </span>
+                              <span className="text-[12px] text-[#555]">
+                                {val || "—"}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -354,22 +331,36 @@ export default function HostBookings() {
                         {/* Dates / nights / guests */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-black/[0.05] pt-3.5">
                           {[
-                            [t.checkIn,  formatDate(booking.check_in)],
+                            [t.checkIn, formatDate(booking.check_in)],
                             [t.checkOut, formatDate(booking.check_out)],
-                            [t.nights,   `${nights} ${nights !== 1 ? t.nights : t.night}`],
-                            [t.guests,   `${booking.guests} ${booking.guests !== 1 ? t.guests : t.guest}`],
+                            [
+                              t.nights,
+                              `${nights} ${nights !== 1 ? t.nights : t.night}`,
+                            ],
+                            [
+                              t.guests,
+                              `${booking.guests} ${booking.guests !== 1 ? t.guests : t.guest}`,
+                            ],
                           ].map(([label, val]) => (
                             <div key={label}>
-                              <div className="text-[10px] uppercase tracking-[0.08em] text-[#bbb] mb-0.5">{label}</div>
-                              <div className="text-[12px] font-medium text-[#333]">{val}</div>
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[#bbb] mb-0.5">
+                                {label}
+                              </div>
+                              <div className="text-[12px] font-medium text-[#333]">
+                                {val}
+                              </div>
                             </div>
                           ))}
                         </div>
 
                         {/* Total + booked date */}
                         <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">{t.total}</span>
-                          <span className="text-base font-medium text-[#1a1a2e]">{formatCurrency(booking.total_price)}</span>
+                          <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">
+                            {t.total}
+                          </span>
+                          <span className="text-base font-medium text-[#1a1a2e]">
+                            {formatCurrency(booking.total_price)}
+                          </span>
                           <span className="text-[11px] text-[#bbb] sm:ml-auto">
                             {t.booked} {formatDate(booking.createdAt)}
                           </span>

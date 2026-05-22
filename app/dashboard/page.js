@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useLanguage } from "@/hooks/useLanguage";
 import "leaflet/dist/leaflet.css";
 import LoadingScreen from "@/components/LoadingScreen";
+import Navbar from "@/components/Navbar";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -23,7 +24,7 @@ const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
   ssr: false,
 });
 
-/* helpers */
+/* ── helpers ── */
 const fmt = (d) =>
   new Date(d).toLocaleDateString("en-US", {
     month: "short",
@@ -42,6 +43,8 @@ const haversine = (la1, lo1, la2, lo2) => {
       Math.sin(dLo / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
+
+// Avatar palette + helpers used only in the profile strip (not Navbar — Navbar computes its own)
 const AVATAR_PAL = [
   { bg: "#EEEDFE", c: "#3C3489" },
   { bg: "#E6F1FB", c: "#0C447C" },
@@ -59,6 +62,7 @@ const initials = (name) =>
     .join("")
     .slice(0, 2)
     .toUpperCase() ?? "";
+
 const statusStyle = (s) =>
   ({
     confirmed: { bg: "#EAF3DE", c: "#27500A" },
@@ -80,9 +84,9 @@ export default function UserDashboard() {
   const [searchRadius, setSearchRadius] = useState(10);
   const [mapCenter, setMapCenter] = useState({ lat: 51.505, lng: -0.09 });
   const [activeTab, setActiveTab] = useState("nearby");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [icons, setIcons] = useState({ user: null, house: null });
 
+  // Leaflet icon setup — must run client-side only
   useEffect(() => {
     if (typeof window === "undefined") return;
     const L = require("leaflet");
@@ -116,6 +120,7 @@ export default function UserDashboard() {
     });
   }, []);
 
+  // Auth check + initial data fetch
   useEffect(() => {
     (async () => {
       try {
@@ -226,33 +231,20 @@ export default function UserDashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      ["MarhabaToken", "userType", "userData"].forEach((k) =>
-        localStorage.removeItem(k),
-      );
-      router.push("/login");
-    } catch {}
-  };
-
   if (loading) return <LoadingScreen />;
   if (!user) return null;
 
+  // Used in the profile strip below (Navbar computes its own avatar independently)
   const { bg: aviBg, c: aviColor } = avi(user.name);
   const ini = initials(user.name);
 
+  // "listings" tab uses href so Navbar navigates directly without changing activeTab
   const TABS = [
-    { id: "nearby", l: isAr ? "الأماكن القريبة" : "nearby places" },
-    {
-      id: "bookings",
-      l: `${isAr ? "الحجوزات" : "bookings"} (${bookings.length})`,
-    },
+    { id: "nearby",   label: isAr ? "الأماكن القريبة" : "Nearby Places" },
+    { id: "bookings", label: `${isAr ? "الحجوزات" : "Bookings"} (${bookings.length})` },
+    { id: "listings", label: isAr ? "تصفح العقارات" : "Browse Listings", href: "/listings" },
   ];
 
-  // Font classes based on language
-  const arabicFontClass = "font-['Cairo','Tajawal',sans-serif]";
-  const englishFontClass = "font-['DM_Mono',monospace]";
   const displayFontClass = isAr
     ? "font-['Cairo','Tajawal',sans-serif]"
     : "font-['Fraunces',serif]";
@@ -260,99 +252,29 @@ export default function UserDashboard() {
     ? "font-['Cairo','Tajawal',sans-serif]"
     : "font-['DM_Mono',monospace]";
 
+    const userInitials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "H";
+
   return (
-    <div
-      className={`min-h-screen bg-[#f7f6f2] ${isAr ? "rtl" : "ltr"} ${bodyFontClass}`}
-    >
-      {/* Navigation */}
-      <nav className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,.15)] sticky top-0 z-40">
-        <div className="px-4 h-14 flex items-center justify-between gap-2">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-[1px] flex-shrink-0"
-          >
-            مر<span className="font-bold text-[#e8c547]">حبا</span>
-          </Link>
+    <div className={`min-h-screen bg-[#f7f6f2] ${isAr ? "rtl" : "ltr"} ${bodyFontClass}`}>
 
-          {/* Desktop Tabs - Hidden on mobile */}
-          <div className="hidden md:flex gap-0.5 flex-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-md text-[11px] whitespace-nowrap transition-all flex-shrink-0 ${
-                  activeTab === tab.id
-                    ? "bg-[rgba(232,197,71,.1)] text-[#e8c547]"
-                    : "text-white/45 hover:text-white/70"
-                }`}
-              >
-                {tab.l}
-              </button>
-            ))}
-          </div>
+      {/* Navbar — ini prop removed; Navbar computes initials from user.name internally */}
+      <Navbar
+        NAV_LINKS={TABS}
+        user={user}
+        lang={lang}
+        toggleLanguage={toggleLanguage}
+        onTabChange={(tabId) => setActiveTab(tabId)}
+        ini={userInitials}
+      />
 
-          {/* Right side buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Language Toggle */}
-            <button
-              onClick={toggleLanguage}
-              className="bg-[rgba(232,197,71,.15)] border border-[rgba(232,197,71,.3)] rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547]"
-            >
-              {isAr ? "🇬🇧" : "🇱🇾"}
-            </button>
-
-            {/* Avatar */}
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0"
-              style={{ background: aviBg, color: aviColor }}
-            >
-              {ini}
-            </div>
-
-            {/* Logout - Hide text on mobile */}
-            <button
-              onClick={handleLogout}
-              className="border border-[#e8c547] rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] bg-none"
-            >
-              <span>{isAr ? "خروج" : "logout"}</span>
-            </button>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-[#e8c547] text-2xl p-1"
-            >
-              {mobileMenuOpen ? "✕" : "☰"}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden flex flex-col border-t border-[rgba(232,197,71,.1)] bg-[#1a1a2e]">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`px-4 py-3 text-left text-sm w-full ${
-                  activeTab === tab.id
-                    ? "bg-[rgba(232,197,71,.1)] text-[#e8c547]"
-                    : "text-white/70"
-                }`}
-              >
-                {tab.l}
-              </button>
-            ))}
-          </div>
-        )}
-      </nav>
-
-      {/* Main Content */}
       <main className="max-w-[1200px] mx-auto p-4 md:p-6">
+
         {/* Profile strip */}
         <div className="bg-white rounded-xl border border-black/7 p-4 md:p-5 mb-5 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -363,9 +285,7 @@ export default function UserDashboard() {
               {ini}
             </div>
             <div>
-              <div
-                className={`${displayFontClass} font-light text-xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}
-              >
+              <div className={`${displayFontClass} font-light text-xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}>
                 {user.name}
               </div>
               <div className="text-[11px] text-gray-400 mt-0.5">
@@ -376,12 +296,10 @@ export default function UserDashboard() {
           <div className="flex gap-5 flex-wrap">
             {[
               { l: isAr ? "الحجوزات" : "bookings", v: bookings.length },
-              { l: isAr ? "القريبة" : "nearby", v: filtered.length },
+              { l: isAr ? "القريبة"  : "nearby",   v: filtered.length },
             ].map(({ l, v }) => (
               <div key={l} className={isAr ? "text-left" : "text-right"}>
-                <div
-                  className={`${displayFontClass} font-light text-2xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}
-                >
+                <div className={`${displayFontClass} font-light text-2xl text-[#111118] leading-tight ${isAr ? "italic" : ""}`}>
                   {v}
                 </div>
                 <div className="text-[10px] tracking-wide uppercase text-gray-300 mt-0.5">
@@ -392,13 +310,11 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* NEARBY TAB */}
+        {/* ── NEARBY TAB ── */}
         {activeTab === "nearby" && (
           <div>
             <div className="flex items-center justify-between flex-wrap gap-2.5 mb-4">
-              <div
-                className={`${displayFontClass} font-light text-xl text-[#111118] ${isAr ? "italic" : ""}`}
-              >
+              <div className={`${displayFontClass} font-light text-xl text-[#111118] ${isAr ? "italic" : ""}`}>
                 {isAr ? "الأماكن القريبة" : "nearby places"}
                 <span className="text-[13px] font-normal not-italic text-gray-400 ml-2">
                   ({filtered.length})
@@ -435,15 +351,10 @@ export default function UserDashboard() {
                     attribution="&copy; OpenStreetMap contributors"
                   />
                   {icons.user && (
-                    <Marker
-                      position={[userLocation.lat, userLocation.lng]}
-                      icon={icons.user}
-                    >
+                    <Marker position={[userLocation.lat, userLocation.lng]} icon={icons.user}>
                       <Popup>
                         <strong className="text-xs">
-                          {isAr
-                            ? "📍 موقعك الحالي"
-                            : "📍 Your current location"}
+                          {isAr ? "📍 موقعك الحالي" : "📍 Your current location"}
                         </strong>
                       </Popup>
                     </Marker>
@@ -466,12 +377,8 @@ export default function UserDashboard() {
                                     className="w-full h-[90px] object-cover rounded-md mb-2"
                                   />
                                 )}
-                                <div className="font-medium mb-0.5">
-                                  🏠 {l.title}
-                                </div>
-                                <div className="text-gray-400 mb-1.5">
-                                  {l.location}
-                                </div>
+                                <div className="font-medium mb-0.5">🏠 {l.title}</div>
+                                <div className="text-gray-400 mb-1.5">{l.location}</div>
                                 <div className="flex gap-1.5">
                                   <Link
                                     href={`/listings/${l.id}`}
@@ -527,24 +434,14 @@ export default function UserDashboard() {
                       </div>
                       <div className="flex-1 p-4 sm:p-0 sm:py-4 sm:pr-5 flex flex-col justify-between">
                         <div>
-                          <div className="text-base font-medium text-[#111118] mb-1.5">
-                            {l.title}
-                          </div>
+                          <div className="text-base font-medium text-[#111118] mb-1.5">{l.title}</div>
                           <div className="text-[13px] text-gray-400 mb-2.5 flex items-center gap-1">
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="text-[#e8c547]"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[#e8c547]">
                               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                             </svg>
                             {l.location}
                           </div>
-                          <div
-                            className={`${displayFontClass} font-light text-2xl text-[#1a1a2e] mb-3 ${isAr ? "italic" : ""}`}
-                          >
+                          <div className={`${displayFontClass} font-light text-2xl text-[#1a1a2e] mb-3 ${isAr ? "italic" : ""}`}>
                             {l.price} {isAr ? " دينار" : "LYD"}
                             <span className="text-base font-normal not-italic text-[#242323]">
                               / {isAr ? "ليلة" : "night"}
@@ -564,12 +461,7 @@ export default function UserDashboard() {
                                 onClick={() => openMaps(l)}
                                 className="bg-[#1D9E75] text-white border-none rounded-lg px-5 py-2.5 text-[13px] cursor-pointer flex items-center gap-1.5"
                               >
-                                <svg
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                                   <circle cx="12" cy="9" r="3" />
                                 </svg>
@@ -579,12 +471,7 @@ export default function UserDashboard() {
                                 onClick={() => getDirections(l)}
                                 className="bg-gray-100 text-[#1a1a2e] border border-gray-200 rounded-lg px-5 py-2.5 text-[13px] cursor-pointer flex items-center gap-1.5"
                               >
-                                <svg
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                                   <circle cx="12" cy="9" r="3" />
                                 </svg>
@@ -600,15 +487,11 @@ export default function UserDashboard() {
               </div>
             ) : (
               <div className="text-center py-16 px-8 bg-white rounded-xl border border-black/7">
-                <div
-                  className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}
-                >
+                <div className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}>
                   {isAr ? "لا توجد أماكن قريبة" : "nothing nearby"}
                 </div>
                 <p className="text-sm text-gray-400 mb-4">
-                  {isAr
-                    ? `لا توجد أماكن ضمن ${searchRadius} كم`
-                    : `No places within ${searchRadius} km`}
+                  {isAr ? `لا توجد أماكن ضمن ${searchRadius} كم` : `No places within ${searchRadius} km`}
                 </p>
                 <button
                   onClick={() => filterByDistance(50)}
@@ -621,25 +504,19 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* BOOKINGS TAB */}
+        {/* ── BOOKINGS TAB ── */}
         {activeTab === "bookings" && (
           <div>
-            <div
-              className={`${displayFontClass} font-light text-xl text-[#111118] mb-4 ${isAr ? "italic" : ""}`}
-            >
+            <div className={`${displayFontClass} font-light text-xl text-[#111118] mb-4 ${isAr ? "italic" : ""}`}>
               {isAr ? "حجوزاتي" : "my bookings"}
             </div>
             {bookings.length === 0 ? (
               <div className="text-center py-16 px-4 bg-white rounded-xl border border-black/7">
-                <div
-                  className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}
-                >
+                <div className={`${displayFontClass} font-light text-2xl text-gray-300 mb-3 ${isAr ? "italic" : ""}`}>
                   {isAr ? "لا توجد حجوزات بعد" : "no bookings yet"}
                 </div>
                 <p className="text-[13px] text-gray-400 mb-4">
-                  {isAr
-                    ? "اكتشف أماكن رائعة للإقامة"
-                    : "Discover amazing places to stay"}
+                  {isAr ? "اكتشف أماكن رائعة للإقامة" : "Discover amazing places to stay"}
                 </p>
                 <Link
                   href="/listings"
@@ -654,10 +531,7 @@ export default function UserDashboard() {
                   const { bg: sBg, c: sC } = statusStyle(b.status);
                   const n = nights(b.check_in, b.check_out);
                   return (
-                    <div
-                      key={b.id}
-                      className="bg-white rounded-xl border border-black/7 p-4 md:p-5"
-                    >
+                    <div key={b.id} className="bg-white rounded-xl border border-black/7 p-4 md:p-5">
                       <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
                         <div className="text-sm font-medium text-[#111118]">
                           {b.listing?.title || (isAr ? "قائمة" : "Listing")}
@@ -666,74 +540,32 @@ export default function UserDashboard() {
                           className="text-[10px] font-medium tracking-wide uppercase px-2.5 py-0.5 rounded-full"
                           style={{ background: sBg, color: sC }}
                         >
-                          {b.status === "confirmed" &&
-                            (isAr ? "مؤكد" : "confirmed")}
-                          {b.status === "pending" &&
-                            (isAr ? "قيد الانتظار" : "pending")}
-                          {b.status === "cancelled" &&
-                            (isAr ? "ملغي" : "cancelled")}
+                          {b.status === "confirmed" && (isAr ? "مؤكد" : "confirmed")}
+                          {b.status === "pending"   && (isAr ? "قيد الانتظار" : "pending")}
+                          {b.status === "cancelled" && (isAr ? "ملغي" : "cancelled")}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-400 mb-4">
-                        {b.listing?.location}
-                      </div>
+                      <div className="text-xs text-gray-400 mb-4">{b.listing?.location}</div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <div>
-                          <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
-                            {isAr ? "تسجيل الوصول" : "check-in"}
+                        {[
+                          { label: isAr ? "تسجيل الوصول"   : "check-in",  val: b.check_in_display  || fmt(b.check_in) },
+                          { label: isAr ? "تسجيل المغادرة" : "check-out", val: b.check_out_display || fmt(b.check_out) },
+                          { label: isAr ? "الليالي" : "nights", val: `${n} ${n === 1 ? (isAr ? "ليلة" : "night") : (isAr ? "ليالي" : "nights")}` },
+                          { label: isAr ? "الضيوف" : "guests", val: `${b.guests} ${b.guests === 1 ? (isAr ? "ضيف" : "guest") : (isAr ? "ضيوف" : "guests")}` },
+                        ].map(({ label, val }) => (
+                          <div key={label}>
+                            <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">{label}</div>
+                            <div className="text-xs text-[#111118]">{val}</div>
                           </div>
-                          <div className="text-xs text-[#111118]">
-                            {b.check_in_display || fmt(b.check_in)}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
-                            {isAr ? "تسجيل المغادرة" : "check-out"}
-                          </div>
-                          <div className="text-xs text-[#111118]">
-                            {b.check_out_display || fmt(b.check_out)}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
-                            {isAr ? "الليالي" : "nights"}
-                          </div>
-                          <div className="text-xs text-[#111118]">
-                            {n}{" "}
-                            {n === 1
-                              ? isAr
-                                ? "ليلة"
-                                : "night"
-                              : isAr
-                                ? "ليالي"
-                                : "nights"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
-                            {isAr ? "الضيوف" : "guests"}
-                          </div>
-                          <div className="text-xs text-[#111118]">
-                            {b.guests}{" "}
-                            {b.guests === 1
-                              ? isAr
-                                ? "ضيف"
-                                : "guest"
-                              : isAr
-                                ? "ضيوف"
-                                : "guests"}
-                          </div>
-                        </div>
+                        ))}
                       </div>
 
                       <div>
                         <div className="text-[10px] tracking-wide uppercase text-gray-300 mb-0.5">
                           {isAr ? "المجموع" : "total"}
                         </div>
-                        <div
-                          className={`${displayFontClass} font-light text-xl text-[#1a1a2e] ${isAr ? "italic" : ""}`}
-                        >
+                        <div className={`${displayFontClass} font-light text-xl text-[#1a1a2e] ${isAr ? "italic" : ""}`}>
                           {b.total_price} {isAr ? " دينار" : "LYD"}
                         </div>
                       </div>
@@ -760,12 +592,7 @@ export default function UserDashboard() {
                             onClick={() => openMaps(b.listing)}
                             className="bg-[#1D9E75] text-white border-none rounded-md px-3.5 py-1.5 text-xs cursor-pointer flex items-center gap-1.5"
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                               <circle cx="12" cy="9" r="3" />
                             </svg>

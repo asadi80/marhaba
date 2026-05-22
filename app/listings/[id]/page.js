@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import BookingCalendar from "@/components/BookingCalendar";
 import { useLanguage } from "@/hooks/useLanguage";
 import HostDateManager from "@/components/HostDateManager";
+import Navbar from "@/components/Navbar";
 
 import "leaflet/dist/leaflet.css";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -98,7 +99,6 @@ export default function ListingDetail({ params }) {
   const [totalPrice, setTotalPrice] = useState(0);
   const [leafletFixed, setLeafletFixed] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [listingView, setListingView] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -230,10 +230,7 @@ export default function ListingDetail({ params }) {
   const avi = (name) =>
     AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
-  const NAV_LINKS = [
-    { href: "/dashboard", label: t.dashboard },
-    { href: "/listings", label: t.browse },
-  ];
+
 
   const getCategoryInfo = () =>
     listing?.category
@@ -246,15 +243,17 @@ export default function ListingDetail({ params }) {
       ? `${amount.toLocaleString()} دينار`
       : `${amount.toLocaleString()} LYD`;
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {}
-    router.push("/login");
-  };
+
 
   const isAdmin =
     currentUser?.role === "admin" || currentUser?.role === "super_admin";
+    const userInitials =
+  currentUser?.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() ?? "?";
 
   if (loading)
     return (
@@ -297,93 +296,18 @@ export default function ListingDetail({ params }) {
       }}
     >
       {/* NAV */}
-      <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-[1px]"
-          >
-            مر<span className="font-bold text-[#e8c547]">حبا</span>
-          </Link>
-          <div className="hidden md:flex gap-1.5">
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="no-underline px-3 py-1.5 rounded-md text-[13px] text-white/65 hover:bg-[#e8c547]/12 hover:text-[#e8c547] transition-all"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
+    <Navbar
+  NAV_LINKS={[
+    { id: "dashboard", label: t.dashboard, href: "/dashboard" },
+    { id: "browse",    label: t.browse,    href: "/listings" },
+  ]}
+  user={currentUser}
+  lang={lang}
+  toggleLanguage={toggleLanguage}
+  ini={userInitials}
+/>
 
-        <div className="hidden md:flex items-center gap-2.5">
-          <button
-            onClick={toggleLanguage}
-            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
-          >
-            {lang === "en" ? "🇱🇾" : "🇬🇧"}
-          </button>
-          <Link
-            href="/listings"
-            className="text-[12px] text-white/50 no-underline"
-          >
-            {t.allListings}
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="bg-transparent border border-[#e8c547] rounded-md px-2.5 py-[5px] text-[12px] text-[#e8c547] cursor-pointer hover:border-[#e64949] transition-colors font-[inherit]"
-          >
-            {t.logout || "Logout"}
-          </button>
-        </div>
-
-        {/* Hamburger */}
-        <button
-          className="md:hidden flex flex-col gap-[5px] bg-transparent border-none cursor-pointer p-1"
-          onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          aria-label="Menu"
-        >
-          <span
-            className={`block w-5 h-0.5 bg-white/70 rounded transition-all ${mobileNavOpen ? "rotate-45 translate-y-[7px]" : ""}`}
-          />
-          <span
-            className={`block w-5 h-0.5 bg-white/70 rounded transition-all ${mobileNavOpen ? "opacity-0" : ""}`}
-          />
-          <span
-            className={`block w-5 h-0.5 bg-white/70 rounded transition-all ${mobileNavOpen ? "-rotate-45 -translate-y-[7px]" : ""}`}
-          />
-        </button>
-      </nav>
-
-      {/* Mobile nav */}
-      {mobileNavOpen && (
-        <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 py-4 z-40 flex flex-col gap-2.5">
-          <button
-            onClick={toggleLanguage}
-            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
-          >
-            {lang === "en" ? "🇱🇾" : "🇬🇧"}
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-transparent border border-white/20 rounded-md px-3 py-2 text-[12px] text-white cursor-pointer font-[inherit] w-full"
-          >
-            {t.logout || "Logout"}
-          </button>
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-[13px] text-white/70 no-underline py-2"
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
+  
 
       <main className="max-w-[1100px] mx-auto px-6 py-7">
         {/* Back + Title */}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
+import Navbar from "@/components/Navbar";
 
 export default function ListingsPage() {
   const router = useRouter();
@@ -11,17 +12,25 @@ export default function ListingsPage() {
   const isAr = lang === "ar";
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [filters, setFilters] = useState({
     location: "",
     minPrice: "",
     maxPrice: "",
   });
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     fetchListings();
+    fetchUser();
   }, []);
 
+  const fetchUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const data = await res.json();
+      if (data.user) setUser(data.user);
+    } catch {}
+  };
   const fetchListings = async () => {
     setLoading(true);
     try {
@@ -55,20 +64,18 @@ export default function ListingsPage() {
   const avi = (name) =>
     AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
-  const NAV_LINKS = [
-    // { href: '/dashboard', label: t.dashboard },
-    { href: "/listings", label: t.browse, active: true },
-  ];
+
 
   const inputClass = `w-full py-2.5 px-3 bg-[#fafaf8] border border-black/10 rounded-lg text-[13px] text-[#111118] outline-none transition-all placeholder:text-[#c0bfbb] hover:border-black/18 focus:border-[#185FA5] focus:shadow-[0_0_0_3px_rgba(24,95,165,0.08)] focus:bg-white ${
     isAr ? "font-['Cairo','Tajawal',sans-serif]" : "font-['DM_Mono',monospace]"
   }`;
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {}
-    router.push("/login");
-  };
+  const userInitials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "H";
 
   return (
     <div
@@ -81,93 +88,19 @@ export default function ListingsPage() {
       }}
     >
       {/* NAV */}
-      <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
-        <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="no-underline font-['Cairo','Tajawal',sans-serif] font-medium text-[26px] text-white tracking-wide"
-          >
-            مر<span className="font-bold text-[#e8c547]">حبا</span>
-          </Link>
-          <div className="hidden md:flex gap-0.5">
-            {NAV_LINKS.map(({ href, label, active }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`text-xs no-underline px-3 py-1.5 rounded-md transition-colors ${active ? "text-white/90" : "text-white/45 hover:text-white/90 hover:bg-white/[0.06]"}`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
+      <Navbar
+        NAV_LINKS={[
+          { id: "dashboard", label: t.dashboard, href: "/dashboard" },
+          { id: "browse", label: t.browse, href: "/listings" },
+        ]}
+        user={user}
+        lang={lang}
+        toggleLanguage={toggleLanguage}
+        defaultActiveId="browse"
+        ini={userInitials}
+      />
 
-        <div className="hidden md:flex items-center gap-2.5">
-          <button
-            onClick={toggleLanguage}
-            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
-          >
-            {lang === "en" ? "🇸🇦 عربي" : "🇬🇧 English"}
-          </button>
-          <Link
-            href="/dashboard"
-            className="text-xs text-white/45 no-underline"
-          >
-            ← {t.dashboard}
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="bg-transparent border border-[#e8c547] rounded-md px-2.5 py-[5px] text-[11px] text-[#e8c547] cursor-pointer hover:border-[#e64949] transition-colors font-[inherit]"
-          >
-            {t.logout || "Logout"}
-          </button>
-        </div>
 
-        {/* Hamburger */}
-        <button
-          onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          className="md:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1"
-          aria-label="Menu"
-        >
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "rotate-45 translate-y-[7px]" : ""}`}
-          />
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-opacity ${mobileNavOpen ? "opacity-0" : ""}`}
-          />
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "-rotate-45 -translate-y-[7px]" : ""}`}
-          />
-        </button>
-      </nav>
-
-      {/* Mobile nav */}
-      {mobileNavOpen && (
-        <div className="md:hidden fixed top-14 left-0 right-0 bg-[#1a1a2e] border-b border-[#e8c547]/12 px-6 py-4 z-40 flex flex-col gap-1">
-          <button
-            onClick={toggleLanguage}
-            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-3 py-2 text-[12px] cursor-pointer text-[#e8c547] font-[inherit] mb-2.5 w-full"
-          >
-            {lang === "en" ? "🇱🇾 عربي" : "🇬🇧 English"}
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-transparent border border-white/20 rounded-md px-3 py-2 text-[12px] text-white cursor-pointer font-[inherit] w-full"
-          >
-            {t.logout || "Logout"}
-          </button>
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileNavOpen(false)}
-              className="text-[13px] text-white/60 no-underline py-2.5 border-b border-white/[0.06] last:border-b-0 block"
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-7">
         {/* HEADER */}

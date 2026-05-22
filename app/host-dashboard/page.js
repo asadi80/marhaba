@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import LoadingScreen from "@/components/LoadingScreen";
+import Navbar from "@/components/Navbar";
 
 export default function HostDashboard() {
   const router = useRouter();
@@ -204,29 +205,18 @@ export default function HostDashboard() {
         style={isAr ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
       >
         {/* NAV */}
-        <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50">
-          <Link
-            href="/"
-            className="no-underline font-medium text-[26px] text-white tracking-wide"
-            style={isAr ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
-          >
-            مر<span className="font-bold text-[#e8c547]">حبا</span>
-          </Link>
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-medium ${aviBg} ${aviColor}`}
-            >
-              {userInitials}
-            </div>
-            <span className="text-xs text-white/60">{user?.name}</span>
-            <button
-              onClick={handleLogout}
-              className="bg-[#e8c547]/10 border border-[#e8c547]/25 rounded-md text-[#e8c547] px-3 py-1 text-[11px] cursor-pointer font-[inherit]"
-            >
-              {t.logout || "Logout"}
-            </button>
-          </div>
-        </nav>
+
+        <Navbar
+          NAV_LINKS={[
+            { id: "listings", label: isAr ? "قوائمي" : "My Listings" },
+            { id: "bookings", label: isAr ? "الحجوزات" : "Bookings" },
+          ]}
+          user={user}
+          ini={userInitials}
+          lang={lang}
+          toggleLanguage={toggleLanguage}
+          onTabChange={() => {}}
+        />
 
         <main className="max-w-[560px] mx-auto px-6 py-12">
           <div className="bg-white rounded-2xl border border-black/7 p-10 shadow-[0_4px_24px_rgba(0,0,0,0.06)] animate-[fadeUp_0.4s_ease_both]">
@@ -524,69 +514,17 @@ export default function HostDashboard() {
       style={isAr ? { fontFamily: "'Cairo', 'Tajawal', sans-serif" } : {}}
     >
       {/* NAV */}
-      <nav className="bg-[#1a1a2e] border-b border-[#e8c547]/15 px-6 h-14 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="no-underline font-medium text-[26px] text-white tracking-wide"
-            style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
-          >
-            مر<span className="font-bold text-[#e8c547]">حبا</span>
-          </Link>
-          <div className="hidden md:flex gap-0.5">
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="text-xs text-white/45 no-underline px-3 py-1.5 rounded-md hover:text-[#e8c547] transition-colors"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2.5">
-          <button
-            onClick={toggleLanguage}
-            className="bg-[#e8c547]/15 border border-[#e8c547]/30 rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] font-[inherit]"
-          >
-            {lang === "en" ? "🇱🇾" : "🇬🇧"}
-          </button>
-          <div
-            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-medium shrink-0 ${aviBg} ${aviColor}`}
-          >
-            {userInitials}
-          </div>
-          <span className="text-xs text-white/60">{user?.name}</span>
-          <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2.5 py-0.5 rounded-full">
-            {t.host}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="bg-none border border-[#e8c547] rounded-md text-[#e8c547] text-[11px] px-3 py-1 cursor-pointer hover:border-red-400/50 hover:text-red-400/90 transition-colors"
-          >
-            {t.logout}
-          </button>
-        </div>
-
-        {/* Hamburger */}
-        <button
-          onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          className="md:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1"
-          aria-label="Menu"
-        >
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "rotate-45 translate-y-[7px]" : ""}`}
-          />
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-opacity ${mobileNavOpen ? "opacity-0" : ""}`}
-          />
-          <span
-            className={`block w-[18px] h-0.5 bg-white/60 rounded transition-transform ${mobileNavOpen ? "-rotate-45 -translate-y-[7px]" : ""}`}
-          />
-        </button>
-      </nav>
+      <Navbar
+         NAV_LINKS={[
+    { id: "listings", label: isAr ? "قوائمي" : "My Listings", href: "/host/listings" },
+    { id: "bookings", label: isAr ? "الحجوزات" : "Bookings", href: "/host/bookings" },
+  ]}
+        user={user}
+        ini={userInitials}
+        lang={lang}
+        toggleLanguage={toggleLanguage}
+        onTabChange={() => {}}
+      />
 
       {/* Mobile nav */}
       {mobileNavOpen && (
