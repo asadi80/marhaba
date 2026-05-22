@@ -41,7 +41,7 @@ export default function HostCalendar({ bookings, onConfirmBooking, onCancelBooki
     }
   };
 
-  const t = translations[language];
+const t = translations[language] ?? translations["en"];
 
   const monthNames = t.monthNames;
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();

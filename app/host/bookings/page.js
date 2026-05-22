@@ -274,6 +274,7 @@ const userInitials =
                 bookings={bookings}
                 onConfirmBooking={handleConfirmBooking}
                 onCancelBooking={handleCancelBooking}
+                language={lang} 
               />
             </div>
           ) : getFiltered().length === 0 ? (
