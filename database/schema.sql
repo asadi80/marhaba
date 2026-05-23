@@ -89,6 +89,7 @@ CREATE TABLE listings (
   host_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   rules TEXT[] DEFAULT ARRAY[]::TEXT[],
   status VARCHAR(20) DEFAULT 'active',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   blocked_dates JSONB DEFAULT '[]',
   view_count INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

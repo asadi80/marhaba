@@ -42,6 +42,8 @@ export default function HostBookings() {
     try {
       const res = await fetch("/api/bookings", { credentials: "include" });
       const data = await res.json();
+      console.log(data);
+      
       if (!res.ok) throw new Error(data.message);
       setBookings(data.bookings);
     } catch (err) {
@@ -61,6 +63,7 @@ export default function HostBookings() {
         body: JSON.stringify({ action: "confirm" }),
       });
       const data = await res.json();
+      
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingConfirmedSuccess);
@@ -81,6 +84,7 @@ export default function HostBookings() {
         body: JSON.stringify({ action: "cancel" }),
       });
       const data = await res.json();
+      
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingCancelledSuccess);
@@ -155,7 +159,6 @@ const userInitials =
       .join("")
       .slice(0, 2)
       .toUpperCase() ?? "H";
-      console.log(userInitials);
       
 
   if (loading) return <LoadingScreen />;
@@ -363,7 +366,7 @@ const userInitials =
                             {formatCurrency(booking.total_price)}
                           </span>
                           <span className="text-[11px] text-[#bbb] sm:ml-auto">
-                            {t.booked} {formatDate(booking.createdAt)}
+                            {t.booked} {formatDate(booking.created_at)}
                           </span>
                         </div>
                       </div>

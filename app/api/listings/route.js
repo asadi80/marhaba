@@ -1,32 +1,33 @@
 // app/api/listings/route.js - POSTGRESQL VERSION
-import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import pool from '@/lib/postgres';
+import { NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+import pool from "@/lib/postgres";
 
 // GET - Fetch all listings (for users)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const location = searchParams.get('location');
-    const minPrice = searchParams.get('minPrice');
-    const maxPrice = searchParams.get('maxPrice');
-    
+    const location = searchParams.get("location");
+    const minPrice = searchParams.get("minPrice");
+    const maxPrice = searchParams.get("maxPrice");
+
     // Build WHERE clause
     let whereConditions = `
       l.status = 'active'
+      AND l.is_active = TRUE
       AND u.status = 'confirmed'
       AND u.role = 'host'
     `;
-    
+
     const queryParams = [];
     let paramIndex = 1;
-    
+
     if (location) {
       whereConditions += ` AND l.location ILIKE $${paramIndex}`;
       queryParams.push(`%${location}%`);
       paramIndex++;
     }
-    
+
     if (minPrice || maxPrice) {
       if (minPrice && maxPrice) {
         whereConditions += ` AND l.price BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
@@ -42,7 +43,7 @@ export async function GET(request) {
         paramIndex++;
       }
     }
-    
+
     // Query listings with host info
     const result = await pool.query(
       `SELECT 
@@ -57,6 +58,7 @@ export async function GET(request) {
         l.category,
         l.amenities,
         l.rules,
+        l.is_active,
         l.created_at,
         l.updated_at,
         u.id as host_id,
@@ -67,11 +69,11 @@ export async function GET(request) {
        JOIN users u ON l.host_id = u.id
        WHERE ${whereConditions}
        ORDER BY l.created_at DESC`,
-      queryParams
+      queryParams,
     );
-    
+
     // Format listings
-    const listings = result.rows.map(listing => ({
+    const listings = result.rows.map((listing) => ({
       id: listing.id,
       title: listing.title,
       description: listing.description,
@@ -79,28 +81,29 @@ export async function GET(request) {
       location: listing.location,
       coordinates: {
         lat: listing.latitude,
-        lng: listing.longitude
+        lng: listing.longitude,
       },
       images: listing.images || [],
       category: listing.category,
       amenities: listing.amenities || [],
       rules: listing.rules || [],
+      is_active: listing.is_active,
       createdAt: listing.created_at,
       updatedAt: listing.updated_at,
       host: {
         id: listing.host_id,
         name: listing.host_name,
         email: listing.host_email,
-        status: listing.host_status
-      }
+        status: listing.host_status,
+      },
     }));
-    
+
     return NextResponse.json({ listings });
   } catch (error) {
-    console.error('Fetch listings error:', error);
+    console.error("Fetch listings error:", error);
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
-      { status: 500 }
+      { message: "Internal server error", error: error.message },
+      { status: 500 },
     );
   }
 }
@@ -108,90 +111,104 @@ export async function GET(request) {
 // POST - Create new listing (host only)
 export async function POST(request) {
   try {
-    const token = request.cookies.get('token')?.value;
-    
+    const token = request.cookies.get("token")?.value;
+
     if (!token) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Check if user is a host and confirmed
     const userResult = await pool.query(
       `SELECT id, role, status, host_details FROM users WHERE id = $1`,
-      [decoded.userId]
+      [decoded.userId],
     );
-    
+
     if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
-    
+
     const user = userResult.rows[0];
-    
-    if (user.role !== 'host') {
+
+    if (user.role !== "host") {
       return NextResponse.json(
-        { message: 'Only hosts can create listings' },
-        { status: 403 }
+        { message: "Only hosts can create listings" },
+        { status: 403 },
       );
     }
-    
+
     // Check if host is suspended
-    if (user.status === 'suspended') {
+    if (user.status === "suspended") {
       return NextResponse.json(
-        { message: 'Your account is suspended. You cannot create listings.' },
-        { status: 403 }
+        { message: "Your account is suspended. You cannot create listings." },
+        { status: 403 },
       );
     }
-    
+
     // Check if host is confirmed
-    if (user.status !== 'confirmed') {
+    if (user.status !== "confirmed") {
       return NextResponse.json(
-        { message: 'Your host account is not confirmed yet. Please wait for admin approval.' },
-        { status: 403 }
+        {
+          message:
+            "Your host account is not confirmed yet. Please wait for admin approval.",
+        },
+        { status: 403 },
       );
     }
-    
+
     // Extract data from request body
-    const { 
-      title, description, price, location, coordinates, 
-      images, amenities, rules, category 
+    const {
+      title,
+      description,
+      price,
+      location,
+      coordinates,
+      images,
+      amenities,
+      rules,
+      category,
     } = await request.json();
-    
-    console.log('Received listing data:', { title, description, price, location, coordinates, images, amenities, rules, category });
-    
+
+    console.log("Received listing data:", {
+      title,
+      description,
+      price,
+      location,
+      coordinates,
+      images,
+      amenities,
+      rules,
+      category,
+    });
+
     // Validation
     if (!title || !description || !price || !location || !coordinates) {
       return NextResponse.json(
-        { message: 'All required fields must be filled' },
-        { status: 400 }
+        { message: "All required fields must be filled" },
+        { status: 400 },
       );
     }
-    
+
     // Validate coordinates
     if (!coordinates.lat || !coordinates.lng) {
       return NextResponse.json(
-        { message: 'Valid coordinates are required' },
-        { status: 400 }
+        { message: "Valid coordinates are required" },
+        { status: 400 },
       );
     }
-    
+
     // Validate images
     if (!images || images.length === 0 || !images[0]) {
       return NextResponse.json(
-        { message: 'At least one image is required' },
-        { status: 400 }
+        { message: "At least one image is required" },
+        { status: 400 },
       );
     }
-    
+
     // Filter out empty images
-    const filteredImages = images.filter(img => img && img.trim() !== '');
-    
+    const filteredImages = images.filter((img) => img && img.trim() !== "");
+
     // Create listing
     const result = await pool.query(
       `INSERT INTO listings (
@@ -210,51 +227,54 @@ export async function POST(request) {
         filteredImages,
         amenities || [],
         rules || [],
-        category || 'city',
-        user.id
-      ]
+        category || "city",
+        user.id,
+      ],
     );
-    
+
     const newListing = result.rows[0];
-    
+
     // Update host's total listings count in host_details
     let hostDetails = user.host_details || {};
-    if (typeof hostDetails === 'string') {
+    if (typeof hostDetails === "string") {
       hostDetails = JSON.parse(hostDetails);
     }
-    
+
     hostDetails.totalListings = (hostDetails.totalListings || 0) + 1;
-    
-    await pool.query(
-      `UPDATE users SET host_details = $1 WHERE id = $2`,
-      [hostDetails, user.id]
-    );
-    
-    return NextResponse.json({
-      message: 'Listing created successfully',
-      listing: {
-        id: newListing.id,
-        title: newListing.title,
-        description: newListing.description,
-        price: newListing.price,
-        location: newListing.location,
-        coordinates: {
-          lat: newListing.latitude,
-          lng: newListing.longitude
-        },
-        images: newListing.images,
-        category: newListing.category,
-        amenities: newListing.amenities,
-        rules: newListing.rules,
-        status: newListing.status,
-        createdAt: newListing.created_at
-      },
-    }, { status: 201 });
-  } catch (error) {
-    console.error('Create listing error:', error);
+
+    await pool.query(`UPDATE users SET host_details = $1 WHERE id = $2`, [
+      hostDetails,
+      user.id,
+    ]);
+
     return NextResponse.json(
-      { message: error.message || 'Internal server error' },
-      { status: 500 }
+      {
+        message: "Listing created successfully",
+        listing: {
+          id: newListing.id,
+          title: newListing.title,
+          description: newListing.description,
+          price: newListing.price,
+          location: newListing.location,
+          coordinates: {
+            lat: newListing.latitude,
+            lng: newListing.longitude,
+          },
+          images: newListing.images,
+          category: newListing.category,
+          amenities: newListing.amenities,
+          rules: newListing.rules,
+          status: newListing.status,
+          createdAt: newListing.created_at,
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("Create listing error:", error);
+    return NextResponse.json(
+      { message: error.message || "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -262,91 +282,85 @@ export async function POST(request) {
 // PUT - Update listing (host only)
 export async function PUT(request) {
   try {
-    const token = request.cookies.get('token')?.value;
-    
+    const token = request.cookies.get("token")?.value;
+
     if (!token) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Check if user is a host
     const userResult = await pool.query(
       `SELECT id, role, status FROM users WHERE id = $1`,
-      [decoded.userId]
+      [decoded.userId],
     );
-    
+
     if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
-    
+
     const user = userResult.rows[0];
-    
-    if (user.role !== 'host') {
+
+    if (user.role !== "host") {
       return NextResponse.json(
-        { message: 'Only hosts can update listings' },
-        { status: 403 }
+        { message: "Only hosts can update listings" },
+        { status: 403 },
       );
     }
-    
+
     // Check if host is suspended
-    if (user.status === 'suspended') {
+    if (user.status === "suspended") {
       return NextResponse.json(
-        { message: 'Your account is suspended. You cannot update listings.' },
-        { status: 403 }
+        { message: "Your account is suspended. You cannot update listings." },
+        { status: 403 },
       );
     }
-    
+
     const { listingId, ...updateData } = await request.json();
-    
+
     if (!listingId) {
       return NextResponse.json(
-        { message: 'Listing ID is required' },
-        { status: 400 }
+        { message: "Listing ID is required" },
+        { status: 400 },
       );
     }
-    
+
     // Find the listing and check ownership
     const listingResult = await pool.query(
       `SELECT id, host_id, status FROM listings WHERE id = $1`,
-      [listingId]
+      [listingId],
     );
-    
+
     if (listingResult.rows.length === 0) {
       return NextResponse.json(
-        { message: 'Listing not found' },
-        { status: 404 }
+        { message: "Listing not found" },
+        { status: 404 },
       );
     }
-    
+
     const listing = listingResult.rows[0];
-    
+
     if (listing.host_id !== user.id) {
       return NextResponse.json(
-        { message: 'You can only update your own listings' },
-        { status: 403 }
+        { message: "You can only update your own listings" },
+        { status: 403 },
       );
     }
-    
+
     // Check if listing is not deleted
-    if (listing.status === 'deleted') {
+    if (listing.status === "deleted") {
       return NextResponse.json(
-        { message: 'Cannot update a deleted listing' },
-        { status: 403 }
+        { message: "Cannot update a deleted listing" },
+        { status: 403 },
       );
     }
-    
+
     // Build dynamic update query
     const updateFields = [];
     const updateParams = [];
     let paramIndex = 1;
-    
+
     if (updateData.title !== undefined) {
       updateFields.push(`title = $${paramIndex++}`);
       updateParams.push(updateData.title);
@@ -389,29 +403,29 @@ export async function PUT(request) {
       updateFields.push(`category = $${paramIndex++}`);
       updateParams.push(updateData.category);
     }
-    
+
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     updateParams.push(listingId);
-    
+
     const updateQuery = `
       UPDATE listings 
-      SET ${updateFields.join(', ')}
+      SET ${updateFields.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *
     `;
-    
+
     const result = await pool.query(updateQuery, updateParams);
     const updatedListing = result.rows[0];
-    
+
     return NextResponse.json({
-      message: 'Listing updated successfully',
+      message: "Listing updated successfully",
       listing: updatedListing,
     });
   } catch (error) {
-    console.error('Update listing error:', error);
+    console.error("Update listing error:", error);
     return NextResponse.json(
-      { message: error.message || 'Internal server error' },
-      { status: 500 }
+      { message: error.message || "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -419,99 +433,93 @@ export async function PUT(request) {
 // DELETE - Soft delete listing (host only)
 export async function DELETE(request) {
   try {
-    const token = request.cookies.get('token')?.value;
-    
+    const token = request.cookies.get("token")?.value;
+
     if (!token) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Check if user is a host
     const userResult = await pool.query(
       `SELECT id, role, status, host_details FROM users WHERE id = $1`,
-      [decoded.userId]
+      [decoded.userId],
     );
-    
+
     if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
-    
+
     const user = userResult.rows[0];
-    
-    if (user.role !== 'host') {
+
+    if (user.role !== "host") {
       return NextResponse.json(
-        { message: 'Only hosts can delete listings' },
-        { status: 403 }
+        { message: "Only hosts can delete listings" },
+        { status: 403 },
       );
     }
-    
+
     const { searchParams } = new URL(request.url);
-    const listingId = searchParams.get('id');
-    
+    const listingId = searchParams.get("id");
+
     if (!listingId) {
       return NextResponse.json(
-        { message: 'Listing ID is required' },
-        { status: 400 }
+        { message: "Listing ID is required" },
+        { status: 400 },
       );
     }
-    
+
     // Find the listing and check ownership
     const listingResult = await pool.query(
       `SELECT id, host_id FROM listings WHERE id = $1`,
-      [listingId]
+      [listingId],
     );
-    
+
     if (listingResult.rows.length === 0) {
       return NextResponse.json(
-        { message: 'Listing not found' },
-        { status: 404 }
+        { message: "Listing not found" },
+        { status: 404 },
       );
     }
-    
+
     const listing = listingResult.rows[0];
-    
+
     if (listing.host_id !== user.id) {
       return NextResponse.json(
-        { message: 'You can only delete your own listings' },
-        { status: 403 }
+        { message: "You can only delete your own listings" },
+        { status: 403 },
       );
     }
-    
+
     // Soft delete by setting status to 'deleted'
     await pool.query(
       `UPDATE listings SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [listingId]
+      [listingId],
     );
-    
+
     // Update host's total listings count
     let hostDetails = user.host_details || {};
-    if (typeof hostDetails === 'string') {
+    if (typeof hostDetails === "string") {
       hostDetails = JSON.parse(hostDetails);
     }
-    
+
     if (hostDetails.totalListings && hostDetails.totalListings > 0) {
       hostDetails.totalListings -= 1;
-      await pool.query(
-        `UPDATE users SET host_details = $1 WHERE id = $2`,
-        [hostDetails, user.id]
-      );
+      await pool.query(`UPDATE users SET host_details = $1 WHERE id = $2`, [
+        hostDetails,
+        user.id,
+      ]);
     }
-    
+
     return NextResponse.json({
-      message: 'Listing deleted successfully',
+      message: "Listing deleted successfully",
     });
   } catch (error) {
-    console.error('Delete listing error:', error);
+    console.error("Delete listing error:", error);
     return NextResponse.json(
-      { message: error.message || 'Internal server error' },
-      { status: 500 }
+      { message: error.message || "Internal server error" },
+      { status: 500 },
     );
   }
 }

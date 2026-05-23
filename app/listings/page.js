@@ -40,7 +40,7 @@ export default function ListingsPage() {
       if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
       const res = await fetch(`/api/listings?${params}`);
       const data = await res.json();
-      setListings(data.listings);
+      setListings(data.listings.filter((l) => l.is_active !== false));
     } catch (e) {
       console.error(e);
     } finally {

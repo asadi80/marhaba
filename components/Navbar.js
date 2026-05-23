@@ -79,7 +79,7 @@ const handleTabClick = (tab) => {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           {/* Language Toggle */}
           <button
             onClick={toggleLanguage}
@@ -89,16 +89,16 @@ const handleTabClick = (tab) => {
           </button>
 
           {/* Avatar */}
-          <div
+          {/* <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0"
             style={{ background: aviBg, color: aviColor }}
           >
             {ini}
-          </div>
+          </div> */}
 
           {/* User name + role badge — hidden on mobile */}
           <div className="hidden md:flex items-center gap-1.5">
-            <span className="text-xs text-white/60">{user?.name}</span>
+            <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">{user?.name}</span>
             <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
               {roleLabel}
             </span>
@@ -141,7 +141,7 @@ const handleTabClick = (tab) => {
           {/* Mobile user info */}
           <div className="px-4 py-3 border-t border-[rgba(232,197,71,.1)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-white/60">{user?.name}</span>
+              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">{user?.name}</span>
               <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
                 {roleLabel}
               </span>

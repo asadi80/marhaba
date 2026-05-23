@@ -101,6 +101,7 @@ export default function ListingDetail({ params }) {
   const [activeImage, setActiveImage] = useState(0);
   const [listingView, setListingView] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTogglingActive, setIsTogglingActive] = useState(false);
 
   // Fix Leaflet icons
   useEffect(() => {
@@ -146,7 +147,6 @@ export default function ListingDetail({ params }) {
     try {
       const res = await fetch(`/api/listings/${unwrappedParams.id}`);
       const data = await res.json();
-      console.log(data);
 
       if (!res.ok) throw new Error(data.message);
       setListing(data.listing);
@@ -166,12 +166,8 @@ export default function ListingDetail({ params }) {
         const res = await fetch(`/api/listings/${unwrappedParams.id}/view`, {
           method: "POST",
         });
-
         const data = await res.json();
-
-        if (data.success) {
-          setListingView(data.views);
-        }
+        if (data.success) setListingView(data.views);
       } catch (error) {
         console.error(error);
       }
@@ -184,10 +180,10 @@ export default function ListingDetail({ params }) {
     e.preventDefault();
     setBookingError("");
     setBookingSuccess("");
-    setIsSubmitting(true); // ✅ FIX: moved before the early return so it always resets
+    setIsSubmitting(true);
     if (!booking.checkIn || !booking.checkOut) {
       setBookingError(t.pleaseSelectDates);
-      setIsSubmitting(false); // ✅ FIX: reset spinner on early return
+      setIsSubmitting(false);
       return;
     }
     try {
@@ -212,6 +208,22 @@ export default function ListingDetail({ params }) {
     }
   };
 
+  const handleToggleActive = async () => {
+    setIsTogglingActive(true);
+    try {
+      const res = await fetch(`/api/listings/${unwrappedParams.id}`, {
+        method: "PATCH",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setListing((prev) => ({ ...prev, is_active: data.is_active }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTogglingActive(false);
+    }
+  };
+
   const nights =
     booking.checkIn && booking.checkOut
       ? Math.ceil(
@@ -230,8 +242,6 @@ export default function ListingDetail({ params }) {
   const avi = (name) =>
     AVATAR_PAL[(name?.charCodeAt(0) ?? 0) % AVATAR_PAL.length];
 
-
-
   const getCategoryInfo = () =>
     listing?.category
       ? CATEGORIES.find((c) => c.id === listing.category)
@@ -243,22 +253,17 @@ export default function ListingDetail({ params }) {
       ? `${amount.toLocaleString()} دينار`
       : `${amount.toLocaleString()} LYD`;
 
-
-
   const isAdmin =
     currentUser?.role === "admin" || currentUser?.role === "super_admin";
-    const userInitials =
-  currentUser?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() ?? "?";
+  const userInitials =
+    currentUser?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "?";
 
-  if (loading)
-    return (
-    <LoadingScreen/>
-    );
+  if (loading) return <LoadingScreen />;
 
   if (!listing)
     return (
@@ -267,10 +272,7 @@ export default function ListingDetail({ params }) {
         <div className="font-['Fraunces',serif] italic font-light text-[26px] text-[#111118]">
           {t.listingNotFound}
         </div>
-        <Link
-          href="/listings"
-          className="text-[13px] text-[#185FA5] no-underline"
-        >
+        <Link href="/listings" className="text-[13px] text-[#185FA5] no-underline">
           {t.backToListings}
         </Link>
       </div>
@@ -296,18 +298,16 @@ export default function ListingDetail({ params }) {
       }}
     >
       {/* NAV */}
-    <Navbar
-  NAV_LINKS={[
-    { id: "dashboard", label: t.dashboard, href: "/dashboard" },
-    { id: "browse",    label: t.browse,    href: "/listings" },
-  ]}
-  user={currentUser}
-  lang={lang}
-  toggleLanguage={toggleLanguage}
-  ini={userInitials}
-/>
-
-  
+      <Navbar
+        NAV_LINKS={[
+          { id: "dashboard", label: t.dashboard, href: "/dashboard" },
+          { id: "browse", label: t.browse, href: "/listings" },
+        ]}
+        user={currentUser}
+        lang={lang}
+        toggleLanguage={toggleLanguage}
+        ini={userInitials}
+      />
 
       <main className="max-w-[1100px] mx-auto px-6 py-7">
         {/* Back + Title */}
@@ -341,10 +341,8 @@ export default function ListingDetail({ params }) {
                   fill="#bbb"
                 />
               </svg>
-
               {listing.location}
             </div>
-
             <div className="flex items-center gap-1 text-[#666]">
               <span>
                 <svg
@@ -476,9 +474,7 @@ export default function ListingDetail({ params }) {
                   <div className="text-[11px] text-[#999] mt-0.5">
                     {t.hostSince}{" "}
                     {listing.host?.hostDetails?.joinedDate
-                      ? new Date(
-                          listing.host.hostDetails.joinedDate,
-                        ).getFullYear()
+                      ? new Date(listing.host.hostDetails.joinedDate).getFullYear()
                       : "2024"}
                   </div>
                 </div>
@@ -501,12 +497,7 @@ export default function ListingDetail({ params }) {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution="&copy; OpenStreetMap contributors"
                     />
-                    <Marker
-                      position={[
-                        listing.coordinates.lat,
-                        listing.coordinates.lng,
-                      ]}
-                    >
+                    <Marker position={[listing.coordinates.lat, listing.coordinates.lng]}>
                       <Popup>{listing.location}</Popup>
                     </Marker>
                   </MapContainer>
@@ -524,9 +515,7 @@ export default function ListingDetail({ params }) {
                   <span
                     className="font-light text-[34px] text-[#111118] leading-none"
                     style={{
-                      fontFamily: isAr
-                        ? "'Cairo', sans-serif"
-                        : "'Fraunces', serif",
+                      fontFamily: isAr ? "'Cairo', sans-serif" : "'Fraunces', serif",
                       fontStyle: isAr ? "normal" : "italic",
                     }}
                   >
@@ -535,22 +524,23 @@ export default function ListingDetail({ params }) {
                   <span className="text-[12px] text-[#999]">/ {t.night}</span>
                 </div>
 
-                <form
-                  onSubmit={handleBooking}
-                  className="flex flex-col gap-3.5"
-                >
+                {/* Inactive banner */}
+                {!listing.is_active && (
+                  <div className="bg-[#FEF3C7] border border-[#D97706]/20 rounded-lg px-3 py-2.5 text-[12px] text-[#92400E] mb-4">
+                    {t.listingUnavailable || "This listing is currently unavailable for booking."}
+                  </div>
+                )}
+
+                <form onSubmit={handleBooking} className="flex flex-col gap-3.5">
                   <div>
                     <label className="block text-[10px] tracking-[0.1em] uppercase text-[#888] mb-1.5">
                       {t.selectDates}
                     </label>
-                    {/* ✅ FIX: clear the error as soon as both dates are selected */}
                     <BookingCalendar
                       bookedDates={bookedDates}
                       onDateSelect={(dates) => {
                         setBooking((prev) => ({ ...prev, ...dates }));
-                        if (dates.checkIn && dates.checkOut) {
-                          setBookingError("");
-                        }
+                        if (dates.checkIn && dates.checkOut) setBookingError("");
                       }}
                       checkIn={booking.checkIn}
                       checkOut={booking.checkOut}
@@ -570,9 +560,7 @@ export default function ListingDetail({ params }) {
                         <div className="text-[10px] tracking-[0.08em] uppercase text-[#999] mb-[3px]">
                           {label}
                         </div>
-                        <div
-                          className={`text-[12px] ${val ? "text-[#111118]" : "text-[#bbb]"}`}
-                        >
+                        <div className={`text-[12px] ${val ? "text-[#111118]" : "text-[#bbb]"}`}>
                           {val ? displayDate(val) : "—"}
                         </div>
                       </div>
@@ -590,10 +578,7 @@ export default function ListingDetail({ params }) {
                       required
                       value={booking.guests}
                       onChange={(e) =>
-                        setBooking({
-                          ...booking,
-                          guests: parseInt(e.target.value),
-                        })
+                        setBooking({ ...booking, guests: parseInt(e.target.value) })
                       }
                       className="w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none"
                     />
@@ -611,9 +596,7 @@ export default function ListingDetail({ params }) {
                       </div>
                       <div className="flex justify-between text-[13px] font-medium text-[#111118] pt-2 border-t border-black/7">
                         <span>{t.total}</span>
-                        <span className="text-[#1D9E75]">
-                          {formatCurrency(totalPrice)}
-                        </span>
+                        <span className="text-[#1D9E75]">{formatCurrency(totalPrice)}</span>
                       </div>
                     </div>
                   )}
@@ -631,7 +614,7 @@ export default function ListingDetail({ params }) {
 
                   <button
                     type="submit"
-                    disabled={!booking.checkIn || !booking.checkOut || isSubmitting}
+                    disabled={!booking.checkIn || !booking.checkOut || isSubmitting || !listing.is_active}
                     className="bg-[#e8c547] text-[#1a1a2e] px-3 py-3 rounded-[10px] text-[13px] font-semibold border-none cursor-pointer font-[inherit] transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? "Processing..." : `${t.bookNow} →`}
@@ -648,9 +631,7 @@ export default function ListingDetail({ params }) {
                   <div
                     className="font-light text-[18px] text-[#111118] mb-1.5"
                     style={{
-                      fontFamily: isAr
-                        ? "'Cairo', sans-serif"
-                        : "'Fraunces', serif",
+                      fontFamily: isAr ? "'Cairo', sans-serif" : "'Fraunces', serif",
                       fontStyle: isAr ? "normal" : "italic",
                     }}
                   >
@@ -660,6 +641,38 @@ export default function ListingDetail({ params }) {
                     {t.cannotBookOwnListing}
                   </p>
                 </div>
+
+                {/* Active / Inactive toggle */}
+                <div className="mb-4 px-1">
+                  <div className="flex items-center justify-between bg-[#f7f6f2] rounded-xl px-4 py-3 border border-black/7">
+                    <div>
+                      <div className="text-[12px] font-medium text-[#111118]">
+                        {listing.is_active
+                          ? (t.listingActive || "Listing Active")
+                          : (t.listingInactive || "Listing Inactive")}
+                      </div>
+                      <div className="text-[11px] text-[#999] mt-0.5">
+                        {listing.is_active
+                          ? (t.listingActiveDesc || "Guests can book this listing")
+                          : (t.listingInactiveDesc || "New bookings are paused")}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggleActive}
+                      disabled={isTogglingActive}
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 border-none cursor-pointer flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        listing.is_active ? "bg-[#1D9E75]" : "bg-[#ddd]"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-all duration-200 ${
+                          listing.is_active ? "left-[22px]" : "left-[3px]"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="border-t border-black/7">
                   <BookingCalendar
                     bookedDates={bookedDates}
@@ -677,10 +690,7 @@ export default function ListingDetail({ params }) {
                   />
                 </div>
                 <div className="mt-5 pt-4 border-t border-black/7 text-center">
-                  <Link
-                    href="/host/bookings"
-                    className="text-[12px] text-[#185FA5] no-underline"
-                  >
+                  <Link href="/host/bookings" className="text-[12px] text-[#185FA5] no-underline">
                     {t.viewAllBookings} →
                   </Link>
                 </div>
@@ -692,9 +702,7 @@ export default function ListingDetail({ params }) {
                 <div
                   className="font-light text-[18px] text-[#111118] mb-2"
                   style={{
-                    fontFamily: isAr
-                      ? "'Cairo', sans-serif"
-                      : "'Fraunces', serif",
+                    fontFamily: isAr ? "'Cairo', sans-serif" : "'Fraunces', serif",
                     fontStyle: isAr ? "normal" : "italic",
                   }}
                 >
@@ -704,10 +712,7 @@ export default function ListingDetail({ params }) {
                   {t.adminCannotBookOrBlock ||
                     "Admins can view listings but cannot make bookings or block dates."}
                 </p>
-                <Link
-                  href="/admin"
-                  className="inline-block mt-4 text-[12px] text-[#185FA5] no-underline"
-                >
+                <Link href="/admin" className="inline-block mt-4 text-[12px] text-[#185FA5] no-underline">
                   {t.goToAdminPanel || "Go to Admin Panel →"}
                 </Link>
               </div>

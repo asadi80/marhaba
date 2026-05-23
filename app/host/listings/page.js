@@ -128,6 +128,7 @@ export default function HostListings() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [fixedMarkerIcon, setFixedMarkerIcon] = useState(null);
   const [user, setUser] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   const mapRef = useRef(null);
 
@@ -387,6 +388,22 @@ export default function HostListings() {
     setShowForm(true);
   };
 
+  const handleToggleActive = async (listing) => {
+    setTogglingId(listing.id);
+    try {
+      const res = await fetch(`/api/listings/${listing.id}`, { method: "PATCH" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setListings((prev) =>
+        prev.map((l) => (l.id === listing.id ? { ...l, is_active: data.is_active } : l))
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const validateForm = () => {
     if (!formData.location || !formData.coordinates) {
       alert(t.pleaseSelectLocation);
@@ -468,7 +485,6 @@ export default function HostListings() {
       setMapCenter(DEFAULT_CENTER);
   }, [showForm, isEditing, mapCenter, isGettingLocation]);
 
-  // Font classes based on language
   const arabicFontClass = "font-['Cairo','Tajawal',sans-serif]";
   const displayFontClass = isAr
     ? "font-['Cairo','Tajawal',sans-serif]"
@@ -477,7 +493,6 @@ export default function HostListings() {
     ? "font-['Cairo','Tajawal',sans-serif]"
     : "font-['DM_Mono',monospace]";
 
-  // Shared input/textarea classes with font
   const fieldInput = `w-full px-3.5 py-2.5 border border-black/12 rounded-lg text-[13px] font-[inherit] text-[#111118] bg-[#fafaf8] outline-none transition-all focus:border-[#e8c547] focus:shadow-[0_0_0_3px_rgba(232,197,71,0.12)] focus:bg-white ${bodyFontClass}`;
 
   const userInitials =
@@ -487,6 +502,7 @@ export default function HostListings() {
       .join("")
       .slice(0, 2)
       .toUpperCase() ?? "H";
+
   if (loading) return <LoadingScreen />;
 
   return (
@@ -1018,16 +1034,19 @@ export default function HostListings() {
                 const category = CATEGORIES.find(
                   (c) => c.id === listing.category,
                 );
+                const isToggling = togglingId === listing.id;
                 return (
                   <div
                     key={listing.id}
-                    className="bg-white rounded-2xl border border-black/7 overflow-hidden transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)]"
+                    className={`bg-white rounded-2xl border overflow-hidden transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)] ${
+                      listing.is_active ? "border-black/7" : "border-[#e05a5a]/30"
+                    }`}
                   >
                     <div className="h-[200px] overflow-hidden relative">
                       <img
                         src={listing.images[0]}
                         alt={listing.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-all ${!listing.is_active ? "opacity-60 grayscale" : ""}`}
                       />
                       <div className="absolute top-3 right-3 bg-[rgba(26,26,46,0.92)] text-[#e8c547] rounded-lg px-2.5 py-1 text-xs font-medium">
                         {formatCurrency(listing.price)}
@@ -1041,6 +1060,19 @@ export default function HostListings() {
                           {isAr ? category.labelAr : category.labelEn}
                         </div>
                       )}
+                      {/* Active/Inactive badge */}
+                      <div
+                        className={`absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-medium flex items-center gap-1 ${
+                          listing.is_active
+                            ? "bg-[#1D9E75] text-white"
+                            : "bg-[#e05a5a] text-white"
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full bg-white ${listing.is_active ? "opacity-100" : "opacity-70"}`} />
+                        {listing.is_active
+                          ? (isAr ? "نشط" : "Active")
+                          : (isAr ? "غير نشط" : "Inactive")}
+                      </div>
                     </div>
                     <div className="p-5">
                       <h3
@@ -1048,11 +1080,32 @@ export default function HostListings() {
                       >
                         {listing.title}
                       </h3>
-                      <p
-                        className={`text-xs text-[#888] mb-2 ${bodyFontClass}`}
-                      >
+                      <p className={`text-xs text-[#888] mb-3 ${bodyFontClass}`}>
                         📍 {listing.location}
                       </p>
+
+                      {/* Toggle row */}
+                      <div className="flex items-center justify-between bg-[#f7f6f2] rounded-lg px-3 py-2 mb-3 border border-black/5">
+                        <span className={`text-[11px] text-[#666] ${bodyFontClass}`}>
+                          {listing.is_active
+                            ? (isAr ? "مفتوح للحجز" : "Open for booking")
+                            : (isAr ? "الحجز متوقف" : "Booking paused")}
+                        </span>
+                        <button
+                          onClick={() => handleToggleActive(listing)}
+                          disabled={isToggling}
+                          className={`relative w-9 h-5 rounded-full border-none cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ${
+                            listing.is_active ? "bg-[#1D9E75]" : "bg-[#ddd]"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all duration-200 ${
+                              listing.is_active ? "left-[19px]" : "left-[3px]"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
                       <div className="flex justify-between items-center border-t border-black/[0.06] pt-3.5">
                         <Link
                           href={`/listings/${listing.id}`}

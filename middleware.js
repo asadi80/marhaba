@@ -1,15 +1,15 @@
 // middleware.js - Fixed for Edge Runtime
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {  // Remove 'async' - not needed
+export function middleware(request) {
   const { pathname } = request.nextUrl;
-  
+
   // Public routes
   const publicRoutes = ['/', '/login', '/signup', '/verify-email-pending', '/resend-verification', '/forgot-password', '/reset-password'];
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
-  
+
   // Public API routes
   const publicApiRoutes = [
     '/api/auth/login',
@@ -21,56 +21,50 @@ export function middleware(request) {  // Remove 'async' - not needed
     '/api/listings/nearby',
     '/api/admin/seed',
   ];
-  
+
   if (publicApiRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
   }
-  
+
   // Allow GET requests to /api/listings (for browsing listings)
   if (pathname.startsWith('/api/listings') && request.method === 'GET') {
     return NextResponse.next();
   }
-  
+
   // Allow OPTIONS requests (for CORS preflight)
   if (request.method === 'OPTIONS') {
     return NextResponse.next();
   }
-  
+
   // Allow static assets
-  if (pathname.includes('/_next/') || 
-      pathname.includes('/favicon.ico') || 
-      pathname === '/sw.js' || 
+  if (pathname.includes('/_next/') ||
+      pathname.includes('/favicon.ico') ||
+      pathname === '/sw.js' ||
       pathname === '/manifest.webmanifest') {
     return NextResponse.next();
   }
-  
+
   // ONLY check if token exists - DON'T verify it here
   const token = request.cookies.get('token')?.value;
-  
-  console.log("Middleware - path:", pathname);
-  console.log("Middleware - token exists:", !!token);
-  
+
   // If no token and trying to access protected route
   if (!token) {
     // For API routes, return proper JSON error
     if (pathname.startsWith('/api/')) {
       return new NextResponse(
         JSON.stringify({ message: 'Authentication required' }),
-        { 
+        {
           status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-          }
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }
     // For non-API routes, redirect to login
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
+
   // Token exists - allow the request
   // The actual API route will verify the token is valid
-  console.log("Middleware - Allowing access to:", pathname);
   return NextResponse.next();
 }
 

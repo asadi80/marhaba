@@ -164,9 +164,10 @@ export default function UserDashboard() {
 
   const fetchListings = async () => {
     try {
-      const d = await (await fetch("/api/listings")).json();
-      setListings(d.listings);
-      setFiltered(d.listings);
+      const d = await (await fetch("/api/listings")).json();      
+      const active = d.listings.filter((l) => l.is_active !== false);
+    setListings(active);
+    setFiltered(active);
     } catch {}
   };
 
