@@ -131,6 +131,7 @@ export default function HostDashboard() {
 const compressImage = async (file) => {
   if (file.type === "application/pdf") return file;
 
+  // Convert HEIC/HEIF to JPEG first since canvas can't decode them
   const isHeic =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
@@ -145,20 +146,21 @@ const compressImage = async (file) => {
       const convertedBlob = await heic2any({
         blob: file,
         toType: "image/jpeg",
-        quality: 0.95, // ← was 0.82, keep high for ID readability
+        quality: 0.82,
       });
       const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+      // Already compressed during conversion, return as-is
       return new File(
         [blob],
         file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"),
         { type: "image/jpeg" }
       );
     } catch {
-      return file;
+      return file; // fallback, let server handle it
     }
   }
 
-  // Canvas path for regular images
+  // Regular images: compress via canvas
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -166,7 +168,7 @@ const compressImage = async (file) => {
     const url = URL.createObjectURL(file);
 
     img.onload = () => {
-      const MAX = 2400; // ← was 1600, higher = sharper ID text
+      const MAX = 1600;
       let { width, height } = img;
       if (width > MAX) {
         height = Math.round((height * MAX) / width);
@@ -185,13 +187,13 @@ const compressImage = async (file) => {
           }));
         },
         "image/jpeg",
-        0.92, // ← was 0.82, higher quality
+        0.82,
       );
     };
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      resolve(file);
+      resolve(file); // fallback
     };
 
     img.src = url;
