@@ -1,80 +1,31 @@
-// Enhanced version with more options
+// app/api/upload/sign-upload/route.js
 import { NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
+import jwt from 'jsonwebtoken';
 
-
-export async function POST(request) {
+export async function GET(request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-    const folder = formData.get('folder') || 'marhaba-hostId';
-    const resourceType = formData.get('resource_type') || 'auto';
-    
-    if (!file) {
-      return NextResponse.json(
-        { message: 'No file provided' },
-        { status: 400 }
-      );
-    }
+    const token = request.cookies.get('token')?.value;
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    jwt.verify(token, process.env.JWT_SECRET);
 
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
-   if (!validTypes.includes(file.type)) {
-  const name = file.name?.toLowerCase() ?? '';
-  const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.pdf'];
-  if (!allowedExt.some(ext => name.endsWith(ext))) {
-    return NextResponse.json(
-      { message: 'Invalid file type. Use JPG, PNG, or PDF.' },
-      { status: 400 }
+    const { searchParams } = new URL(request.url);
+    const folder = searchParams.get('folder') || 'marhaba-hostId';
+    const timestamp = Math.round(Date.now() / 1000);
+
+    const signature = cloudinary.utils.api_sign_request(
+      { timestamp, folder },
+      process.env.CLOUDINARY_API_SECRET
     );
-  }
-}
-
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { message: 'File too large. Max 10MB.' },
-        { status: 400 }
-      );
-    }
-
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Upload to Cloudinary with optional transformations
-    const result = await new Promise((resolve, reject) => {
-      const uploadOptions = {
-        folder: folder,
-        resource_type: resourceType,
-      };
-      
-      // Add image transformations for images
-      if (file.type.startsWith('image/')) {
-        uploadOptions.transformation = [
-          { quality: 'auto:good' },
-          { fetch_format: 'auto' }
-        ];
-      }
-      
-      cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }).end(buffer);
-    });
 
     return NextResponse.json({
-      success: true,
-      url: result.secure_url,
-      public_id: result.public_id,
-      format: result.format,
-      bytes: result.bytes,
+      timestamp,
+      signature,
+      folder,
+      cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
     });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json(
-      { message: 'Upload failed', error: error.message },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ message: 'Failed to sign upload' }, { status: 500 });
   }
 }

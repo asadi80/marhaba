@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import LoadingScreen from "@/components/LoadingScreen";
 import Navbar from "@/components/Navbar";
+import { uploadToCloudinary } from '@/lib/uploadToCloudinary';
+
 
 export default function HostDashboard() {
   const router = useRouter();
@@ -205,50 +207,21 @@ const handleUploadID = async () => {
   setUploading(true);
   setUploadError('');
   try {
-    // Compress first
     const fileToUpload = await compressImage(idFile);
 
-    const formData = new FormData();
-    formData.append('file', fileToUpload);
+    // Goes directly to Cloudinary, never touches Vercel size limit
+    const { url: imageUrl, public_id } = await uploadToCloudinary(fileToUpload, 'marhaba-hostId');
 
-    const cloudRes = await fetch('/api/upload/host-id', {
-      method: 'POST',
-      body: formData,
-    });
-
-    // Catch non-JSON responses (size errors, etc.)
-    const contentType = cloudRes.headers.get('content-type');
-    if (!contentType?.includes('application/json')) {
-      const text = await cloudRes.text();
-      throw new Error(`Server error: ${text.slice(0, 120)}`);
-    }
-
-    const cloudData = await cloudRes.json();
-    if (!cloudRes.ok)
-      throw new Error(cloudData.message || 'Cloudinary upload failed');
-
-    const imageUrl = cloudData.url;
-    if (!imageUrl) throw new Error('No URL returned from Cloudinary');
-
+    // Only the tiny JSON hits your server
     const saveRes = await fetch('/api/host/upload-id', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idVerificationUrl: imageUrl,
-        publicId: cloudData.public_id,
-      }),
+      body: JSON.stringify({ idVerificationUrl: imageUrl, publicId: public_id }),
     });
 
-    const contentType2 = saveRes.headers.get('content-type');
-    if (!contentType2?.includes('application/json')) {
-      const text = await saveRes.text();
-      throw new Error(`Server error: ${text.slice(0, 120)}`);
-    }
-
     const saveData = await saveRes.json();
-    if (!saveRes.ok)
-      throw new Error(saveData.message || 'Failed to save verification URL');
+    if (!saveRes.ok) throw new Error(saveData.message || 'Failed to save verification URL');
 
     setUploadDone(true);
     const userRes = await fetch('/api/auth/me', { credentials: 'include' });
@@ -258,9 +231,7 @@ const handleUploadID = async () => {
     setIdPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   } catch (err) {
-    setUploadError(
-      isAr ? `فشل الرفع: ${err.message}` : `Upload failed: ${err.message}`,
-    );
+    setUploadError(isAr ? `فشل الرفع: ${err.message}` : `Upload failed: ${err.message}`);
   } finally {
     setUploading(false);
   }
