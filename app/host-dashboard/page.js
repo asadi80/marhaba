@@ -104,12 +104,14 @@ export default function HostDashboard() {
       "image/png",
       "image/webp",
       "application/pdf",
+      'image/heic', 
+      'image/heif',
     ];
     if (!allowed.includes(file.type)) {
       setUploadError(
         isAr
-          ? "صيغة غير مدعومة. استخدم JPG أو PNG أو PDF."
-          : "Unsupported format. Use JPG, PNG, or PDF.",
+          ? "صيغة غير مدعومة. استخدم JPG أو PNG أو heic أو  heifأو PDF."
+          : "Unsupported format. Use JPG, PNG, heic, heif, or PDF.",
       );
       return;
     }
@@ -365,7 +367,7 @@ const handleUploadID = async () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    accept="image/jpeg,image/png,image/webp,application/pdf,image/heic,image/heif"
                     className="hidden"
                     onChange={(e) => handleFileChange(e.target.files[0])}
                   />
