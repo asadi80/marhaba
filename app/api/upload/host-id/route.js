@@ -22,8 +22,8 @@ export async function GET(request) {
       timestamp,
       signature,
       folder,
-      cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-      apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_API_KEY,
     });
   } catch {
     return NextResponse.json({ message: 'Failed to sign upload' }, { status: 500 });
