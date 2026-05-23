@@ -136,6 +136,12 @@ export default function HostDashboard() {
         method: "POST",
         body: formData,
       });
+       // Handle non-JSON responses gracefully
+    const contentType = cloudRes.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      const text = await cloudRes.text();
+      throw new Error(`Server error: ${text.slice(0, 100)}`);
+    }
       const cloudData = await cloudRes.json();
       if (!cloudRes.ok)
         throw new Error(cloudData.message || "Cloudinary upload failed");
