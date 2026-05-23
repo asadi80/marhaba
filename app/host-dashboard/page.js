@@ -8,6 +8,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import Navbar from "@/components/Navbar";
 import { uploadToCloudinary } from '@/lib/uploadToCloudinary';
 import { compressImage } from '@/lib/compressImage';
+import { toDisplayUrl } from '@/lib/cloudinaryHelpers';
 
 
 export default function HostDashboard() {
@@ -302,7 +303,7 @@ const handleUploadID = async () => {
                   {idPreview ? (
                     <div>
                       <img
-                        src={idPreview}
+                        src={toDisplayUrl(idPreview)}
                         alt="ID preview"
                         className="max-h-40 max-w-full rounded-lg object-contain mb-2 mx-auto"
                       />
