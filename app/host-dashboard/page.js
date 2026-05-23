@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import { uploadToCloudinary } from '@/lib/uploadToCloudinary';
 import { compressImage } from '@/lib/compressImage';
 import { toDisplayUrl } from '@/lib/cloudinaryHelpers';
+import { compressImage } from '@/lib/compressImage';
 
 
 export default function HostDashboard() {
@@ -101,35 +102,44 @@ export default function HostDashboard() {
     }
   };
 
-  const handleFileChange = (file) => {
-    if (!file) return;
-    const allowed = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "application/pdf",
-      'image/heic', 
-      'image/heif',
-    ];
-    if (!allowed.includes(file.type)) {
-      setUploadError(
-        isAr
-          ? "صيغة غير مدعومة. استخدم JPG أو PNG أو heic أو  heifأو PDF."
-          : "Unsupported format. Use JPG, PNG, heic, heif, or PDF.",
-      );
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError(
-        isAr ? "الملف أكبر من 10 ميغابايت." : "File exceeds 10 MB.",
-      );
-      return;
-    }
-    setUploadError("");
-    setIdFile(file);
-    if (file.type.startsWith("image/")) setIdPreview(URL.createObjectURL(file));
-    else setIdPreview(null);
-  };
+const handleFileChange = async (file) => {
+  if (!file) return;
+
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    file.type === 'application/octet-stream' ||
+    file.type === '' ||
+    file.name.toLowerCase().endsWith('.heic') ||
+    file.name.toLowerCase().endsWith('.heif');
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
+  if (!allowed.includes(file.type) && !isHeic) {
+    setUploadError(
+      isAr
+        ? 'صيغة غير مدعومة. استخدم JPG أو PNG أو HEIC أو HEIF أو PDF.'
+        : 'Unsupported format. Use JPG, PNG,HEIC, HEIF or PDF.',
+    );
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    setUploadError(isAr ? 'الملف أكبر من 10 ميغابايت.' : 'File exceeds 10 MB.');
+    return;
+  }
+
+  setUploadError('');
+
+  // Convert HEIC/HEIF → JPEG before preview so browser can render it
+  const converted = await compressImage(file);
+
+  setIdFile(converted);
+  if (converted.type.startsWith('image/')) {
+    setIdPreview(URL.createObjectURL(converted));
+  } else {
+    setIdPreview(null);
+  }
+};
 
  
 const handleUploadID = async () => {
@@ -303,7 +313,7 @@ const handleUploadID = async () => {
                   {idPreview ? (
                     <div>
                       <img
-                        src={toDisplayUrl(idPreview)}
+                        src={idPreview}
                         alt="ID preview"
                         className="max-h-40 max-w-full rounded-lg object-contain mb-2 mx-auto"
                       />
