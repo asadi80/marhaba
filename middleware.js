@@ -1,7 +1,7 @@
-// middleware.js (NOT proxy.js)
+// middleware.js - Fixed for Edge Runtime
 import { NextResponse } from 'next/server';
 
-export async function middleware(request) {
+export function middleware(request) {  // Remove 'async' - not needed
   const { pathname } = request.nextUrl;
   
   // Public routes
@@ -36,7 +36,15 @@ export async function middleware(request) {
     return NextResponse.next();
   }
   
-  // Get token from cookie
+  // Allow static assets
+  if (pathname.includes('/_next/') || 
+      pathname.includes('/favicon.ico') || 
+      pathname === '/sw.js' || 
+      pathname === '/manifest.webmanifest') {
+    return NextResponse.next();
+  }
+  
+  // ONLY check if token exists - DON'T verify it here
   const token = request.cookies.get('token')?.value;
   
   console.log("Middleware - path:", pathname);
@@ -44,7 +52,7 @@ export async function middleware(request) {
   
   // If no token and trying to access protected route
   if (!token) {
-    // For API routes, return proper JSON error (not HTML)
+    // For API routes, return proper JSON error
     if (pathname.startsWith('/api/')) {
       return new NextResponse(
         JSON.stringify({ message: 'Authentication required' }),
@@ -60,27 +68,8 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // Verify token is valid (optional - add token validation here)
-  try {
-    const jwt = await import('jsonwebtoken');
-    jwt.verify(token, process.env.JWT_SECRET);
-  } catch (error) {
-    console.error('Invalid token:', error.message);
-    // If token is invalid, treat as unauthorized
-    if (pathname.startsWith('/api/')) {
-      return new NextResponse(
-        JSON.stringify({ message: 'Invalid or expired token' }),
-        { 
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      );
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-  
+  // Token exists - allow the request
+  // The actual API route will verify the token is valid
   console.log("Middleware - Allowing access to:", pathname);
   return NextResponse.next();
 }
