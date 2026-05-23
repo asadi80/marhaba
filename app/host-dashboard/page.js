@@ -8,8 +8,6 @@ import LoadingScreen from "@/components/LoadingScreen";
 import Navbar from "@/components/Navbar";
 import { uploadToCloudinary } from '@/lib/uploadToCloudinary';
 import { compressImage } from '@/lib/compressImage';
-import { toDisplayUrl } from '@/lib/cloudinaryHelpers';
-import { compressImage } from '@/lib/compressImage';
 
 
 export default function HostDashboard() {
