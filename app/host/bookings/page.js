@@ -332,8 +332,8 @@ const userInitials =
                         {/* Dates / nights / guests */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-black/[0.05] pt-3.5">
                           {[
-                            [t.checkIn, formatDate(booking.check_in_display)],
-                            [t.checkOut, formatDate(booking.check_out_display)],
+                            [t.checkIn, booking.check_in_display],
+                            [t.checkOut, booking.check_out_display],
                             [
                               t.nights,
                               `${nights} ${nights !== 1 ? t.nights : t.night}`,
