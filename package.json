@@ -4,6 +4,7 @@
     "@react-leaflet/core": "^3.0.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
+    "heic2any": "^0.0.4",
     "js-cookie": "^3.0.7",
     "jsonwebtoken": "^9.0.3",
     "leaflet": "^1.9.4",
