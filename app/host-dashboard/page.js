@@ -125,57 +125,116 @@ export default function HostDashboard() {
     else setIdPreview(null);
   };
 
-  const handleUploadID = async () => {
-    if (!idFile) return;
-    setUploading(true);
-    setUploadError("");
-    try {
-      const formData = new FormData();
-      formData.append("file", idFile);
-      const cloudRes = await fetch("/api/upload/host-id", {
-        method: "POST",
-        body: formData,
-      });
-       // Handle non-JSON responses gracefully
-    const contentType = cloudRes.headers.get("content-type");
-    if (!contentType?.includes("application/json")) {
-      const text = await cloudRes.text();
-      throw new Error(`Server error: ${text.slice(0, 100)}`);
+  // Compress image before upload
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    // PDFs can't be compressed, pass through
+    if (file.type === 'application/pdf') {
+      resolve(file);
+      return;
     }
-      const cloudData = await cloudRes.json();
-      if (!cloudRes.ok)
-        throw new Error(cloudData.message || "Cloudinary upload failed");
-      const imageUrl = cloudData.url;
-      if (!imageUrl) throw new Error("No URL returned from Cloudinary");
 
-      const saveRes = await fetch("/api/host/upload-id", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idVerificationUrl: imageUrl,
-          publicId: cloudData.public_id,
-        }),
-      });
-      const saveData = await saveRes.json();
-      if (!saveRes.ok)
-        throw new Error(saveData.message || "Failed to save verification URL");
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    const url = URL.createObjectURL(file);
 
-      setUploadDone(true);
-      const userRes = await fetch("/api/auth/me", { credentials: "include" });
-      const userData = await userRes.json();
-      if (userData.user) setUser(userData.user);
-      setIdFile(null);
-      setIdPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err) {
-      setUploadError(
-        isAr ? `فشل الرفع: ${err.message}` : `Upload failed: ${err.message}`,
+    img.onload = () => {
+      // Scale down if wider than 1600px
+      const MAX = 1600;
+      let { width, height } = img;
+      if (width > MAX) {
+        height = Math.round((height * MAX) / width);
+        width = MAX;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(
+        (blob) => {
+          const compressed = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        'image/jpeg',
+        0.82, // quality 0–1
       );
-    } finally {
-      setUploading(false);
+    };
+
+    img.src = url;
+  });
+};
+
+const handleUploadID = async () => {
+  if (!idFile) return;
+  setUploading(true);
+  setUploadError('');
+  try {
+    // Compress first
+    const fileToUpload = await compressImage(idFile);
+
+    const formData = new FormData();
+    formData.append('file', fileToUpload);
+
+    const cloudRes = await fetch('/api/upload/host-id', {
+      method: 'POST',
+      body: formData,
+    });
+
+    // Catch non-JSON responses (size errors, etc.)
+    const contentType = cloudRes.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      const text = await cloudRes.text();
+      throw new Error(`Server error: ${text.slice(0, 120)}`);
     }
-  };
+
+    const cloudData = await cloudRes.json();
+    if (!cloudRes.ok)
+      throw new Error(cloudData.message || 'Cloudinary upload failed');
+
+    const imageUrl = cloudData.url;
+    if (!imageUrl) throw new Error('No URL returned from Cloudinary');
+
+    const saveRes = await fetch('/api/host/upload-id', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idVerificationUrl: imageUrl,
+        publicId: cloudData.public_id,
+      }),
+    });
+
+    const contentType2 = saveRes.headers.get('content-type');
+    if (!contentType2?.includes('application/json')) {
+      const text = await saveRes.text();
+      throw new Error(`Server error: ${text.slice(0, 120)}`);
+    }
+
+    const saveData = await saveRes.json();
+    if (!saveRes.ok)
+      throw new Error(saveData.message || 'Failed to save verification URL');
+
+    setUploadDone(true);
+    const userRes = await fetch('/api/auth/me', { credentials: 'include' });
+    const userData = await userRes.json();
+    if (userData.user) setUser(userData.user);
+    setIdFile(null);
+    setIdPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  } catch (err) {
+    setUploadError(
+      isAr ? `فشل الرفع: ${err.message}` : `Upload failed: ${err.message}`,
+    );
+  } finally {
+    setUploading(false);
+  }
+};
 
   const AVATAR_PAL = [
     { bg: "bg-[#EEEDFE]", color: "text-[#3C3489]" },

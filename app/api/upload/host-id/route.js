@@ -1,14 +1,7 @@
 // Enhanced version with more options
 import { NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
-export const maxDuration = 60;
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '15mb',
-    },
-  },
-};
+
 
 export async function POST(request) {
   try {
