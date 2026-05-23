@@ -18,7 +18,7 @@ export async function POST(request) {
     }
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
     if (!validTypes.includes(file.type)) {
       return NextResponse.json(
         { message: 'Invalid file type. Use JPG, PNG, WebP, or PDF.' },
