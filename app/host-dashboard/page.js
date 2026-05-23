@@ -128,28 +128,52 @@ export default function HostDashboard() {
   };
 
   // Compress image before upload
-const compressImage = (file) => {
-  return new Promise((resolve) => {
-    // PDFs can't be compressed, pass through
-    if (file.type === 'application/pdf') {
-      resolve(file);
-      return;
-    }
+const compressImage = async (file) => {
+  if (file.type === "application/pdf") return file;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+  // Convert HEIC/HEIF to JPEG first since canvas can't decode them
+  const isHeic =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    file.type === "application/octet-stream" ||
+    file.type === "" ||
+    file.name.toLowerCase().endsWith(".heic") ||
+    file.name.toLowerCase().endsWith(".heif");
+
+  if (isHeic) {
+    try {
+      const heic2any = (await import("heic2any")).default;
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.82,
+      });
+      const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+      // Already compressed during conversion, return as-is
+      return new File(
+        [blob],
+        file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"),
+        { type: "image/jpeg" }
+      );
+    } catch {
+      return file; // fallback, let server handle it
+    }
+  }
+
+  // Regular images: compress via canvas
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     const img = new Image();
     const url = URL.createObjectURL(file);
 
     img.onload = () => {
-      // Scale down if wider than 1600px
       const MAX = 1600;
       let { width, height } = img;
       if (width > MAX) {
         height = Math.round((height * MAX) / width);
         width = MAX;
       }
-
       canvas.width = width;
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
@@ -157,15 +181,19 @@ const compressImage = (file) => {
 
       canvas.toBlob(
         (blob) => {
-          const compressed = new File([blob], file.name, {
-            type: 'image/jpeg',
+          resolve(new File([blob], file.name, {
+            type: "image/jpeg",
             lastModified: Date.now(),
-          });
-          resolve(compressed);
+          }));
         },
-        'image/jpeg',
-        0.82, // quality 0–1
+        "image/jpeg",
+        0.82,
       );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // fallback
     };
 
     img.src = url;
