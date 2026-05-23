@@ -19,12 +19,16 @@ export async function POST(request) {
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
-    if (!validTypes.includes(file.type)) {
-      return NextResponse.json(
-        { message: 'Invalid file type. Use JPG, PNG, WebP, or PDF.' },
-        { status: 400 }
-      );
-    }
+   if (!validTypes.includes(file.type)) {
+  const name = file.name?.toLowerCase() ?? '';
+  const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.pdf'];
+  if (!allowedExt.some(ext => name.endsWith(ext))) {
+    return NextResponse.json(
+      { message: 'Invalid file type. Use JPG, PNG, or PDF.' },
+      { status: 400 }
+    );
+  }
+}
 
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
