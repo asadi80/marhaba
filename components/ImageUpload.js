@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { uploadToCloudinary } from '@/lib/uploadToCloudinary';
+import { compressImage } from '@/lib/compressImage'; 
 
 export default function ImageUpload({ onImageUpload, onRemove, index, imageUrl }) {
   const [uploading, setUploading] = useState(false);
@@ -11,41 +13,16 @@ export default function ImageUpload({ onImageUpload, onRemove, index, imageUrl }
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file');
-      return;
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB');
-      return;
-    }
-
     setUploading(true);
     setError('');
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-
-      onImageUpload(index, data.url);
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError('Failed to upload image');
+      const compressed = await compressImage(file);
+      const { url } = await uploadToCloudinary(compressed, 'marhaba-listings');
+      onImageUpload(index, url);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError('Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -54,10 +31,10 @@ export default function ImageUpload({ onImageUpload, onRemove, index, imageUrl }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.heic', '.heif', '.pdf']
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.heif'],
     },
     maxFiles: 1,
-    disabled: uploading || imageUrl,
+    disabled: uploading || !!imageUrl,
   });
 
   return (
@@ -83,17 +60,15 @@ export default function ImageUpload({ onImageUpload, onRemove, index, imageUrl }
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${
-            isDragActive
-              ? 'border-indigo-500 bg-indigo-50'
-              : 'border-gray-300 hover:border-indigo-400'
+            isDragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400'
           } ${uploading ? 'opacity-50 cursor-wait' : ''}`}
         >
           <input {...getInputProps()} />
           {uploading ? (
             <div className="flex flex-col items-center">
               <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
               <p className="text-sm text-gray-600 mt-2">Uploading...</p>
             </div>
@@ -105,16 +80,12 @@ export default function ImageUpload({ onImageUpload, onRemove, index, imageUrl }
               <p className="text-sm text-gray-600">
                 {isDragActive ? 'Drop the image here' : 'Drag & drop or click to upload'}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                JPG, PNG, GIF up to 5MB
-              </p>
+              <p className="text-xs text-gray-500 mt-1">JPG, PNG, WebP, HEIC up to 10MB</p>
             </div>
           )}
         </div>
       )}
-      {error && (
-        <p className="text-red-500 text-xs mt-1">{error}</p>
-      )}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }

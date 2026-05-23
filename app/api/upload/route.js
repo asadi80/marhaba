@@ -1,47 +1,31 @@
-// app/api/upload/route.js
+// app/api/upload/sign-upload/route.js
 import { NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
+import jwt from 'jsonwebtoken';
 
-export async function POST(request) {
+export async function GET(request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-    
-    if (!file) {
-      return NextResponse.json(
-        { message: 'No file provided' },
-        { status: 400 }
-      );
-    }
+    const token = request.cookies.get('token')?.value;
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    jwt.verify(token, process.env.JWT_SECRET);
 
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const { searchParams } = new URL(request.url);
+    const folder = searchParams.get('folder') || 'marhaba-hostId' || 'marhaba-listings';
+    const timestamp = Math.round(Date.now() / 1000);
 
-    // Upload to Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder: 'marhaba-listings',
-          resource_type: 'auto',
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      ).end(buffer);
-    });
+    const signature = cloudinary.utils.api_sign_request(
+      { timestamp, folder },
+      process.env.CLOUDINARY_API_SECRET
+    );
 
     return NextResponse.json({
-      success: true,
-      url: result.secure_url,
-      public_id: result.public_id,
+      timestamp,
+      signature,
+      folder,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_API_KEY,
     });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json(
-      { message: 'Upload failed', error: error.message },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ message: 'Failed to sign upload' }, { status: 500 });
   }
 }

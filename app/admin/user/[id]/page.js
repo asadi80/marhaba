@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import LoadingScreen from "@/components/LoadingScreen";
+import { toDisplayUrl } from '@/lib/cloudinaryHelpers';
 
 const getAuthToken = () => localStorage.getItem("marhabaToken");
 
@@ -492,7 +493,7 @@ export default function UserDetailPage() {
           onClick={() => setLightboxImg(null)}
         >
           <img
-            src={lightboxImg}
+            src={toDisplayUrl(lightboxImg)}
             alt="ID document"
             className="max-w-full max-h-[90vh] rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
@@ -766,7 +767,7 @@ export default function UserDetailPage() {
                       ) : (
                         <div key={i} className="relative group rounded-lg overflow-hidden border border-black/10">
                           <img
-                            src={url}
+                            src={toDisplayUrl(url)}
                             alt={`ID doc ${i + 1}`}
                             className="w-full h-28 sm:h-32 object-cover cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.02]"
                             onClick={() => setLightboxImg(url)}
