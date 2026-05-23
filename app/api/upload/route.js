@@ -10,11 +10,19 @@ export async function GET(request) {
     jwt.verify(token, process.env.JWT_SECRET);
 
     const { searchParams } = new URL(request.url);
-    const folder = searchParams.get('folder') || 'marhaba-hostId' || 'marhaba-listings';
+    const folder = searchParams.get('folder') || 'marhaba-listings';
     const timestamp = Math.round(Date.now() / 1000);
 
+    // Must include ALL params you send during upload
+    const paramsToSign = {
+      timestamp,
+      folder,
+      format: 'jpg',
+      transformation: 'q_auto:good',
+    };
+
     const signature = cloudinary.utils.api_sign_request(
-      { timestamp, folder },
+      paramsToSign,
       process.env.CLOUDINARY_API_SECRET
     );
 
