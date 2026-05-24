@@ -11,8 +11,10 @@ const nextConfig = {
   },
 };
 
+
 export default withPWA({
   dest: 'public',
+ 
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
@@ -20,6 +22,8 @@ export default withPWA({
   dynamicStartUrl: true,
   workboxOptions: {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+    debug: process.env.NODE_ENV === 'production' ? false : false,
+     logger: null,
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,

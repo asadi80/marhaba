@@ -179,6 +179,8 @@ export default function HostListings() {
     try {
       const res = await fetch("/api/host/listings");
       const data = await res.json();
+      console.log(data);
+      
       setListings(data.listings);
     } catch (err) {
       console.error(err);
@@ -357,45 +359,50 @@ export default function HostListings() {
   };
 
   const handleEdit = (listing) => {
-    const coords =
-      listing.coordinates?.lat && listing.coordinates?.lng
-        ? listing.coordinates
-        : null;
-    setIsEditing(true);
-    setEditingId(listing.id);
-    setFormData({
-      title: listing.title ?? "",
-      description: listing.description ?? "",
-      price: listing.price ?? "",
-      location: listing.location ?? "",
-      coordinates: coords,
-      images: listing.images ?? [],
-      amenities: listing.amenities?.length ? listing.amenities : [""],
-      rules: listing.rules ?? [],
-      category: listing.category ?? "city",
-    });
-    if (coords) {
-      setMarkerPosition(coords);
-      setMapCenter(coords);
-      setSelectedLocation({ ...coords, address: listing.location ?? "" });
-      setTimeout(
-        () => mapRef.current?.setView([coords.lat, coords.lng], 14),
-        500,
-      );
-    } else {
-      setMapCenter(DEFAULT_CENTER);
-    }
-    setShowForm(true);
-  };
+  // Read from flat latitude/longitude fields returned by API
+  const lat = listing.latitude ? parseFloat(listing.latitude) : null;
+  const lng = listing.longitude ? parseFloat(listing.longitude) : null;
+  const coords = lat && lng ? { lat, lng } : null;
+
+  setIsEditing(true);
+  setEditingId(listing.id);
+  setFormData({
+    title: listing.title ?? "",
+    description: listing.description ?? "",
+    price: listing.price ?? "",
+    location: listing.location ?? "",
+    coordinates: coords,
+    images: listing.images ?? [],
+    amenities: listing.amenities?.length ? listing.amenities : [""],
+    rules: listing.rules ?? [],
+    category: listing.category ?? "city",
+  });
+  if (coords) {
+    setMarkerPosition(coords);
+    setMapCenter({ lat: coords.lat, lng: coords.lng });
+    setSelectedLocation({ ...coords, address: listing.location ?? "" });
+    setTimeout(
+      () => mapRef.current?.setView([coords.lat, coords.lng], 14),
+      800,
+    );
+  } else {
+    setMapCenter(DEFAULT_CENTER);
+  }
+  setShowForm(true);
+};
 
   const handleToggleActive = async (listing) => {
     setTogglingId(listing.id);
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, { method: "PATCH" });
+      const res = await fetch(`/api/listings/${listing.id}`, {
+        method: "PATCH",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       setListings((prev) =>
-        prev.map((l) => (l.id === listing.id ? { ...l, is_active: data.is_active } : l))
+        prev.map((l) =>
+          l.id === listing.id ? { ...l, is_active: data.is_active } : l,
+        ),
       );
     } catch (err) {
       console.error(err);
@@ -446,6 +453,8 @@ export default function HostListings() {
         body: JSON.stringify(formData),
       });
       const data = await res.json();
+      console.log(data);
+      
       if (!res.ok) throw new Error(data.message);
       await fetchListings();
       if (data.listing?.coordinates) {
@@ -760,7 +769,7 @@ export default function HostListings() {
                   {mapCenter && !isGettingLocation && (
                     <div className="h-[400px] w-full relative">
                       <MapContainer
-                        key={`${mapCenter.lat}-${mapCenter.lng}`}
+                        key={`${mapCenter.lat}-${mapCenter.lng}-${editingId ?? "new"}`}
                         center={[mapCenter.lat, mapCenter.lng]}
                         zoom={markerPosition ? 14 : 2}
                         style={{ height: "100%", width: "100%" }}
@@ -1039,7 +1048,9 @@ export default function HostListings() {
                   <div
                     key={listing.id}
                     className={`bg-white rounded-2xl border overflow-hidden transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)] ${
-                      listing.is_active ? "border-black/7" : "border-[#e05a5a]/30"
+                      listing.is_active
+                        ? "border-black/7"
+                        : "border-[#e05a5a]/30"
                     }`}
                   >
                     <div className="h-[200px] overflow-hidden relative">
@@ -1068,10 +1079,16 @@ export default function HostListings() {
                             : "bg-[#e05a5a] text-white"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full bg-white ${listing.is_active ? "opacity-100" : "opacity-70"}`} />
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full bg-white ${listing.is_active ? "opacity-100" : "opacity-70"}`}
+                        />
                         {listing.is_active
-                          ? (isAr ? "نشط" : "Active")
-                          : (isAr ? "غير نشط" : "Inactive")}
+                          ? isAr
+                            ? "نشط"
+                            : "Active"
+                          : isAr
+                            ? "غير نشط"
+                            : "Inactive"}
                       </div>
                     </div>
                     <div className="p-5">
@@ -1080,16 +1097,24 @@ export default function HostListings() {
                       >
                         {listing.title}
                       </h3>
-                      <p className={`text-xs text-[#888] mb-3 ${bodyFontClass}`}>
+                      <p
+                        className={`text-xs text-[#888] mb-3 ${bodyFontClass}`}
+                      >
                         📍 {listing.location}
                       </p>
 
                       {/* Toggle row */}
                       <div className="flex items-center justify-between bg-[#f7f6f2] rounded-lg px-3 py-2 mb-3 border border-black/5">
-                        <span className={`text-[11px] text-[#666] ${bodyFontClass}`}>
+                        <span
+                          className={`text-[11px] text-[#666] ${bodyFontClass}`}
+                        >
                           {listing.is_active
-                            ? (isAr ? "مفتوح للحجز" : "Open for booking")
-                            : (isAr ? "الحجز متوقف" : "Booking paused")}
+                            ? isAr
+                              ? "مفتوح للحجز"
+                              : "Open for booking"
+                            : isAr
+                              ? "الحجز متوقف"
+                              : "Booking paused"}
                         </span>
                         <button
                           onClick={() => handleToggleActive(listing)}
