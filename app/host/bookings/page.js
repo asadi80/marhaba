@@ -19,6 +19,8 @@ export default function HostBookings() {
   const [filter, setFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState(null);
   const [user, setUser] = useState(null);
+  const [hostListings, setHostListings] = useState([]);
+  const [blockedDates, setBlockedDates] = useState({});
 
   const formatCurrency = (amount) =>
     isAr
@@ -28,22 +30,35 @@ export default function HostBookings() {
   useEffect(() => {
     fetchBookings();
     fetchUser();
+    fetchHostListings();
   }, []);
+
+  const fetchHostListings = async () => {
+    try {
+      const res = await fetch("/api/host/listings");
+      const data = await res.json();
+      setHostListings(data.listings ?? []);
+      const map = {};
+      (data.listings ?? []).forEach((l) => {
+        map[l.id] = l.blocked_dates ?? [];
+      });
+      setBlockedDates(map);
+    } catch {}
+  };
+
   const fetchUser = async () => {
-  try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    const data = await res.json();
-    if (data.user) setUser(data.user); // ← this line is correct, make sure it's there
-  } catch {}
-};
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const data = await res.json();
+      if (data.user) setUser(data.user);
+    } catch {}
+  };
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/bookings", { credentials: "include" });
       const data = await res.json();
-      console.log(data);
-      
       if (!res.ok) throw new Error(data.message);
       setBookings(data.bookings);
     } catch (err) {
@@ -63,7 +78,6 @@ export default function HostBookings() {
         body: JSON.stringify({ action: "confirm" }),
       });
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingConfirmedSuccess);
@@ -84,7 +98,6 @@ export default function HostBookings() {
         body: JSON.stringify({ action: "cancel" }),
       });
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.message);
       fetchBookings();
       alert(t.bookingCancelledSuccess);
@@ -96,7 +109,7 @@ export default function HostBookings() {
   };
 
   const getFiltered = () =>
-    filter === "all" || filter === "calendar"
+    filter === "all" || filter === "calendar" || filter === "blocked"
       ? bookings
       : bookings.filter((b) => b.status === filter);
 
@@ -118,7 +131,6 @@ export default function HostBookings() {
     );
   };
 
-  // exact colours from original
   const statusBadgeCls = (s) =>
     ({
       confirmed: "bg-[#DCFCE7] text-[#166534]",
@@ -151,15 +163,16 @@ export default function HostBookings() {
     { id: "pending", label: t.pending },
     { id: "cancelled", label: t.cancelled },
     { id: "calendar", label: `📅 ${t.calendarView}` },
+    { id: "blocked", label: `🚫 ${isAr ? "تواريخ محظورة" : "Blocked Dates"}` },
   ];
-const userInitials =
+
+  const userInitials =
     user?.name
       ?.split(" ")
       .map((n) => n[0])
       .join("")
       .slice(0, 2)
       .toUpperCase() ?? "H";
-      
 
   if (loading) return <LoadingScreen />;
 
@@ -183,7 +196,7 @@ const userInitials =
         className="min-h-screen bg-[#f7f6f2] body-font"
         dir={isAr ? "rtl" : "ltr"}
       >
-        {/* ── NAV ── */}
+        {/* NAV */}
         <Navbar
           NAV_LINKS={[
             { id: "overview", label: t.overview, href: "/host-dashboard" },
@@ -197,21 +210,18 @@ const userInitials =
           defaultActiveId="bookings"
         />
 
-        {/* ── PAGE HEADER ── */}
+        {/* PAGE HEADER */}
         <div className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,0.12)] px-6 pt-10 pb-8">
           <div className="max-w-[1100px] mx-auto">
             <div className="fu fu0 text-[10px] tracking-[0.12em] uppercase text-[rgba(232,197,71,0.6)] mb-2">
               {t.hostPanel}
             </div>
-
             <h1
               className={`fu fu1 display-font font-light text-[clamp(28px,4vw,38px)] text-white mb-7 ${isAr ? "" : "italic"}`}
             >
               {t.bookingsTitle}{" "}
               <span className="font-medium text-[#e8c547]">{t.management}</span>
             </h1>
-
-            {/* Stats */}
             <div className="fu fu2 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {STAT_CARDS.map(({ label, val, borderTop }) => (
                 <div
@@ -232,7 +242,7 @@ const userInitials =
           </div>
         </div>
 
-        {/* ── MAIN ── */}
+        {/* MAIN */}
         <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8">
           {/* Filter tabs */}
           <div className="tabs-scroll overflow-x-auto border-b border-black/[0.08] mb-6">
@@ -248,7 +258,7 @@ const userInitials =
                   }`}
                 >
                   {label}
-                  {!["all", "calendar"].includes(id) && (
+                  {!["all", "calendar", "blocked"].includes(id) && (
                     <span
                       className={`text-[10px] px-[7px] py-px rounded-[20px] ${
                         filter === id
@@ -270,15 +280,85 @@ const userInitials =
             </div>
           )}
 
-          {/* Calendar */}
+          {/* Content */}
           {filter === "calendar" ? (
             <div className="bg-white rounded-2xl border border-black/[0.07] p-4 sm:p-6">
               <HostCalendar
                 bookings={bookings}
                 onConfirmBooking={handleConfirmBooking}
                 onCancelBooking={handleCancelBooking}
-                language={lang} 
+                language={lang}
+                 hostListings={hostListings}
+      blockedDates={blockedDates}
               />
+            </div>
+          ) : filter === "blocked" ? (
+            <div className="flex flex-col gap-4">
+              {hostListings.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-black/[0.07] p-16 text-center">
+                  <div className="text-5xl mb-3">🚫</div>
+                  <p className="text-[13px] text-[#999]">
+                    {isAr ? "لا توجد قائمة عقارات" : "No listings found"}
+                  </p>
+                </div>
+              ) : (
+                hostListings.map((listing) => {
+                  const dates = blockedDates[listing.id] ?? [];
+                  return (
+                    <div
+                      key={listing.id}
+                      className="bg-white rounded-2xl border border-black/[0.07] px-5 py-5"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        {listing.images?.[0] && (
+                          <img
+                            src={listing.images[0]}
+                            alt={listing.title}
+                            className="w-10 h-10 rounded-lg object-cover shrink-0"
+                          />
+                        )}
+                        <div>
+                          <h3 className="text-[14px] font-medium text-[#111118]">
+                            {listing.title}
+                          </h3>
+                          <p className="text-[11px] text-[#999] mt-0.5">
+                            {dates.length > 0
+                              ? `${dates.length} ${isAr ? "يوم محظور" : "blocked day(s)"}`
+                              : isAr
+                                ? "لا توجد تواريخ محظورة"
+                                : "No blocked dates"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {dates.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {dates.map((date, i) => {
+                            // Handle both formats: plain string "2026-06-01" or object { startDate, endDate, ... }
+                            const isObj =
+                              typeof date === "object" && date !== null;
+                            const label = isObj
+                              ? date.startDate === date.endDate || !date.endDate
+                                ? date.startDate
+                                : `${formatDate(date.startDate)}`
+                              : date;
+                            return (
+                              <span
+                                key={i}
+                                className="inline-flex items-center bg-[#fee2e2] text-[#991b1b] text-[11px] px-3 py-1 rounded-full"
+                              >
+                                🚫 {label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[12px] text-[#ccc]">—</p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           ) : getFiltered().length === 0 ? (
             <div className="bg-white rounded-2xl border border-black/[0.07] p-16 text-center">
@@ -297,9 +377,8 @@ const userInitials =
                     style={{ animationDelay: `${idx * 0.05}s` }}
                   >
                     <div className="flex flex-col lg:flex-row gap-6 justify-between">
-                      {/* ── Info ── */}
+                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        {/* Title + status badge */}
                         <div className="flex flex-wrap items-center gap-2.5 mb-3">
                           <h3 className="text-[15px] font-medium text-[#111118]">
                             {booking.listing?.title || t.listing}
@@ -313,7 +392,6 @@ const userInitials =
                           </span>
                         </div>
 
-                        {/* Guest info */}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mb-4">
                           {[
                             [t.guest, booking.user?.name || t.guestName],
@@ -332,7 +410,6 @@ const userInitials =
                           ))}
                         </div>
 
-                        {/* Dates / nights / guests */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-black/[0.05] pt-3.5">
                           {[
                             [t.checkIn, booking.check_in_display],
@@ -357,7 +434,6 @@ const userInitials =
                           ))}
                         </div>
 
-                        {/* Total + booked date */}
                         <div className="flex flex-wrap items-center gap-2 mt-3">
                           <span className="text-[10px] uppercase tracking-[0.08em] text-[#bbb]">
                             {t.total}
@@ -371,7 +447,7 @@ const userInitials =
                         </div>
                       </div>
 
-                      {/* ── Actions ── */}
+                      {/* Actions */}
                       <div className="flex flex-row lg:flex-col gap-2 lg:min-w-[140px] lg:flex-shrink-0 flex-wrap">
                         {booking.status === "pending" && (
                           <>
