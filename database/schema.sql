@@ -118,6 +118,19 @@ CREATE TABLE bookings (
 );
 
 -- =====================================================
+-- BLOCKED USER BY HOST TABLE
+-- =====================================================
+CREATE TABLE host_blocked_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  reason VARCHAR(50) NOT NULL, -- 'no_show', 'cancellation', 'manual'
+  booking_id UUID REFERENCES bookings(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(host_id, user_id)
+);
+
+-- =====================================================
 -- INDEXES
 -- =====================================================
 -- Users indexes

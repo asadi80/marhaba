@@ -12,6 +12,31 @@ const CHECK_OUT_TIME = { hour: 11, minute: 0 };   // 11:00 AM
 const TIMEZONE = 'Africa/Tripoli';  // Libya timezone
 
 // =====================================================
+// BILINGUAL MESSAGES
+// =====================================================
+const msg = (en, ar) => `${en} / ${ar}`;
+
+const MESSAGES = {
+  unauthorized:           msg("Unauthorized", "غير مصرح"),
+  allFieldsRequired:      msg("All fields are required", "جميع الحقول مطلوبة"),
+  listingNotFound:        msg("Listing not found", "العقار غير موجود"),
+  cannotBookOwnListing:   msg("You cannot book your own listing", "لا يمكنك حجز عقارك الخاص"),
+  userBlocked:            msg("You are not able to book this listing", "لا يمكنك حجز هذا العقار"),
+  checkoutAfterCheckin:   msg("Check-out date must be after check-in date", "يجب أن يكون تاريخ المغادرة بعد تاريخ الوصول"),
+  noPastDates:            msg("Cannot book dates in the past", "لا يمكن الحجز في تواريخ ماضية"),
+  minimumStay:            msg("Minimum stay is 1 night", "الحد الأدنى للإقامة ليلة واحدة"),
+  datesNotAvailable:      msg("Selected dates are not available", "التواريخ المختارة غير متاحة"),
+  bookingCreated:         msg("Booking created successfully", "تم إنشاء الحجز بنجاح"),
+  bookingIdAndStatusRequired: msg("Booking ID and status are required", "معرّف الحجز والحالة مطلوبان"),
+  invalidStatus:          msg("Invalid status. Use 'confirmed' or 'cancelled'", "حالة غير صالحة. استخدم 'confirmed' أو 'cancelled'"),
+  bookingNotFound:        msg("Booking not found", "الحجز غير موجود"),
+  unauthorizedUpdate:     msg("Unauthorized to update this booking", "غير مصرح لك بتحديث هذا الحجز"),
+  internalError:          msg("Internal server error", "خطأ داخلي في الخادم"),
+  bookingConfirmed:       msg("Booking confirmed successfully", "تم تأكيد الحجز بنجاح"),
+  bookingCancelled:       msg("Booking cancelled successfully", "تم إلغاء الحجز بنجاح"),
+};
+
+// =====================================================
 // HELPER FUNCTIONS
 // =====================================================
 
@@ -329,7 +354,7 @@ export async function GET(request) {
     const user = await getUserFromCookie(request);
 
     if (!user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: MESSAGES.unauthorized }, { status: 401 });
     }
 
     let bookings;
@@ -383,6 +408,9 @@ export async function GET(request) {
       total_price: booking.total_price,
       guests: booking.guests,
       status: booking.status,
+      checked_in_at: booking.checked_in_at,
+      checked_out_at: booking.checked_out_at,
+      no_show: booking.no_show,
       created_at: booking.created_at,
       updated_at: booking.updated_at,
       listing: {
@@ -407,7 +435,7 @@ export async function GET(request) {
   } catch (error) {
     console.error("Fetch bookings error:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: MESSAGES.internalError, error: error.message },
       { status: 500 },
     );
   }
@@ -421,7 +449,7 @@ export async function POST(request) {
     const user = await getUserFromCookie(request);
 
     if (!user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: MESSAGES.unauthorized }, { status: 401 });
     }
 
     const { listingId, checkIn, checkOut, guests } = await request.json();
@@ -429,7 +457,7 @@ export async function POST(request) {
     // Validation
     if (!listingId || !checkIn || !checkOut) {
       return NextResponse.json(
-        { message: "All fields are required" },
+        { message: MESSAGES.allFieldsRequired },
         { status: 400 },
       );
     }
@@ -445,7 +473,7 @@ export async function POST(request) {
 
     if (listingResult.rows.length === 0) {
       return NextResponse.json(
-        { message: "Listing not found" },
+        { message: MESSAGES.listingNotFound },
         { status: 404 },
       );
     }
@@ -455,8 +483,22 @@ export async function POST(request) {
     // Check if user is trying to book their own listing
     if (listing.host_id === user.id) {
       return NextResponse.json(
-        { message: "You cannot book your own listing" },
+        { message: MESSAGES.cannotBookOwnListing },
         { status: 400 },
+      );
+    }
+
+    // Check if guest is blocked by this listing's host
+    const blockResult = await pool.query(
+      `SELECT id FROM host_blocked_users 
+       WHERE host_id = $1 AND user_id = $2`,
+      [listing.host_id, user.id]
+    );
+
+    if (blockResult.rows.length > 0) {
+      return NextResponse.json(
+        { message: MESSAGES.userBlocked },
+        { status: 403 }
       );
     }
 
@@ -472,14 +514,14 @@ export async function POST(request) {
     // Validate dates
     if (checkInTimestamp >= checkOutTimestamp) {
       return NextResponse.json(
-        { message: "Check-out date must be after check-in date" },
+        { message: MESSAGES.checkoutAfterCheckin },
         { status: 400 },
       );
     }
 
     if (checkInTimestamp < todayCheckIn) {
       return NextResponse.json(
-        { message: "Cannot book dates in the past" },
+        { message: MESSAGES.noPastDates },
         { status: 400 },
       );
     }
@@ -488,7 +530,7 @@ export async function POST(request) {
     const nights = Math.round((checkOutTimestamp - checkInTimestamp) / (1000 * 60 * 60 * 24));
     if (nights < 1) {
       return NextResponse.json(
-        { message: "Minimum stay is 1 night" },
+        { message: MESSAGES.minimumStay },
         { status: 400 },
       );
     }
@@ -503,7 +545,7 @@ export async function POST(request) {
     if (hasConflict) {
       console.log(`Conflict detected with booking ${conflictingBooking}`);
       return NextResponse.json(
-        { message: "Selected dates are not available" },
+        { message: MESSAGES.datesNotAvailable },
         { status: 400 },
       );
     }
@@ -566,6 +608,9 @@ export async function POST(request) {
       status: booking.status,
       created_at: booking.created_at,
       updated_at: booking.updated_at,
+      checked_in_at: booking.checked_in_at,
+      checked_out_at: booking.checked_out_at,
+      no_show: booking.no_show,
       listing: {
         title: listing.title,
         location: listing.location,
@@ -576,7 +621,7 @@ export async function POST(request) {
 
     return NextResponse.json(
       {
-        message: "Booking created successfully",
+        message: MESSAGES.bookingCreated,
         booking: formattedBooking,
       },
       { status: 201 },
@@ -584,7 +629,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Create booking error:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: MESSAGES.internalError, error: error.message },
       { status: 500 },
     );
   }
@@ -598,21 +643,21 @@ export async function PATCH(request) {
     const user = await getUserFromCookie(request);
 
     if (!user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: MESSAGES.unauthorized }, { status: 401 });
     }
 
     const { bookingId, status } = await request.json();
 
     if (!bookingId || !status) {
       return NextResponse.json(
-        { message: "Booking ID and status are required" },
+        { message: MESSAGES.bookingIdAndStatusRequired },
         { status: 400 },
       );
     }
 
     if (!["confirmed", "cancelled"].includes(status)) {
       return NextResponse.json(
-        { message: "Invalid status. Use 'confirmed' or 'cancelled'" },
+        { message: MESSAGES.invalidStatus },
         { status: 400 },
       );
     }
@@ -631,7 +676,7 @@ export async function PATCH(request) {
 
     if (bookingResult.rows.length === 0) {
       return NextResponse.json(
-        { message: "Booking not found" },
+        { message: MESSAGES.bookingNotFound },
         { status: 404 },
       );
     }
@@ -641,7 +686,7 @@ export async function PATCH(request) {
     // Check if user is the host of the listing
     if (booking.host_id !== user.id) {
       return NextResponse.json(
-        { message: "Unauthorized to update this booking" },
+        { message: MESSAGES.unauthorizedUpdate },
         { status: 403 },
       );
     }
@@ -675,8 +720,12 @@ export async function PATCH(request) {
       console.error("Failed to send email notification:", emailError);
     }
 
+    const successMessage = status === "confirmed"
+      ? MESSAGES.bookingConfirmed
+      : MESSAGES.bookingCancelled;
+
     return NextResponse.json({
-      message: `Booking ${status} successfully`,
+      message: successMessage,
       booking: {
         id: booking.id,
         status: status,
@@ -685,6 +734,9 @@ export async function PATCH(request) {
         check_in_display: formatBookingDate(booking.check_in, 'checkin'),
         check_out_display: formatBookingDate(booking.check_out, 'checkout'),
         total_price: booking.total_price,
+        checked_in_at: booking.checked_in_at,
+        checked_out_at: booking.checked_out_at,
+        no_show: booking.no_show,
         listing: {
           title: booking.listing_title,
           location: booking.listing_location,
@@ -694,7 +746,7 @@ export async function PATCH(request) {
   } catch (error) {
     console.error("Update booking error:", error);
     return NextResponse.json(
-      { message: "Internal server error", error: error.message },
+      { message: MESSAGES.internalError, error: error.message },
       { status: 500 },
     );
   }
