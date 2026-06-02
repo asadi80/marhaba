@@ -56,41 +56,79 @@ export default function Signup() {
 
   // ── Translations ────────────────────────────────────────────────────────────
   const copy = {
-    logo:         isAr ? <>مر<span className="font-bold text-[#e8c547]">حبا</span></> : <>mar<span className="font-bold text-[#e8c547]">haba</span></>,
-    heroTitle:    isAr ? <>مساحتك،<br />قواعدك.</> : <>Your space,<br />your rules.</>,
-    heroSub:      isAr ? "انضم إلى آلاف المستخدمين والمضيفين الذين يبنون علاقات حقيقية عبر منصتنا." : "Join thousands of users and hosts building meaningful connections through our platform.",
+    logo: isAr ? (
+      <>
+        مر<span className="font-bold text-[#e8c547]">حبا</span>
+      </>
+    ) : (
+      <>
+        mar<span className="font-bold text-[#e8c547]">haba</span>
+      </>
+    ),
+    heroTitle: isAr ? (
+      <>
+        مساحتك،
+        <br />
+        قواعدك.
+      </>
+    ) : (
+      <>
+        Your space,
+        <br />
+        your rules.
+      </>
+    ),
+    heroSub: isAr
+      ? "انضم إلى آلاف المستخدمين والمضيفين الذين يبنون علاقات حقيقية عبر منصتنا."
+      : "Join thousands of users and hosts building meaningful connections through our platform.",
     stats: [
-      { stat: "12,400+", label: isAr ? "إعلان نشط"  : "active listings",   color: "#378ADD" },
-      { stat: "98%",     label: isAr ? "معدل الرضا"  : "satisfaction rate", color: "#e8c547" },
-      { stat: "40+",     label: isAr ? "مدينة مغطاة" : "cities covered",    color: "#1D9E75" },
+      {
+        stat: "12,400+",
+        label: isAr ? "إعلان نشط" : "active listings",
+        color: "#378ADD",
+      },
+      {
+        stat: "98%",
+        label: isAr ? "معدل الرضا" : "satisfaction rate",
+        color: "#e8c547",
+      },
+      {
+        stat: "40+",
+        label: isAr ? "مدينة مغطاة" : "cities covered",
+        color: "#1D9E75",
+      },
     ],
-    createAccount: isAr ? "إنشاء حساب"          : "Create account",
-    alreadyHave:   isAr ? "لديك حساب بالفعل؟"   : "Already have one?",
-    signIn:        isAr ? "تسجيل الدخول"         : "Sign in",
-    joinAs:        isAr ? "أريد الانضمام كـ"     : "I want to join as",
-    traveler:      isAr ? "مسافر"                : "Traveler",
-    travelerDesc:  isAr ? "تصفح وحجز الإقامات"   : "Browse & book stays",
-    host:          isAr ? "مضيف"                 : "Host",
-    hostDesc:      isAr ? "أدرج وأدر العقارات"   : "List & manage properties",
-    fullName:      isAr ? "الاسم الكامل"          : "Full name",
-    namePh:        isAr ? "أحمد محمد"             : "Jane Smith",
-    email:         isAr ? "البريد الإلكتروني"     : "Email",
-    emailPh:       isAr ? "ahmed@example.com"     : "jane@example.com",
-    phone:         isAr ? "رقم الهاتف"            : "Phone number",
-    phonePh:       isAr ? "+218 91 234 5678"       : "+1 555 000 0000",
-    password:      isAr ? "كلمة المرور"           : "Password",
-    passwordPh:    isAr ? "٦ أحرف على الأقل"      : "min 6 chars",
-    confirm:       isAr ? "تأكيد"                 : "Confirm",
-    confirmPh:     isAr ? "أعد الكتابة"           : "repeat",
-    submit:        isAr ? "إنشاء الحساب ←"        : "create account →",
-    submitting:    isAr ? "جارٍ الإنشاء..."       : "creating account...",
-    terms:         isAr ? "بإنشاء حساب فإنك توافق على" : "By signing up you agree to our",
-    termsLink:     isAr ? "الشروط"                : "Terms",
-    and:           isAr ? "و"                     : "and",
-    privacyLink:   isAr ? "سياسة الخصوصية"       : "Privacy Policy",
-    pwMismatch:    isAr ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
-    pwShort:       isAr ? "كلمة المرور يجب أن تكون ٦ أحرف على الأقل" : "Password must be at least 6 characters",
-    langToggle:  isAr ? "🇬🇧"      : "🇱🇾",
+    createAccount: isAr ? "إنشاء حساب" : "Create account",
+    alreadyHave: isAr ? "لديك حساب بالفعل؟" : "Already have one?",
+    signIn: isAr ? "تسجيل الدخول" : "Sign in",
+    joinAs: isAr ? "أريد الانضمام كـ" : "I want to join as",
+    traveler: isAr ? "مسافر" : "Traveler",
+    travelerDesc: isAr ? "تصفح وحجز الإقامات" : "Browse & book stays",
+    host: isAr ? "مضيف" : "Host",
+    hostDesc: isAr ? "أدرج وأدر العقارات" : "List & manage properties",
+    fullName: isAr ? "الاسم الكامل" : "Full name",
+    namePh: isAr ? "أحمد محمد" : "Jane Smith",
+    email: isAr ? "البريد الإلكتروني" : "Email",
+    emailPh: isAr ? "ahmed@example.com" : "jane@example.com",
+    phone: isAr ? "رقم الهاتف" : "Phone number",
+    phonePh: isAr ? "+218 91 234 5678" : "+1 555 000 0000",
+    password: isAr ? "كلمة المرور" : "Password",
+    passwordPh: isAr ? "٦ أحرف على الأقل" : "min 6 chars",
+    confirm: isAr ? "تأكيد" : "Confirm",
+    confirmPh: isAr ? "أعد الكتابة" : "repeat",
+    submit: isAr ? "إنشاء الحساب ←" : "create account →",
+    submitting: isAr ? "جارٍ الإنشاء..." : "creating account...",
+    terms: isAr
+      ? "بإنشاء حساب فإنك توافق على"
+      : "By signing up you agree to our",
+    termsLink: isAr ? "الشروط" : "Terms",
+    and: isAr ? "و" : "and",
+    privacyLink: isAr ? "سياسة الخصوصية" : "Privacy Policy",
+    pwMismatch: isAr ? "كلمتا المرور غير متطابقتين" : "Passwords do not match",
+    pwShort: isAr
+      ? "كلمة المرور يجب أن تكون ٦ أحرف على الأقل"
+      : "Password must be at least 6 characters",
+    langToggle: isAr ? "🇬🇧" : "🇱🇾",
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -101,7 +139,8 @@ export default function Signup() {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) return setError(copy.pwMismatch);
+    if (formData.password !== formData.confirmPassword)
+      return setError(copy.pwMismatch);
     if (formData.password.length < 6) return setError(copy.pwShort);
 
     setLoading(true);
@@ -144,15 +183,21 @@ export default function Signup() {
       <div
         dir={isAr ? "rtl" : "ltr"}
         className="min-h-screen flex bg-[#f7f6f2]"
-        style={{ fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'DM Mono',monospace" }}
+        style={{
+          fontFamily: isAr
+            ? "'Cairo','Tajawal',sans-serif"
+            : "'DM Mono',monospace",
+        }}
       >
-
         {/* ── Left panel ──────────────────────────────────────────────────────── */}
         <aside className="hidden lg:flex flex-col justify-between w-[380px] shrink-0 bg-[#1a1a2e] px-12 py-10 border-r border-[#e8c547]/10 relative overflow-hidden">
           {/* Decorative patterns */}
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.035]"
-            style={{ backgroundImage: "repeating-linear-gradient(45deg,#e8c547 0px,#e8c547 1px,transparent 1px,transparent 36px)" }}
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg,#e8c547 0px,#e8c547 1px,transparent 1px,transparent 36px)",
+            }}
           />
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_20%_50%,rgba(232,197,71,0.12)_0%,transparent_60%)]" />
 
@@ -161,7 +206,10 @@ export default function Signup() {
             <Link
               href="/"
               className="no-underline text-[26px] text-white/90 tracking-wide"
-              style={{ fontFamily: "'Cairo','Tajawal',sans-serif", fontWeight: 500 }}
+              style={{
+                fontFamily: "'Cairo','Tajawal',sans-serif",
+                fontWeight: 500,
+              }}
             >
               مر<span className="font-bold text-[#e8c547]">حبا</span>
             </Link>
@@ -169,7 +217,10 @@ export default function Signup() {
             {/* Dot grid */}
             <div className="grid grid-cols-6 gap-2.5 w-fit opacity-[0.08]">
               {Array.from({ length: 24 }).map((_, i) => (
-                <span key={i} className="block w-1.5 h-1.5 rounded-full bg-[#e8c547]" />
+                <span
+                  key={i}
+                  className="block w-1.5 h-1.5 rounded-full bg-[#e8c547]"
+                />
               ))}
             </div>
 
@@ -178,24 +229,34 @@ export default function Signup() {
               <h2
                 className="text-[36px] text-white font-light leading-[1.15] mb-5"
                 style={{
-                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontFamily: isAr
+                    ? "'Cairo','Tajawal',sans-serif"
+                    : "'Fraunces',serif",
                   fontStyle: isAr ? "normal" : "italic",
                 }}
               >
                 {copy.heroTitle}
               </h2>
-              <p className="text-[13px] text-white/40 leading-relaxed">{copy.heroSub}</p>
+              <p className="text-[13px] text-white/40 leading-relaxed">
+                {copy.heroSub}
+              </p>
             </div>
           </div>
 
           {/* Stats */}
           <div className="flex flex-col gap-5 relative">
             {copy.stats.map(({ stat, label, color }) => (
-              <div key={label} style={{ borderTop: `3px solid ${color}` }} className="pt-3">
+              <div
+                key={label}
+                style={{ borderTop: `3px solid ${color}` }}
+                className="pt-3"
+              >
                 <div
                   className="text-[28px] text-white font-light leading-none"
                   style={{
-                    fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                    fontFamily: isAr
+                      ? "'Cairo','Tajawal',sans-serif"
+                      : "'Fraunces',serif",
                     fontStyle: isAr ? "normal" : "italic",
                   }}
                 >
@@ -212,16 +273,15 @@ export default function Signup() {
         {/* ── Right panel ─────────────────────────────────────────────────────── */}
         <main className="flex-1 flex items-center justify-center px-6 py-8 overflow-y-auto">
           <div className="w-full max-w-[460px] animate-fadeUp">
-
             {/* Top bar */}
             <div className="flex items-center justify-between mb-8">
               {/* Mobile logo */}
-             <Link
-            href="/"
-            className="no-underline font-[Cairo,Tajawal,sans-serif] font-medium text-[26px] text-[#1a1a2e] tracking-wide"
-          >
-            مر<span className="font-bold text-yellow-400">حبا</span>
-          </Link>
+              <Link
+                href="/"
+                className="no-underline font-[Cairo,Tajawal,sans-serif] font-medium text-[26px] text-[#1a1a2e] tracking-wide"
+              >
+                مر<span className="font-bold text-yellow-400">حبا</span>
+              </Link>
 
               {/* Language toggle */}
               <button
@@ -244,7 +304,9 @@ export default function Signup() {
               <h1
                 className="text-[30px] text-[#111118] font-light leading-tight mb-1.5"
                 style={{
-                  fontFamily: isAr ? "'Cairo','Tajawal',sans-serif" : "'Fraunces',serif",
+                  fontFamily: isAr
+                    ? "'Cairo','Tajawal',sans-serif"
+                    : "'Fraunces',serif",
                   fontStyle: isAr ? "normal" : "italic",
                 }}
               >
@@ -252,7 +314,10 @@ export default function Signup() {
               </h1>
               <p className="text-[12px] text-[#999]">
                 {copy.alreadyHave}{" "}
-                <Link href="/login" className="text-[#185FA5] no-underline font-medium">
+                <Link
+                  href="/login"
+                  className="text-[#185FA5] no-underline font-medium"
+                >
                   {copy.signIn}
                 </Link>
               </p>
@@ -265,28 +330,40 @@ export default function Signup() {
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: "user", label: copy.traveler, desc: copy.travelerDesc },
-                  { value: "host", label: copy.host,     desc: copy.hostDesc     },
+                  {
+                    value: "user",
+                    label: copy.traveler,
+                    desc: copy.travelerDesc,
+                  },
+                  { value: "host", label: copy.host, desc: copy.hostDesc },
                 ].map(({ value, label, desc }) => {
                   const active = formData.userType === value;
                   return (
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, userType: value })}
+                      onClick={() =>
+                        setFormData({ ...formData, userType: value })
+                      }
                       className={`
                         rounded-xl px-4 py-3 cursor-pointer transition-all duration-150
                         ${isAr ? "text-right" : "text-left"}
-                        ${active
-                          ? "bg-[#1a1a2e] border-2 border-[#1a1a2e]"
-                          : "bg-white border-2 border-[#e5e3dc] hover:border-black/20"}
+                        ${
+                          active
+                            ? "bg-[#1a1a2e] border-2 border-[#1a1a2e]"
+                            : "bg-white border-2 border-[#e5e3dc] hover:border-black/20"
+                        }
                       `}
                       style={{ fontFamily: "inherit" }}
                     >
-                      <div className={`text-[13px] font-semibold mb-0.5 ${active ? "text-[#e8c547]" : "text-[#111118]"}`}>
+                      <div
+                        className={`text-[13px] font-semibold mb-0.5 ${active ? "text-[#e8c547]" : "text-[#111118]"}`}
+                      >
                         {label}
                       </div>
-                      <div className={`text-[11px] ${active ? "text-[#e8c547]/65" : "text-[#aaa]"}`}>
+                      <div
+                        className={`text-[11px] ${active ? "text-[#e8c547]/65" : "text-[#aaa]"}`}
+                      >
                         {desc}
                       </div>
                     </button>
@@ -298,24 +375,59 @@ export default function Signup() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-3">
               <Field label={copy.fullName}>
-                <Input name="name" type="text" required placeholder={copy.namePh} value={formData.name} onChange={handleChange} />
+                <Input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder={copy.namePh}
+                  value={formData.name}
+                  onChange={handleChange}
+                />
               </Field>
 
               <Field label={copy.email}>
-                <Input name="email" type="email" required placeholder={copy.emailPh} value={formData.email} onChange={handleChange} />
+                <Input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder={copy.emailPh}
+                  value={formData.email}
+                  onChange={handleChange}
+                />
               </Field>
 
               <Field label={copy.phone}>
-                <Input name="phoneNumber" type="tel" required placeholder={copy.phonePh} value={formData.phoneNumber} onChange={handleChange} />
+                <Input
+                  name="phoneNumber"
+                  type="tel"
+                  required
+                  placeholder={copy.phonePh}
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                />
               </Field>
 
               {/* Password row */}
               <div className="grid grid-cols-2 gap-2">
                 <Field label={copy.password}>
-                  <Input name="password" type="password" required placeholder={copy.passwordPh} value={formData.password} onChange={handleChange} />
+                  <Input
+                    name="password"
+                    type="password"
+                    required
+                    placeholder={copy.passwordPh}
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
                 </Field>
                 <Field label={copy.confirm}>
-                  <Input name="confirmPassword" type="password" required placeholder={copy.confirmPh} value={formData.confirmPassword} onChange={handleChange} />
+                  <Input
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    placeholder={copy.confirmPh}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                  />
                 </Field>
               </div>
 
@@ -352,9 +464,19 @@ export default function Signup() {
             {/* Legal */}
             <p className="text-[11px] text-[#bbb] text-center mt-5 leading-relaxed">
               {copy.terms}{" "}
-              <span className="text-[#185FA5] cursor-pointer">{copy.termsLink}</span>{" "}
+              <Link
+                href="/terms"
+                className="text-[#185FA5] cursor-pointer no-underline hover:underline"
+              >
+                {copy.termsLink}
+              </Link>{" "}
               {copy.and}{" "}
-              <span className="text-[#185FA5] cursor-pointer">{copy.privacyLink}</span>
+              <Link
+                href="/privacy"
+                className="text-[#185FA5] cursor-pointer no-underline hover:underline"
+              >
+                {copy.privacyLink}
+              </Link>
             </p>
           </div>
         </main>

@@ -4,9 +4,19 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Navbar({ NAV_LINKS, user, onTabChange, ini, lang, toggleLanguage, defaultActiveId }) {
+export default function Navbar({
+  NAV_LINKS,
+  user,
+  onTabChange,
+  ini,
+  lang,
+  toggleLanguage,
+  defaultActiveId,
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-const [activeTab, setActiveTab] = useState(defaultActiveId || NAV_LINKS?.[0]?.id || "");
+  const [activeTab, setActiveTab] = useState(
+    defaultActiveId || NAV_LINKS?.[0]?.id || "",
+  );
   const router = useRouter();
   const isAr = lang === "ar";
 
@@ -26,29 +36,39 @@ const [activeTab, setActiveTab] = useState(defaultActiveId || NAV_LINKS?.[0]?.id
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
       router.push("/login");
     } catch {
       router.push("/login");
     }
   };
 
-const handleTabClick = (tab) => {
-  if (tab.href) {
-    router.push(tab.href);
+  const handleTabClick = (tab) => {
+    if (tab.href) {
+      router.push(tab.href);
+      setMobileMenuOpen(false);
+      return;
+    }
+    setActiveTab(tab.id);
+    onTabChange?.(tab.id);
     setMobileMenuOpen(false);
-    return;
-  }
-  setActiveTab(tab.id);
-  onTabChange?.(tab.id);
-  setMobileMenuOpen(false);
-};
+  };
 
-  const roleLabel = user?.role === "host"
-    ? isAr ? "مضيف" : "Host"
-    : user?.role === "admin"
-    ? isAr ? "مدير" : "Admin"
-    : isAr ? "مستخدم" : "Guest";
+  const roleLabel =
+    user?.role === "host"
+      ? isAr
+        ? "مضيف"
+        : "Host"
+      : user?.role === "admin"
+        ? isAr
+          ? "مدير"
+          : "Admin"
+        : isAr
+          ? "مستخدم"
+          : "Guest";
 
   return (
     <nav className="bg-[#1a1a2e] border-b border-[rgba(232,197,71,.15)] sticky top-0 z-40">
@@ -97,20 +117,27 @@ const handleTabClick = (tab) => {
           </div> */}
 
           {/* User name + role badge — hidden on mobile */}
-          <div className="hidden md:flex items-center gap-1.5">
-            <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">{user?.name}</span>
-            <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
-              {roleLabel}
-            </span>
-          </div>
+          {/* User name + role badge */}
+          {user && (
+            <div className="hidden md:flex items-center gap-1.5">
+              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
+                {user?.name}
+              </span>
+              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
+                {roleLabel}
+              </span>
+            </div>
+          )}
 
           {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="border border-[#e8c547] rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] bg-transparent hover:border-red-400/50 hover:text-red-400/90 transition-colors"
-          >
-            {isAr ? "خروج" : "Logout"}
-          </button>
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="border border-[#e8c547] rounded-md px-2.5 py-1 text-[11px] cursor-pointer text-[#e8c547] bg-transparent hover:border-red-400/50 hover:text-red-400/90 transition-colors"
+            >
+              {isAr ? "خروج" : "Logout"}
+            </button>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -139,14 +166,18 @@ const handleTabClick = (tab) => {
             </button>
           ))}
           {/* Mobile user info */}
+          {user && (
           <div className="px-4 py-3 border-t border-[rgba(232,197,71,.1)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">{user?.name}</span>
+              <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
+                {user?.name}
+              </span>
               <span className="text-[10px] text-[#e8c547] bg-[#e8c547]/10 border border-[#e8c547]/25 px-2 py-0.5 rounded-full">
                 {roleLabel}
               </span>
             </div>
           </div>
+          )}
         </div>
       )}
     </nav>
