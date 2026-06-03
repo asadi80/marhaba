@@ -10,6 +10,10 @@ import ImageUpload from "@/components/ImageUpload";
 import { useLanguage } from "@/hooks/useLanguage";
 import LoadingScreen from "@/components/LoadingScreen";
 import Navbar from "@/components/Navbar";
+import {
+  CancellationPolicySection,
+  POLICY_PRESETS,
+} from "@/components/CancellationPolicySection";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -105,6 +109,7 @@ const EMPTY_FORM = {
   amenities: [""],
   rules: [],
   category: "city",
+  cancellation_policy: { type: "flexible", description: "", rules: [] },
 };
 
 const DEFAULT_CENTER = { lat: 20, lng: 0 };
@@ -180,7 +185,7 @@ export default function HostListings() {
       const res = await fetch("/api/host/listings");
       const data = await res.json();
       console.log(data);
-      
+
       setListings(data.listings);
     } catch (err) {
       console.error(err);
@@ -359,37 +364,37 @@ export default function HostListings() {
   };
 
   const handleEdit = (listing) => {
-  // Read from flat latitude/longitude fields returned by API
-  const lat = listing.latitude ? parseFloat(listing.latitude) : null;
-  const lng = listing.longitude ? parseFloat(listing.longitude) : null;
-  const coords = lat && lng ? { lat, lng } : null;
+    // Read from flat latitude/longitude fields returned by API
+    const lat = listing.latitude ? parseFloat(listing.latitude) : null;
+    const lng = listing.longitude ? parseFloat(listing.longitude) : null;
+    const coords = lat && lng ? { lat, lng } : null;
 
-  setIsEditing(true);
-  setEditingId(listing.id);
-  setFormData({
-    title: listing.title ?? "",
-    description: listing.description ?? "",
-    price: listing.price ?? "",
-    location: listing.location ?? "",
-    coordinates: coords,
-    images: listing.images ?? [],
-    amenities: listing.amenities?.length ? listing.amenities : [""],
-    rules: listing.rules ?? [],
-    category: listing.category ?? "city",
-  });
-  if (coords) {
-    setMarkerPosition(coords);
-    setMapCenter({ lat: coords.lat, lng: coords.lng });
-    setSelectedLocation({ ...coords, address: listing.location ?? "" });
-    setTimeout(
-      () => mapRef.current?.setView([coords.lat, coords.lng], 14),
-      800,
-    );
-  } else {
-    setMapCenter(DEFAULT_CENTER);
-  }
-  setShowForm(true);
-};
+    setIsEditing(true);
+    setEditingId(listing.id);
+    setFormData({
+      title: listing.title ?? "",
+      description: listing.description ?? "",
+      price: listing.price ?? "",
+      location: listing.location ?? "",
+      coordinates: coords,
+      images: listing.images ?? [],
+      amenities: listing.amenities?.length ? listing.amenities : [""],
+      rules: listing.rules ?? [],
+      category: listing.category ?? "city",
+    });
+    if (coords) {
+      setMarkerPosition(coords);
+      setMapCenter({ lat: coords.lat, lng: coords.lng });
+      setSelectedLocation({ ...coords, address: listing.location ?? "" });
+      setTimeout(
+        () => mapRef.current?.setView([coords.lat, coords.lng], 14),
+        800,
+      );
+    } else {
+      setMapCenter(DEFAULT_CENTER);
+    }
+    setShowForm(true);
+  };
 
   const handleToggleActive = async (listing) => {
     setTogglingId(listing.id);
@@ -447,6 +452,8 @@ export default function HostListings() {
     e.preventDefault();
     if (!validateForm()) return;
     try {
+      console.log(formData);
+
       const res = await fetch(`/api/listings/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -454,7 +461,7 @@ export default function HostListings() {
       });
       const data = await res.json();
       console.log(data);
-      
+
       if (!res.ok) throw new Error(data.message);
       await fetchListings();
       if (data.listing?.coordinates) {
@@ -997,6 +1004,14 @@ export default function HostListings() {
                   + {t.addCustomRule}
                 </button>
               </div>
+
+              <CancellationPolicySection
+                formData={formData}
+                setFormData={setFormData}
+                isAr={isAr}
+                bodyFontClass={bodyFontClass}
+                fieldInput={fieldInput}
+              />
 
               <hr className="border-none border-t border-black/7 my-6" />
 

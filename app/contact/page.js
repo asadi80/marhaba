@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const content = {
   en: {
@@ -228,8 +229,6 @@ const content = {
 };
 
 export default function ContactPage() {
-  const [lang, setLang] = useState("en");
-  const [openFaq, setOpenFaq] = useState(null);
   const [formState, setFormState] = useState({
     name: "",
     email: "",
@@ -240,6 +239,9 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
+
+  const { lang, toggleLanguage } = useLanguage();
+  const [openFaq, setOpenFaq] = useState(null);
 
   const c = content[lang];
   const isAr = lang === "ar";
@@ -282,7 +284,7 @@ export default function ContactPage() {
         NAV_LINKS={navLinks}
         user={null}
         lang={lang}
-        toggleLanguage={() => setLang(lang === "en" ? "ar" : "en")}
+        toggleLanguage={toggleLanguage}
       />
 
       {/* ── HERO ── */}
@@ -307,7 +309,7 @@ export default function ContactPage() {
                 : "font-['Fraunces',serif] italic"
             }`}
           >
-             {c.title}
+            {c.title}
             <span className="font-bold text-[#e8c547]"> {c.title1}</span>
           </h1>
           <p className="text-white/50 text-[15px] mb-5">{c.subtitle}</p>

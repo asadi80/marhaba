@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const content = {
   en: {
@@ -454,9 +455,11 @@ const content = {
 };
 
 export default function TravelTipsPage() {
-  const [lang, setLang] = useState("en");
-  const [openFaq, setOpenFaq] = useState(null);
+ 
   const [activeRegion, setActiveRegion] = useState(null);
+
+   const { lang, toggleLanguage } = useLanguage();
+  const [openFaq, setOpenFaq] = useState(null);
 
   const c = content[lang];
   const isAr = lang === "ar";
@@ -471,8 +474,7 @@ export default function TravelTipsPage() {
         NAV_LINKS={navLinks}
         user={null}
         lang={lang}
-        toggleLanguage={() => setLang(lang === "en" ? "ar" : "en")}
-      />
+ toggleLanguage={toggleLanguage}      />
 
       {/* ── HERO ── */}
       <section className="bg-gradient-to-br from-[#1a1a2e] via-[#2d2d5e] to-[#1a1a2e] py-16 px-6 relative overflow-hidden">

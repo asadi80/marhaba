@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const content = {
   en: {
@@ -244,7 +245,8 @@ const content = {
         icon: "🏠",
         color: "#059669",
         title: "مسؤوليات المضيف",
-        intro: "يتحمل المضيفون في مرحبا مسؤولية توفير بيئة آمنة وصادقة ومرحِّبة.",
+        intro:
+          "يتحمل المضيفون في مرحبا مسؤولية توفير بيئة آمنة وصادقة ومرحِّبة.",
         items: [
           {
             title: "معلومات القائمة الدقيقة",
@@ -365,15 +367,37 @@ const content = {
 };
 
 const sectionColorMap = {
-  "#2563eb": { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "bg-blue-500" },
-  "#059669": { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
-  "#d97706": { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "bg-amber-500" },
-  "#dc2626": { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", dot: "bg-red-500" },
+  "#2563eb": {
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
+  },
+  "#059669": {
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  "#d97706": {
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+  },
+  "#dc2626": {
+    bg: "bg-red-50",
+    border: "border-red-200",
+    text: "text-red-700",
+    dot: "bg-red-500",
+  },
 };
 
 export default function SafetyPage() {
-  const [lang, setLang] = useState("en");
   const [openItems, setOpenItems] = useState({});
+
+  const { lang, toggleLanguage } = useLanguage();
+  const [openFaq, setOpenFaq] = useState(null);
 
   const c = content[lang];
   const isAr = lang === "ar";
@@ -396,7 +420,7 @@ export default function SafetyPage() {
         NAV_LINKS={navLinks}
         user={null}
         lang={lang}
-        toggleLanguage={() => setLang(lang === "en" ? "ar" : "en")}
+        toggleLanguage={toggleLanguage}
       />
 
       {/* ── HERO ── */}
@@ -421,7 +445,7 @@ export default function SafetyPage() {
                 : "font-['Fraunces',serif] italic"
             }`}
           >
-              {c.title}
+            {c.title}
             <span className="font-bold text-[#e8c547]"> {c.title1}</span>
           </h1>
           <p className="text-white/50 text-[15px] mb-7">{c.subtitle}</p>
@@ -433,7 +457,9 @@ export default function SafetyPage() {
                 key={s.label}
                 className="bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 flex items-center gap-2.5"
               >
-                <span className="text-yellow-400 font-bold text-[15px]">{s.value}</span>
+                <span className="text-yellow-400 font-bold text-[15px]">
+                  {s.value}
+                </span>
                 <span className="text-white/40 text-[11px]">{s.label}</span>
               </div>
             ))}
@@ -482,7 +508,9 @@ export default function SafetyPage() {
                   >
                     {sec.title}
                   </h2>
-                  <p className="text-[13px] text-gray-500 leading-[1.7]">{sec.intro}</p>
+                  <p className="text-[13px] text-gray-500 leading-[1.7]">
+                    {sec.intro}
+                  </p>
                 </div>
               </div>
 
@@ -492,7 +520,9 @@ export default function SafetyPage() {
                   <div
                     key={i}
                     className={`border rounded-2xl overflow-hidden transition-all ${
-                      isOpen(sec.id, i) ? `border-[${sec.color}]` : "border-gray-200"
+                      isOpen(sec.id, i)
+                        ? `border-[${sec.color}]`
+                        : "border-gray-200"
                     }`}
                     style={{
                       borderColor: isOpen(sec.id, i) ? sec.color : undefined,
@@ -542,7 +572,10 @@ export default function SafetyPage() {
                     {isOpen(sec.id, i) && (
                       <div
                         className="px-5 pb-4 border-t"
-                        style={{ background: `${sec.color}08`, borderColor: `${sec.color}22` }}
+                        style={{
+                          background: `${sec.color}08`,
+                          borderColor: `${sec.color}22`,
+                        }}
                       >
                         <p className="text-[13px] text-gray-600 leading-[1.8] pt-3">
                           {item.body}

@@ -1,4 +1,4 @@
-// app/api/listings/[id]/route.js - POSTGRESQL VERSION
+// app/api/listings/[id]/route.js
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import pool from '@/lib/postgres';
@@ -78,6 +78,14 @@ export async function GET(request, { params }) {
       ? [...bookedDates, ...formattedBlockedDates]
       : formattedBlockedDates;
 
+    // Parse cancellation_policy safely
+    let cancellationPolicy = null;
+    if (listing.cancellation_policy) {
+      cancellationPolicy = typeof listing.cancellation_policy === 'string'
+        ? JSON.parse(listing.cancellation_policy)
+        : listing.cancellation_policy;
+    }
+
     const formattedListing = {
       id: listing.id,
       title: listing.title,
@@ -90,8 +98,9 @@ export async function GET(request, { params }) {
       category: listing.category,
       amenities: listing.amenities,
       rules: listing.rules,
+      cancellation_policy: cancellationPolicy,   // ← added
       status: listing.status,
-      is_active: listing.is_active,         // ← exposed to client
+      is_active: listing.is_active,
       view_count: listing.view_count,
       blocked_dates: listing.blocked_dates,
       created_at: listing.created_at,
@@ -154,7 +163,7 @@ export async function PATCH(request, { params }) {
   }
 }
 
-// PUT - Update listing (including blocked dates) - Host only
+// PUT - Update listing (including blocked dates and cancellation policy) - Host only
 export async function PUT(request, { params }) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -186,7 +195,8 @@ export async function PUT(request, { params }) {
 
     const {
       title, description, price, location, images,
-      amenities, blockedDates, rules, coordinates, category
+      amenities, blockedDates, rules, coordinates,
+      category, cancellation_policy,               // ← added
     } = await request.json();
 
     const result = await pool.query(
@@ -202,15 +212,17 @@ export async function PUT(request, { params }) {
            rules = COALESCE($9, rules),
            category = COALESCE($10, category),
            blocked_dates = COALESCE($11, blocked_dates),
+           cancellation_policy = COALESCE($12, cancellation_policy),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $12
+       WHERE id = $13
        RETURNING *`,
       [
         title, description, price, location,
         coordinates?.lat || null, coordinates?.lng || null,
         images, amenities, rules, category,
         blockedDates || listing.blocked_dates,
-        id
+        cancellation_policy ? JSON.stringify(cancellation_policy) : null,  // $12
+        id,                                                                  // $13
       ]
     );
 

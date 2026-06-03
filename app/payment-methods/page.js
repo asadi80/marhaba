@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const content = {
   en: {
@@ -56,7 +57,11 @@ const content = {
         tag: "Most Recommended",
         tagColor: "#059669",
         body: "Direct transfers between Libyan bank accounts (Masraf Al Riyad, Wahda Bank, Aman Bank, etc.). Leaves a clear paper trail — recommended for larger amounts.",
-        pros: ["Traceable record", "Secure for large amounts", "Widely accepted"],
+        pros: [
+          "Traceable record",
+          "Secure for large amounts",
+          "Widely accepted",
+        ],
         cons: ["May take 1–2 business days", "Requires bank account details"],
       },
       {
@@ -75,7 +80,11 @@ const content = {
         tagColor: "#d97706",
         body: "Cash in Libyan Dinar (LYD) remains a common method, especially for shorter stays. Always request a written receipt from the host.",
         pros: ["Immediately confirmed", "No fees", "Widely understood"],
-        cons: ["No paper trail", "Risk if no receipt", "Inconvenient for large amounts"],
+        cons: [
+          "No paper trail",
+          "Risk if no receipt",
+          "Inconvenient for large amounts",
+        ],
       },
       {
         icon: "💳",
@@ -84,7 +93,11 @@ const content = {
         tagColor: "#6b7280",
         body: "Card payments between individuals are not widely available in Libya. Only use this method if the host has a confirmed and verifiable card terminal.",
         pros: ["Familiar method", "Some fraud protection"],
-        cons: ["Rare between individuals", "Fees may apply", "Verify terminal legitimacy"],
+        cons: [
+          "Rare between individuals",
+          "Fees may apply",
+          "Verify terminal legitimacy",
+        ],
       },
     ],
 
@@ -328,12 +341,11 @@ const content = {
 };
 
 export default function PaymentsPage() {
-  const [lang, setLang] = useState("en");
+  const { lang, toggleLanguage } = useLanguage();
   const [openFaq, setOpenFaq] = useState(null);
 
   const c = content[lang];
   const isAr = lang === "ar";
-
   const navLinks = [
     { id: "home", label: isAr ? "→ الرئيسية" : "← Home", href: "/" },
   ];
@@ -345,7 +357,7 @@ export default function PaymentsPage() {
         NAV_LINKS={navLinks}
         user={null}
         lang={lang}
-        toggleLanguage={() => setLang(lang === "en" ? "ar" : "en")}
+        toggleLanguage={toggleLanguage}
       />
 
       {/* ── HERO ── */}
@@ -370,7 +382,7 @@ export default function PaymentsPage() {
                 : "font-['Fraunces',serif] italic"
             }`}
           >
-              {c.title}
+            {c.title}
             <span className="font-bold text-[#e8c547]"> {c.title1}</span>
           </h1>
           <p className="text-white/50 text-[15px] mb-6">{c.subtitle}</p>
@@ -487,7 +499,9 @@ export default function PaymentsPage() {
                         key={p}
                         className="flex items-start gap-1.5 text-[11px] text-gray-600"
                       >
-                        <span className="text-emerald-500 mt-0.5 shrink-0">✓</span>
+                        <span className="text-emerald-500 mt-0.5 shrink-0">
+                          ✓
+                        </span>
                         {p}
                       </li>
                     ))}

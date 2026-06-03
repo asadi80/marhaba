@@ -1,4 +1,4 @@
-// app/api/listings/route.js - POSTGRESQL VERSION
+// app/api/listings/route.js
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import pool from "@/lib/postgres";
@@ -11,7 +11,6 @@ export async function GET(request) {
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
 
-    // Build WHERE clause
     let whereConditions = `
       l.status = 'active'
       AND l.is_active = TRUE
@@ -44,7 +43,6 @@ export async function GET(request) {
       }
     }
 
-    // Query listings with host info
     const result = await pool.query(
       `SELECT 
         l.id,
@@ -58,6 +56,7 @@ export async function GET(request) {
         l.category,
         l.amenities,
         l.rules,
+        l.cancellation_policy,
         l.is_active,
         l.created_at,
         l.updated_at,
@@ -72,7 +71,6 @@ export async function GET(request) {
       queryParams,
     );
 
-    // Format listings
     const listings = result.rows.map((listing) => ({
       id: listing.id,
       title: listing.title,
@@ -87,6 +85,7 @@ export async function GET(request) {
       category: listing.category,
       amenities: listing.amenities || [],
       rules: listing.rules || [],
+      cancellation_policy: listing.cancellation_policy || null,
       is_active: listing.is_active,
       createdAt: listing.created_at,
       updatedAt: listing.updated_at,
@@ -119,7 +118,6 @@ export async function POST(request) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if user is a host and confirmed
     const userResult = await pool.query(
       `SELECT id, role, status, host_details FROM users WHERE id = $1`,
       [decoded.userId],
@@ -138,7 +136,6 @@ export async function POST(request) {
       );
     }
 
-    // Check if host is suspended
     if (user.status === "suspended") {
       return NextResponse.json(
         { message: "Your account is suspended. You cannot create listings." },
@@ -146,7 +143,6 @@ export async function POST(request) {
       );
     }
 
-    // Check if host is confirmed
     if (user.status !== "confirmed") {
       return NextResponse.json(
         {
@@ -157,7 +153,6 @@ export async function POST(request) {
       );
     }
 
-    // Extract data from request body
     const {
       title,
       description,
@@ -168,19 +163,8 @@ export async function POST(request) {
       amenities,
       rules,
       category,
+      cancellation_policy,
     } = await request.json();
-
-    console.log("Received listing data:", {
-      title,
-      description,
-      price,
-      location,
-      coordinates,
-      images,
-      amenities,
-      rules,
-      category,
-    });
 
     // Validation
     if (!title || !description || !price || !location || !coordinates) {
@@ -190,7 +174,6 @@ export async function POST(request) {
       );
     }
 
-    // Validate coordinates
     if (!coordinates.lat || !coordinates.lng) {
       return NextResponse.json(
         { message: "Valid coordinates are required" },
@@ -198,7 +181,6 @@ export async function POST(request) {
       );
     }
 
-    // Validate images
     if (!images || images.length === 0 || !images[0]) {
       return NextResponse.json(
         { message: "At least one image is required" },
@@ -206,16 +188,15 @@ export async function POST(request) {
       );
     }
 
-    // Filter out empty images
     const filteredImages = images.filter((img) => img && img.trim() !== "");
 
-    // Create listing
+    // ── FIX: all 13 params now correctly numbered ──
     const result = await pool.query(
       `INSERT INTO listings (
-        title, description, price, location, 
-        latitude, longitude, images, amenities, 
-        rules, category, host_id, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
+        title, description, price, location,
+        latitude, longitude, images, amenities,
+        rules, category, cancellation_policy, host_id, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')
       RETURNING *`,
       [
         title,
@@ -228,20 +209,19 @@ export async function POST(request) {
         amenities || [],
         rules || [],
         category || "city",
-        user.id,
+        cancellation_policy ? JSON.stringify(cancellation_policy) : null, // $11
+        user.id,                                                           // $12
       ],
     );
 
     const newListing = result.rows[0];
 
-    // Update host's total listings count in host_details
+    // Update host's total listings count
     let hostDetails = user.host_details || {};
     if (typeof hostDetails === "string") {
       hostDetails = JSON.parse(hostDetails);
     }
-
     hostDetails.totalListings = (hostDetails.totalListings || 0) + 1;
-
     await pool.query(`UPDATE users SET host_details = $1 WHERE id = $2`, [
       hostDetails,
       user.id,
@@ -264,6 +244,7 @@ export async function POST(request) {
           category: newListing.category,
           amenities: newListing.amenities,
           rules: newListing.rules,
+          cancellation_policy: newListing.cancellation_policy,
           status: newListing.status,
           createdAt: newListing.created_at,
         },
@@ -290,7 +271,6 @@ export async function PUT(request) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if user is a host
     const userResult = await pool.query(
       `SELECT id, role, status FROM users WHERE id = $1`,
       [decoded.userId],
@@ -309,7 +289,6 @@ export async function PUT(request) {
       );
     }
 
-    // Check if host is suspended
     if (user.status === "suspended") {
       return NextResponse.json(
         { message: "Your account is suspended. You cannot update listings." },
@@ -326,7 +305,6 @@ export async function PUT(request) {
       );
     }
 
-    // Find the listing and check ownership
     const listingResult = await pool.query(
       `SELECT id, host_id, status FROM listings WHERE id = $1`,
       [listingId],
@@ -348,7 +326,6 @@ export async function PUT(request) {
       );
     }
 
-    // Check if listing is not deleted
     if (listing.status === "deleted") {
       return NextResponse.json(
         { message: "Cannot update a deleted listing" },
@@ -403,6 +380,15 @@ export async function PUT(request) {
       updateFields.push(`category = $${paramIndex++}`);
       updateParams.push(updateData.category);
     }
+    // ── FIX: cancellation_policy now included in updates ──
+    if (updateData.cancellation_policy !== undefined) {
+      updateFields.push(`cancellation_policy = $${paramIndex++}`);
+      updateParams.push(
+        updateData.cancellation_policy
+          ? JSON.stringify(updateData.cancellation_policy)
+          : null,
+      );
+    }
 
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     updateParams.push(listingId);
@@ -441,7 +427,6 @@ export async function DELETE(request) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if user is a host
     const userResult = await pool.query(
       `SELECT id, role, status, host_details FROM users WHERE id = $1`,
       [decoded.userId],
@@ -470,7 +455,6 @@ export async function DELETE(request) {
       );
     }
 
-    // Find the listing and check ownership
     const listingResult = await pool.query(
       `SELECT id, host_id FROM listings WHERE id = $1`,
       [listingId],
@@ -492,7 +476,6 @@ export async function DELETE(request) {
       );
     }
 
-    // Soft delete by setting status to 'deleted'
     await pool.query(
       `UPDATE listings SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [listingId],
@@ -503,7 +486,6 @@ export async function DELETE(request) {
     if (typeof hostDetails === "string") {
       hostDetails = JSON.parse(hostDetails);
     }
-
     if (hostDetails.totalListings && hostDetails.totalListings > 0) {
       hostDetails.totalListings -= 1;
       await pool.query(`UPDATE users SET host_details = $1 WHERE id = $2`, [
@@ -512,9 +494,7 @@ export async function DELETE(request) {
       ]);
     }
 
-    return NextResponse.json({
-      message: "Listing deleted successfully",
-    });
+    return NextResponse.json({ message: "Listing deleted successfully" });
   } catch (error) {
     console.error("Delete listing error:", error);
     return NextResponse.json(
