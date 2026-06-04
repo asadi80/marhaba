@@ -18,6 +18,7 @@ export function middleware(request) {
      "/travel-tips",
      "/start-hosting",
      "/payment-methods",
+     "host-resources",
     "/verify-email-pending",
     "/resend-verification",
     "/forgot-password",
