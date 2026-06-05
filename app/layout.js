@@ -1,5 +1,5 @@
 import SwUpdate from './sw-update';
-import InstallPrompt from './InstallPrompt';
+import InstallPrompt from '@/components/InstallPrompt';
 
 import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
 import "./globals.css";
