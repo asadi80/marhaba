@@ -1,6 +1,8 @@
+import SwUpdate from './sw-update';
+import InstallPrompt from './components/InstallPrompt';
+
 import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
 import "./globals.css";
-import SwUpdate from './sw-update';
 
 
 const cairo = Cairo({
@@ -61,6 +63,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full flex flex-col">
       <SwUpdate />
+       <InstallPrompt />
         {children}
       </body>
     </html>
