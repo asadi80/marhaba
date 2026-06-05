@@ -1,5 +1,5 @@
 // app/manifest.js
-const ICON_VERSION = "3"; 
+const ICON_VERSION = "4"; 
 
 export default function manifest() {
   return {
@@ -12,19 +12,19 @@ export default function manifest() {
     theme_color: "#1a1a2e",
     icons: [
       {
-        src: `/icon-192-v3.png?v=${ICON_VERSION}`,
+        src: `/icon-192-v4.png?v=${ICON_VERSION}`,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512-v3.png?v=${ICON_VERSION}`,
+        src: `/icon-512-v4.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512-v3.png?v=${ICON_VERSION}`,
+        src: `/icon-512-v4.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

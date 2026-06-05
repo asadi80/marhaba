@@ -2,7 +2,7 @@
 import { Cairo, Tajawal, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const ICON_VERSION = "3"; // ← keep in sync with manifest.js
+const ICON_VERSION = "4"; // ← keep in sync with manifest.js
 
 const cairo = Cairo({
   subsets: ['arabic'],
@@ -42,7 +42,7 @@ export const metadata = {
     title: "Marhaba",
   },
   icons: {
-    apple: `/icon-192-v3.png?v=${ICON_VERSION}`,  
+    apple: `/icon-192-v4.png?v=${ICON_VERSION}`,  
   },
 };
 
@@ -55,7 +55,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="Marhaba" />
         <meta name="theme-color" content="#1a1a2e" />
         {/* ✅ Versioned apple touch icon — forces iOS to re-fetch on version bump */}
-        <link rel="apple-touch-icon" href={`/icon-192-v3.png?v=${ICON_VERSION}`} />
+        <link rel="apple-touch-icon" href={`/icon-192-v4.png?v=${ICON_VERSION}`} />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

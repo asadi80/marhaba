@@ -16,7 +16,7 @@ export default withPWA({
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [/middleware-manifest\.json$/],
   register: true,
-  skipWaiting: true,          // ✅ already correct — SW replaces itself immediately
+  skipWaiting: true,         
   cacheStartUrl: true,
   dynamicStartUrl: true,
   workboxOptions: {
