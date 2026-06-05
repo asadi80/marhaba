@@ -43,7 +43,7 @@ export default withPWA({
       // ✅ Add this — ensures icon files are never served stale from SW cache
       {
         urlPattern: /\/icon-.*\.png(\?.*)?$/i,
-        handler: 'NetworkFirst',
+        handler: 'NetworkOnly',
         options: {
           cacheName: 'app-icons',
           expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 },
