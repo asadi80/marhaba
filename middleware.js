@@ -19,6 +19,7 @@ export function middleware(request) {
      "/start-hosting",
      "/payment-methods",
      "host-resources",
+     "/manifest.json",
     "/verify-email-pending",
     "/resend-verification",
     "/forgot-password",
