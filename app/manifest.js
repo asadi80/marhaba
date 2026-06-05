@@ -1,6 +1,7 @@
 // app/manifest.js
 export default function manifest() {
   return {
+    id: '/',
     name: 'My Awesome Marhaba App',
     short_name: 'Marhaba',
     description: 'A PWA built with Next.js',
