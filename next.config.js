@@ -14,13 +14,9 @@ const nextConfig = {
 export default withPWA({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
-  buildExcludes: [/middleware-manifest\.json$/],
   register: true,
-  skipWaiting: true,         
-  cacheStartUrl: true,
-  dynamicStartUrl: true,
+  skipWaiting: true,
   workboxOptions: {
-    mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -39,15 +35,6 @@ export default withPWA({
         urlPattern: /^\/api\/.*/i,
         handler: 'NetworkOnly',
         options: { cacheName: 'api-responses' },
-      },
-      // ✅ Add this — ensures icon files are never served stale from SW cache
-      {
-        urlPattern: /\/icon-.*\.png(\?.*)?$/i,
-        handler: 'NetworkOnly',
-        options: {
-          cacheName: 'app-icons',
-          expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 },
-        },
       },
     ],
   },
