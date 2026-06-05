@@ -4,7 +4,9 @@ const withPWA = withSerwist({
   swSrc: "app/sw.js",
   swDest: "public/sw.js",
   injectionPoint: "self.__SW_MANIFEST",  // ← add this
-  disable: process.env.NODE_ENV === "development",
+  // disable: process.env.NODE_ENV === "development",
+    disable: false,
+
 });
 
 export default withPWA({
