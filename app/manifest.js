@@ -1,7 +1,7 @@
 // app/manifest.js
-export default function manifest() {
-  const v = "2"; // ← bump this whenever you change the icon
+const ICON_VERSION = "3"; 
 
+export default function manifest() {
   return {
     name: "Marhaba",
     short_name: "Marhaba",
@@ -12,22 +12,22 @@ export default function manifest() {
     theme_color: "#1a1a2e",
     icons: [
       {
-        src: `/icon-192.png?v=${v}`,
+        src: `/icon-192.png?v=${ICON_VERSION}`,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512.png?v=${v}`,
+        src: `/icon-512.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512.png?v=${v}`,
+        src: `/icon-512.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
-        purpose: "maskable",   // ← needed for Android adaptive icons
+        purpose: "maskable",
       },
     ],
   };

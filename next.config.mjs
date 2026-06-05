@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+// next.config.js
 import withPWA from '@ducanh2912/next-pwa';
 
 const nextConfig = {
@@ -11,50 +11,44 @@ const nextConfig = {
   },
 };
 
-
 export default withPWA({
   dest: 'public',
- 
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [/middleware-manifest\.json$/],
   register: true,
-  skipWaiting: true,
+  skipWaiting: true,          // ✅ already correct — SW replaces itself immediately
   cacheStartUrl: true,
   dynamicStartUrl: true,
   workboxOptions: {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-    debug: process.env.NODE_ENV === 'production' ? false : false,
-     logger: null,
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
         handler: 'CacheFirst',
         options: {
           cacheName: 'google-fonts',
-          expiration: {
-            maxEntries: 30,
-            maxAgeSeconds: 60 * 60 * 24 * 365,
-          },
+          expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
         },
       },
       {
         urlPattern: /^https:\/\/.*\.tile\.openstreetmap\.org\/.*/i,
         handler: 'NetworkOnly',
-        options: {
-          cacheName: 'osm-tiles',
-        },
+        options: { cacheName: 'osm-tiles' },
       },
       {
         urlPattern: /^\/api\/.*/i,
         handler: 'NetworkOnly',
+        options: { cacheName: 'api-responses' },
+      },
+      // ✅ Add this — ensures icon files are never served stale from SW cache
+      {
+        urlPattern: /\/icon-.*\.png(\?.*)?$/i,
+        handler: 'NetworkFirst',
         options: {
-          cacheName: 'api-responses',
+          cacheName: 'app-icons',
+          expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 },
         },
       },
     ],
   },
-  ...(process.env.NODE_ENV === 'development' && {
-    onSuccess: undefined,
-    onRegister: undefined,
-  }),
 })(nextConfig);
