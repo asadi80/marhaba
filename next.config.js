@@ -15,6 +15,7 @@ export default withPWA({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
+  clientsClaim: true,
   skipWaiting: true,
   workboxOptions: {
     runtimeCaching: [

@@ -1,5 +1,7 @@
 import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
 import "./globals.css";
+import SwUpdate from './sw-update';
+
 
 const cairo = Cairo({
   subsets: ['arabic'],
@@ -57,6 +59,7 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="min-h-full flex flex-col">
+      <SwUpdate />
         {children}
       </body>
     </html>
