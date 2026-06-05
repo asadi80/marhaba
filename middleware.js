@@ -1,4 +1,4 @@
-// middleware.js - Fixed for Edge Runtime
+// middleware.js 
 import { NextResponse } from "next/server";
 
 export function middleware(request) {
@@ -14,11 +14,11 @@ export function middleware(request) {
     "/how-to-book",
     "/contact",
     "/pricing-tips",
-     "/safety-info",
-     "/travel-tips",
-     "/start-hosting",
-     "/payment-methods",
-     "/host-resources",
+    "/safety-info",
+    "/travel-tips",
+    "/start-hosting",
+    "/payment-methods",
+    "/host-resources",
     "/verify-email-pending",
     "/resend-verification",
     "/forgot-password",
@@ -61,7 +61,12 @@ export function middleware(request) {
     pathname.includes("/_next/") ||
     pathname.includes("/favicon.ico") ||
     pathname === "/sw.js" ||
-    pathname === "/manifest.webmanifest"
+    pathname === "/manifest.webmanifest" ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".webp")
   ) {
     return NextResponse.next();
   }
@@ -78,7 +83,7 @@ export function middleware(request) {
         {
           status: 401,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
     // For non-API routes, redirect to login
@@ -86,10 +91,11 @@ export function middleware(request) {
   }
 
   // Token exists - allow the request
-  // The actual API route will verify the token is valid
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.ico|.*\\.svg|.*\\.jpg|.*\\.webp).*)",
+  ],
 };
