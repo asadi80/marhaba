@@ -3,7 +3,6 @@ import withPWA from '@ducanh2912/next-pwa';
 
 const nextConfig = {
   reactStrictMode: true,
-  turbopack: {},
   experimental: {
     serverActions: {
       bodySizeLimit: '15mb',
@@ -21,9 +20,8 @@ export default withPWA({
   cacheStartUrl: true,
   dynamicStartUrl: true,
   workboxOptions: {
-    mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-    // debug: process.env.NODE_ENV === 'production' ? false : false,
-     logger: null,
+   
+    debug: false,
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
