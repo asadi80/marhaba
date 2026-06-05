@@ -27,7 +27,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build ",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "echo \"Error: no test specified\" && exit 1"
