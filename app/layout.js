@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Marhaba",
   description: "Find your next place",
-  manifest: "/manifest.json", // Add this line
+  manifest: "/manifest.webmanifest",
 
   appleWebApp: {
     capable: true,
