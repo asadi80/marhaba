@@ -3,10 +3,11 @@ import withSerwist from "@serwist/next";
 const withPWA = withSerwist({
   swSrc: "app/sw.js",
   swDest: "public/sw.js",
+  injectionPoint: "self.__SW_MANIFEST",  // ← add this
   disable: process.env.NODE_ENV === "development",
 });
 
-const nextConfig = {
+export default withPWA({
   reactStrictMode: true,
   turbopack: {},
   experimental: {
@@ -14,6 +15,4 @@ const nextConfig = {
       bodySizeLimit: '15mb',
     },
   },
-};
-
-export default withPWA(nextConfig);
+});
