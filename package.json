@@ -16,6 +16,7 @@
     "react-dom": "^19.2.6",
     "react-dropzone": "^15.0.0",
     "react-leaflet": "^5.0.0",
+    "serwist": "^9.5.11",
     "tailwind-scrollbar-hide": "^4.0.0",
     "ua-parser-js": "^2.0.9",
     "uuid": "^14.0.0"
