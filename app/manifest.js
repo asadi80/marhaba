@@ -3,7 +3,7 @@ export default function manifest() {
   return {
     name: 'Marhaba',
     short_name: 'Marhaba',
-    description: 'Whether you are looking for the perfect stay or want to share your space — Marhaba brings travelers and hosts together.',
+    description: "Libya's trusted short-term rental platform.",
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
@@ -13,12 +13,15 @@ export default function manifest() {
         src: '/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
+         purpose: "any", 
       },
       {
         src: '/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
+         purpose: "any", 
       },
+      
     ],
   };
 }

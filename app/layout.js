@@ -39,7 +39,7 @@ export const metadata = {
     title: "Marhaba",
   },
   icons: {
-    apple: "/icon-192.png",
+    apple: "/icon-192x192.png",
   },
 };
 
