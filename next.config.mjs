@@ -22,7 +22,7 @@ export default withPWA({
   dynamicStartUrl: true,
   workboxOptions: {
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-    debug: process.env.NODE_ENV === 'production' ? false : false,
+    // debug: process.env.NODE_ENV === 'production' ? false : false,
      logger: null,
     runtimeCaching: [
       {
