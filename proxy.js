@@ -1,9 +1,33 @@
 // proxy.js
 import { NextResponse } from "next/server";
 
-export function proxy(request) {  // ← renamed from "middleware" to "proxy"
+export function proxy(request) {
   const { pathname } = request.nextUrl;
 
+  // Allow ALL static files first - before anything else
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/icons/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/manifest.json" ||
+    pathname === "/icon-192x192.png" ||    // ← explicit
+    pathname === "/icon-512x512.png" ||    // ← explicit
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".json") ||
+    pathname.endsWith(".txt") ||
+    pathname.endsWith(".xml")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Public routes
   const publicRoutes = [
     "/",
     "/login",
@@ -52,20 +76,6 @@ export function proxy(request) {  // ← renamed from "middleware" to "proxy"
     return NextResponse.next();
   }
 
-  if (
-    pathname.includes("/_next/") ||
-    pathname.includes("/favicon.ico") ||
-    pathname === "/sw.js" ||
-    pathname === "/manifest.webmanifest" ||
-    pathname.endsWith(".png") ||
-    pathname.endsWith(".ico") ||
-    pathname.endsWith(".svg") ||
-    pathname.endsWith(".jpg") ||
-    pathname.endsWith(".webp")
-  ) {
-    return NextResponse.next();
-  }
-
   const token = request.cookies.get("token")?.value;
 
   if (!token) {
@@ -85,7 +95,5 @@ export function proxy(request) {  // ← renamed from "middleware" to "proxy"
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.*|sw\\.js|manifest.*|.*\\.png|.*\\.ico|.*\\.svg|.*\\.jpg|.*\\.webp|.*\\.json).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image).*)"],  // ← simplified matcher
 };
