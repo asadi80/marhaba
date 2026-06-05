@@ -1,9 +1,5 @@
-import SwUpdate from './sw-update';
-import InstallPrompt from '@/components/InstallPrompt';
-
 import { Geist, Geist_Mono, Cairo, Tajawal, Almara } from "next/font/google";
 import "./globals.css";
-
 
 const cairo = Cairo({
   subsets: ['arabic'],
@@ -30,8 +26,8 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Marhaba",
   description: "Find your next place",
-  manifest: "/manifest.json", 
-  themeColor: "#000000", 
+  manifest: "/manifest.json", // Add this line
+  themeColor: "#000000", // Add this line
   viewport: {
     width: "device-width",
     initialScale: 1,
@@ -61,8 +57,6 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="min-h-full flex flex-col">
-      <SwUpdate />
-       <InstallPrompt />
         {children}
       </body>
     </html>
