@@ -27,12 +27,7 @@ export const metadata = {
   title: "Marhaba",
   description: "Find your next place",
   manifest: "/manifest.json", // Add this line
-  themeColor: "#000000", // Add this line
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -41,6 +36,12 @@ export const metadata = {
   icons: {
     apple: "/icon-192x192.png",
   },
+};
+export const viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }) {

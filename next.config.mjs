@@ -22,7 +22,6 @@ export default withPWA({
   dynamicStartUrl: true,
   workboxOptions: {
    
-    debug: false,
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
