@@ -12,19 +12,19 @@ export default function manifest() {
     theme_color: "#1a1a2e",
     icons: [
       {
-        src: `/icon-192.png?v=${ICON_VERSION}`,
+        src: `/icon-192-v3.png?v=${ICON_VERSION}`,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512.png?v=${ICON_VERSION}`,
+        src: `/icon-512-v3.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: `/icon-512.png?v=${ICON_VERSION}`,
+        src: `/icon-512-v3.png?v=${ICON_VERSION}`,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
