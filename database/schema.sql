@@ -134,6 +134,10 @@ CREATE TABLE bookings (
   check_out   TIMESTAMP      NOT NULL,
   total_price DECIMAL(10, 2) NOT NULL,
   guests      INTEGER        NOT NULL DEFAULT 1,
+    -- Guest arrival tracking
+  checked_in_at   TIMESTAMP,
+  checked_out_at  TIMESTAMP,
+  no_show         BOOLEAN DEFAULT fals
   status      VARCHAR(20)    DEFAULT 'pending',
   created_at  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
