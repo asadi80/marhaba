@@ -66,12 +66,12 @@ export const POLICY_PRESETS = [
 // ─── bilingual suggestion pairs ───────────────────────────────────────────────
 const RULE_PAIRS = [
   {
-    en: "Full refund if cancelled 24h before check-in",
-    ar: "استرداد كامل إذا ألغيت قبل 24 ساعة من الوصول",
+    en: "50% refund if cancelled 24h before check-in",
+    ar: "استرداد 50٪ إذا ألغيت قبل 24 ساعة من الوصول",
   },
   {
-    en: "Full refund if cancelled 5 days before check-in",
-    ar: "استرداد كامل إذا ألغيت قبل 5 أيام من الوصول",
+    en: "Full refund if cancelled 3 days before check-in",
+    ar: "استرداد كامل إذا ألغيت قبل 3 أيام من الوصول",
   },
   {
     en: "50% refund if cancelled 48h before check-in",
