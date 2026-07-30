@@ -6,14 +6,14 @@ export const POLICY_PRESETS = [
     icon: "🟢",
     labelEn: "Flexible",
     labelAr: "مرن",
-    descEn: "Full refund if cancelled 24 hours before check-in.",
-    descAr: "استرداد كامل إذا تم الإلغاء قبل 24 ساعة من تسجيل الوصول.",
+    descEn: "Full refund if cancelled 3 days before check-in.",
+    descAr: "استرداد كامل إذا تم الإلغاء قبل 3 أيام من تسجيل الوصول.",
     rulesEn: [
-      "Full refund up to 24 hours before check-in",
+      "Full refund if cancelled 3 days before check-in.",
       "No refund within 24 hours of check-in",
     ],
     rulesAr: [
-      "استرداد كامل حتى 24 ساعة قبل تسجيل الوصول",
+      "استرداد كامل إذا تم الإلغاء قبل 3 أيام من تسجيل الوصول.",
       "لا استرداد خلال 24 ساعة من تسجيل الوصول",
     ],
   },
